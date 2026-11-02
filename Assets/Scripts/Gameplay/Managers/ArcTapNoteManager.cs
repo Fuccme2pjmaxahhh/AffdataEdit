@@ -42,6 +42,42 @@ namespace Arcade.Gameplay
 			}
 		}
 
+        // Only retained while loading Arcs; editing continues to use the live Tap list.
+        private Dictionary<int, List<ArcTap>> connectionTapsByTiming;
+
+        internal void PrepareConnectionLookup()
+        {
+            connectionTapsByTiming = new Dictionary<int, List<ArcTap>>();
+            foreach (var tap in Taps)
+            {
+                if (!connectionTapsByTiming.TryGetValue(tap.Timing, out var bucket))
+                {
+                    bucket = new List<ArcTap>();
+                    connectionTapsByTiming.Add(tap.Timing, bucket);
+                }
+                bucket.Add(tap);
+            }
+        }
+
+        internal void ClearConnectionLookup() => connectionTapsByTiming = null;
+
+        internal IEnumerable<ArcTap> GetConnectionCandidates(int timing)
+        {
+            if (connectionTapsByTiming == null) return Taps;
+            return GetIndexedConnectionCandidates(timing);
+        }
+
+        private IEnumerable<ArcTap> GetIndexedConnectionCandidates(int timing)
+        {
+            // Use long bounds so the +/-1 ms window cannot wrap at int limits.
+            for (long candidateTiming = (long)timing - 1; candidateTiming <= (long)timing + 1; candidateTiming++)
+            {
+                if (candidateTiming < int.MinValue || candidateTiming > int.MaxValue) continue;
+                if (!connectionTapsByTiming.TryGetValue((int)candidateTiming, out var bucket)) continue;
+                foreach (var tap in bucket) yield return tap;
+            }
+        }
+
 		public void Add(ArcTap tap)
 		{
 			ArcScoreManager.Invalidate();

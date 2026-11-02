@@ -79,7 +79,16 @@ namespace Arcade.Gameplay
 		public void Load(List<ArcArc> arcs)
 		{
 			Arcs = arcs;
-			foreach (var t in Arcs) t.Instantiate();
+            var taps = ArcTapNoteManager.Instance;
+            try
+            {
+                taps.PrepareConnectionLookup();
+                foreach (var t in Arcs) t.Instantiate();
+            }
+            finally
+            {
+                taps.ClearConnectionLookup();
+            }
 			CalculateArcRelationship();
 		}
 

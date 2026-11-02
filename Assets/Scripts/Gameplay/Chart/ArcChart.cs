@@ -863,7 +863,7 @@ namespace Arcade.Gameplay.Chart
         {
             RemoveArcTapConnection();
             if (Arc == null || Arc.NoInput() || Arc.Designant || ((Arc.EndTiming - Arc.Timing) == 0 && !IsConvertedVariousSizedArctap)) return;
-            foreach (var tap in ArcTapNoteManager.Instance.Taps)
+            foreach (var tap in ArcTapNoteManager.Instance.GetConnectionCandidates(Timing))
             {
                 if (Mathf.Abs(tap.Timing - Timing) > 1 || tap.NoInput()) continue;
                 connectedTaps.Add(tap);
