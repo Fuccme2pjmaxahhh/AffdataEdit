@@ -670,6 +670,11 @@ namespace Arcade.Gameplay
 		}
 		// Note: this is a function used to optimize rendering by avoid not needed position calculation
 		// Invoker should manually check position again after this check passed
+        internal void GetRenderRange(ArcTimingGroup group, out float earliest, out float latest)
+        {
+            earliest = group == null ? earliestRenderTime : group.earliestRenderTime;
+            latest = group == null ? latestRenderTime : group.latestRenderTime;
+        }
 		public bool ShouldTryRender(int Timing, ArcTimingGroup timingGroup, int duration = 0, bool note = true)
 		{
 			float earliestRenderTime;

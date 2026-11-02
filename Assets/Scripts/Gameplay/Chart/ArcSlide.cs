@@ -15,7 +15,12 @@ namespace Arcade.Gameplay.Chart
         public float WorldHeight => ArcAlgorithm.ArcYToWorld(IsFloor ? -2f / 9f : Height == SlideHeight.HighSky ? 1.61f : 1f);
         public float WorldWidth => 8.5f;
         public float WorldX(float normalizedX) => WorldWidth * (0.5f - normalizedX);
-        public ArcTimingGroup TimingGroup { get; set; }
+        private ArcTimingGroup timingGroup;
+        public ArcTimingGroup TimingGroup
+        {
+            get => timingGroup;
+            set { if (timingGroup == value) return; timingGroup = value; InvalidateRenderIndex(); }
+        }
         // Derived runtime identity; never copied or serialized as chart data.
         public ArcSlide GroupRoot { get; internal set; }
         public bool IsGroupHead = true, IsGroupTail = true;

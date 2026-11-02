@@ -16,6 +16,7 @@ namespace Arcade.Gameplay
         private readonly ArcSlide note;
         private readonly Mesh mesh;
         private bool bodyVisible, shadowVisible;
+        internal bool IsVisible => bodyVisible || shadowVisible || bracketVisible[0] || bracketVisible[1];
         private readonly bool[] bracketVisible = new bool[2];
         private readonly Vector3[] bracketPositions = new Vector3[2];
         private float startZ;

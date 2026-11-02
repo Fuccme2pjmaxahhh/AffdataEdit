@@ -38,15 +38,9 @@ namespace Arcade.Gameplay
             public Texture Texture;
             public NoteInstance Data;
             public int Submesh, Layer, LayerValue, Order, Queue, DepthTest, DepthWrite;
-            public bool SameDraw(Item other) => Mesh == other.Mesh && Texture == other.Texture && Submesh == other.Submesh
+            public bool SameDraw(Item other) => ReferenceEquals(Mesh, other.Mesh) && ReferenceEquals(Texture, other.Texture) && Submesh == other.Submesh
                 && Layer == other.Layer && Queue == other.Queue
                 && DepthTest == other.DepthTest && DepthWrite == other.DepthWrite;
-        }
-        private struct SortKey
-        {
-            public int Index, LayerValue, Order, Queue, ArcKey;
-            public bool ArcFace;
-            public float Distance, PrimaryDistance;
         }
         private sealed class Draw
         {
@@ -57,7 +51,6 @@ namespace Arcade.Gameplay
             public readonly MaterialPropertyBlock SelectionProperties = new MaterialPropertyBlock();
         }
         private readonly List<Item> items = new List<Item>();
-        private readonly List<SortKey> sortKeys = new List<SortKey>();
         private readonly List<NoteInstance> instances = new List<NoteInstance>();
         private readonly List<GraphicsBuffer.IndirectDrawIndexedArgs> commands = new List<GraphicsBuffer.IndirectDrawIndexedArgs>();
         private readonly List<Draw> draws = new List<Draw>();
@@ -69,6 +62,11 @@ namespace Arcade.Gameplay
         private bool orthographic;
         private GraphicsBuffer instanceBuffer, commandBuffer;
         private Camera cameraForFrame;
+        private Texture whiteTexture;
+        private Mesh connectionMesh;
+        private Matrix4x4 undoTapSkin;
+        private Color connectionColor;
+        private readonly Dictionary<ArcArcTap, Vector2> connectionPositions = new Dictionary<ArcArcTap, Vector2>();
         private int frame = -1;
         public int VisibleInstanceCount => instances.Count;
         public int DrawCount => commands.Count;
@@ -78,8 +76,9 @@ namespace Arcade.Gameplay
         private void Awake() { Instance = this; }
         private void LateUpdate()
         {
+
             frame = Time.frameCount;
-            items.Clear(); sortKeys.Clear(); instances.Clear(); commands.Clear();
+            items.Clear(); instances.Clear(); commands.Clear();
             meshBounds.Clear(); sortingLayers.Clear();
             if (pickingChart != ArcGameplayManager.Instance.Chart)
             {
@@ -92,23 +91,34 @@ namespace Arcade.Gameplay
             cameraPosition = cameraForFrame.transform.position;
             cameraForward = cameraForFrame.transform.forward;
             orthographic = cameraForFrame.orthographic;
+            whiteTexture = Texture2D.whiteTexture;
+            connectionMesh = ArcNoteMeshes.Connection;
+            undoTapSkin = Matrix4x4.Scale(new Vector3(-1f / ArcTapNoteManager.Instance.WidthScale, 1, 1));
+            connectionColor = ArcArcManager.Instance.ConnectionColor;
+            connectionPositions.Clear();
             ArcTimingManager.Instance.SubmitBeatlines(this, cameraForFrame);
             Arcade.Compose.AdeGridManager.Instance?.SubmitGrid(this, cameraForFrame);
-            foreach (var tap in ArcTapNoteManager.Instance.Taps)
+            var taps = ArcTapNoteManager.Instance;
+            var sprite = taps.DefaultSprite;
+            if (sprite)
             {
-                if (!tap.Enable) continue;
-                SubmitGroundNote(tap.RenderMatrix, ArcTapNoteManager.Instance.DefaultSprite,
-                    tap.Selected, tap.Alpha, 0, 1, 0, ArcTapNoteManager.Instance.ShaderdMaterial.renderQueue, tap);
-                SubmitConnections(tap);
+                Mesh mesh = ArcNoteMeshes.Sprite(sprite);
+                Texture texture = sprite.texture;
+                int queue = taps.ShaderdMaterial.renderQueue;
+                foreach (var tap in taps.RenderingTaps)
+                {
+                    SubmitGroundNote(tap.RenderMatrix, mesh, texture, tap.Selected, tap.Alpha, 0, 1, 0, queue, tap);
+                    SubmitConnections(tap);
+                }
             }
-            foreach (var hold in ArcHoldNoteManager.Instance.Holds)
+            foreach (var hold in ArcHoldNoteManager.Instance.RenderingHolds)
                 if (hold.Enable) SubmitGroundNote(hold.RenderMatrix,
                     hold.Highlight ? ArcHoldNoteManager.Instance.HighlightSprite : ArcHoldNoteManager.Instance.DefaultSprite,
                     hold.Selected, hold.Alpha, hold.From, hold.To, 1, ArcHoldNoteManager.Instance.HoldNoteMatrial.renderQueue, hold);
             foreach (var arc in ArcArcManager.Instance.RenderingArcs)
                 if (arc.Enable && arc.arcRenderer != null) arc.arcRenderer.Submit(this);
             foreach (var tap in ArcArcManager.Instance.RenderingArcTaps) SubmitArcTap(tap);
-            foreach (var slide in ArcSlideManager.Instance.Slides)
+            foreach (var slide in ArcSlideManager.Instance.RenderingSlides)
                 slide.Visual?.Submit(this);
             Upload();
         }
@@ -137,34 +147,56 @@ namespace Arcade.Gameplay
         {
             if (tap.ConnectedArcTaps.Count == 0) return;
             // Undo the skin's X flip and width scale, as the former connection prefab did.
-            Matrix4x4 parent = tap.RenderMatrix * Matrix4x4.Scale(new Vector3(-1f / ArcTapNoteManager.Instance.WidthScale, 1, 1));
+            Matrix4x4 parent = tap.RenderMatrix * undoTapSkin;
             Vector3 start = parent.MultiplyPoint3x4(Vector3.zero);
             // Keep the quad in the transformed connection plane, including vertical lines.
             Vector3 normal = Vector3.Cross(parent.MultiplyVector(Vector3.right), parent.MultiplyVector(Vector3.forward));
             if (normal.sqrMagnitude <= 0.000000000001f) return;
-            Color color = ArcArcManager.Instance.ConnectionColor;
+            Color color = connectionColor;
             color.a = Mathf.Clamp01(tap.Alpha) * ConnectionLineStyle.Opacity;
             foreach (var arcTap in tap.ConnectedArcTaps)
             {
-                Vector2 position = arcTap.GetConnectionPosition();
+                if (!connectionPositions.TryGetValue(arcTap, out Vector2 position))
+                {
+                    position = arcTap.GetConnectionPosition();
+                    connectionPositions.Add(arcTap, position);
+                }
                 Vector3 end = parent.MultiplyPoint3x4(new Vector3(position.x - tap.WorldX, 0, position.y));
                 Vector3 direction = end - start;
                 float length = direction.magnitude;
                 if (length <= 0.000001f) continue;
-                var data = NoteInstance.Create(Matrix4x4.TRS(start, Quaternion.LookRotation(direction, normal), new Vector3(1, 1, length)), 0);
+                var data = NoteInstance.Create(ConnectionTransform(start, direction, normal, length), 0);
                 data.HighColor = color;
-                Submit(ArcNoteMeshes.Connection, null, data, "Arc", 3);
+                Submit(connectionMesh, null, data, "Arc", 3);
             }
+        }
+
+        private static Matrix4x4 ConnectionTransform(Vector3 start, Vector3 direction, Vector3 normal, float length)
+        {
+            Vector3 forward = direction / length;
+            Vector3 right = Vector3.Cross(normal, forward);
+            if (right.sqrMagnitude <= .000000000001f)
+                return Matrix4x4.TRS(start, Quaternion.LookRotation(direction, normal), new Vector3(1, 1, length));
+            right.Normalize();
+            Vector3 up = Vector3.Cross(forward, right);
+            return new Matrix4x4(new Vector4(right.x, right.y, right.z, 0), new Vector4(up.x, up.y, up.z, 0),
+                new Vector4(direction.x, direction.y, direction.z, 0), new Vector4(start.x, start.y, start.z, 1));
         }
 
         private void SubmitGroundNote(Matrix4x4 matrix, Sprite sprite, bool selected, float alpha,
             float from, float to, int mode, int queue, ArcNote note)
         {
             if (!sprite) return;
+            SubmitGroundNote(matrix, ArcNoteMeshes.Sprite(sprite), sprite.texture, selected, alpha, from, to, mode, queue, note);
+        }
+
+        private void SubmitGroundNote(Matrix4x4 matrix, Mesh mesh, Texture texture, bool selected, float alpha,
+            float from, float to, int mode, int queue, ArcNote note)
+        {
             var data = NoteInstance.Create(matrix, mode, selected);
             data.Options.y = alpha;
             data.ClipHeight = new Vector4(from, to, 0, 0);
-            Submit(ArcNoteMeshes.Sprite(sprite), sprite.texture, data, "Note", 0, queue, note: note);
+            Submit(mesh, texture, data, "Note", 0, queue, note: note);
         }
 
         // A sprite drawn from values; the renderer supplies only its sorting and material settings.
@@ -227,10 +259,11 @@ namespace Arcade.Gameplay
             }
             float distance = orthographic ? Vector3.Dot(bounds.center - cameraPosition, cameraForward)
                 : (bounds.center - cameraPosition).sqrMagnitude;
-            sortKeys.Add(new SortKey { Index = items.Count, LayerValue = sortingLayer.value, Order = order, Queue = queue,
+            EnsureSortCapacity(items.Count + 1);
+            sortKeys[items.Count] = new SortKey { Index = items.Count, LayerValue = sortingLayer.value, Order = order, Queue = queue,
                 Distance = distance, PrimaryDistance = layer == "Arc" ? distance : 0,
-                ArcFace = arcSortKey.HasValue, ArcKey = arcSortKey.GetValueOrDefault() });
-            items.Add(new Item { Note = note, Bounds = bounds, Mesh = mesh, Texture = texture ? texture : Texture2D.whiteTexture, Data = data,
+                ArcFace = arcSortKey.HasValue, ArcKey = arcSortKey.GetValueOrDefault() };
+            items.Add(new Item { Note = note, Bounds = bounds, Mesh = mesh, Texture = texture ? texture : whiteTexture, Data = data,
                 Layer = sortingLayer.id, LayerValue = sortingLayer.value, Order = order, Queue = queue,
                 Submesh = submesh, DepthWrite = depthWrite, DepthTest = depthTest });
         }
@@ -241,23 +274,6 @@ namespace Arcade.Gameplay
             Vector3 z = matrix.MultiplyVector(new Vector3(0,0,bounds.extents.z));
             return new Bounds(matrix.MultiplyPoint3x4(bounds.center), 2 * new Vector3(
                 Mathf.Abs(x.x)+Mathf.Abs(y.x)+Mathf.Abs(z.x), Mathf.Abs(x.y)+Mathf.Abs(y.y)+Mathf.Abs(z.y), Mathf.Abs(x.z)+Mathf.Abs(y.z)+Mathf.Abs(z.z)));
-        }
-        private static int Compare(SortKey a, SortKey b)
-        {
-            int c = a.LayerValue.CompareTo(b.LayerValue);
-            // Keep the Arc faces together, after this layer's cap/connection sprites.
-            // Face ordering is independent of the editor camera, just like Play.
-            if (c == 0) c = a.ArcFace.CompareTo(b.ArcFace);
-            if (c == 0 && a.ArcFace)
-            {
-                c = ArcRenderOrder.Compare(a.Order, a.ArcKey, b.Order, b.ArcKey);
-                return c != 0 ? c : a.Index.CompareTo(b.Index);
-            }
-            if (c == 0) c = b.PrimaryDistance.CompareTo(a.PrimaryDistance);
-            if (c == 0) c = a.Order.CompareTo(b.Order);
-            if (c == 0) c = a.Queue.CompareTo(b.Queue);
-            if (c == 0) c = b.Distance.CompareTo(a.Distance);
-            return c == 0 ? a.Index.CompareTo(b.Index) : c;
         }
         private Material GetMaterial(Item item)
         {
@@ -284,9 +300,10 @@ namespace Arcade.Gameplay
         }
         private void Upload()
         {
+
             if (items.Count == 0) return;
             // Sort compact keys, keeping matrices and instance data out of the sort's copies.
-            sortKeys.Sort(Compare);
+            SortVisibleItems();
             // Keep transparent order: adjacent compatible items can share a draw even across sort orders.
             for (int start = 0; start < items.Count;)
             {
@@ -365,6 +382,7 @@ namespace Arcade.Gameplay
         private void OnDestroy()
         {
             instanceBuffer?.Dispose(); commandBuffer?.Dispose();
+            if (nativeSortKeys.IsCreated) nativeSortKeys.Dispose();
             foreach (var material in materials.Values) Destroy(material);
             ArcNoteMeshes.Release();
             if (Instance == this) Instance = null;

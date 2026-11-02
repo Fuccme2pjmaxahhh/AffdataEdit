@@ -31,6 +31,9 @@ namespace Arcade.Gameplay
         private readonly List<Vector2> floorRanges = new List<Vector2>();
         private readonly List<Vector2> highRanges = new List<Vector2>();
         private ArcSlideJudgementGrid grid, floorGrid, highGrid;
+        internal readonly List<ArcSlide> RenderingSlides = new List<ArcSlide>();
+        private readonly List<ArcSlide> renderCandidates = new List<ArcSlide>();
+        private readonly ArcVisibleNoteIndex<ArcSlide> renderIndex = new ArcVisibleNoteIndex<ArcSlide>(n => n.EndTiming);
         private int previousTime = int.MinValue;
         private bool previousPlaying;
 
@@ -93,6 +96,7 @@ namespace Arcade.Gameplay
         {
             foreach (var slide in Slides) slide.Destroy();
             Slides = new List<ArcSlide>(); ResetFeedback();
+            renderIndex.Clear(); renderCandidates.Clear(); RenderingSlides.Clear();
             foreach (var hit in feedback.Values) if (hit.Object) Destroy(hit.Object);
             feedback.Clear();
         }
@@ -137,14 +141,21 @@ namespace Arcade.Gameplay
                     else ArcEffectManager.Instance.PlayArcSound();
                 }
                 // Match Play: noinput still consumes passed geometry unless noclip is set.
-                bool consume = (game.Auto || slide.NoInput()) && !(slide.TimingGroup?.NoClip ?? false);
-                slide.Visual.Present(now, consume);
+                // Presentation is performed below only for visible time intervals.
                 if (hit)
                 {
                     var root = slide.GroupRoot;
                     if (!activeSegments.TryGetValue(root, out var current) || slide.Timing > current.Timing)
                         activeSegments[root] = slide;
                 }
+            }
+            RenderingSlides.Clear();
+            renderIndex.Query(Slides, renderCandidates);
+            foreach (var slide in renderCandidates)
+            {
+                bool consume = (game.Auto || slide.NoInput()) && !(slide.TimingGroup?.NoClip ?? false);
+                slide.Visual.Present(now, consume);
+                if (slide.Visual.IsVisible) RenderingSlides.Add(slide);
             }
             foreach (var pair in activeSegments)
             {

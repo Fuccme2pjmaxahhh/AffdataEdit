@@ -3,6 +3,8 @@
     "rootNamespace": "",
     "references": [
         "Affdata.Core",
+        "Unity.Burst",
+        "Unity.Collections",
         "SFB.Runtime",
         "Unity.InputSystem",
         "Unity.TextMeshPro",

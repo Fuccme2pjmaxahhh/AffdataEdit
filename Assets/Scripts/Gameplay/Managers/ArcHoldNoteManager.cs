@@ -20,6 +20,9 @@ namespace Arcade.Gameplay
 		[HideInInspector]
 		[System.NonSerialized]
 		public List<ArcHold> Holds = new List<ArcHold>();
+        internal readonly List<ArcHold> RenderingHolds = new List<ArcHold>();
+        private readonly List<ArcHold> renderCandidates = new List<ArcHold>();
+        private readonly ArcVisibleNoteIndex<ArcHold> renderIndex = new ArcVisibleNoteIndex<ArcHold>(n => n.EndTiming);
 		[HideInInspector]
 		public readonly float[] Lanes = { 10.625f, 6.375f, 2.125f, -2.125f, -6.375f, -10.625f };
 		public GameObject HoldNotePrefab;
@@ -31,6 +34,7 @@ namespace Arcade.Gameplay
 		{
 			foreach (var t in Holds) t.Destroy();
 			Holds.Clear();
+            renderIndex.Clear(); renderCandidates.Clear(); RenderingHolds.Clear();
 		}
 		public void Load(List<ArcHold> holds)
 		{
@@ -63,12 +67,15 @@ namespace Arcade.Gameplay
 
 		private void RenderHoldNotes()
 		{
+            foreach (var note in RenderingHolds) note.Enable = false;
+            RenderingHolds.Clear();
+            renderIndex.Query(Holds, renderCandidates);
 			ArcTimingManager timing = ArcTimingManager.Instance;
             Matrix4x4 parentMatrix = NoteLayer.localToWorldMatrix;
             Quaternion rotation = HoldNotePrefab.transform.localRotation;
             float widthScale = DefaultSprite ? NoteMeshDefinitions.HoldWidth / DefaultSprite.bounds.size.x : 1f;
 
-			foreach (var t in Holds)
+			foreach (var t in renderCandidates)
 			{
 				int duration = t.EndTiming - t.Timing;
 				if (!timing.ShouldTryRender(t.Timing, t.TimingGroup, duration, note: !t.IsEditing) || (t.Judged && !t.IsEditing) || t.GroupHide())
@@ -102,6 +109,7 @@ namespace Arcade.Gameplay
 					t.Position = -100000;
 				}
 				t.Enable = true;
+                RenderingHolds.Add(t);
 				float pos = t.Position / 1000f;
 				float length = (endPosition - t.Position) / 1000f;
                 Vector3 position = new Vector3(t.WorldX, pos, 0);

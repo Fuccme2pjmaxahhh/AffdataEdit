@@ -32,6 +32,7 @@ namespace Arcade.Gameplay
 
 		internal static void Invalidate()
 		{
+			ArcEvent.InvalidateRenderIndex();
 			if (Instance) Instance.scoreDirty = true;
 		}
 
@@ -43,6 +44,7 @@ namespace Arcade.Gameplay
 
 		private void Update()
 		{
+
 			var game = ArcGameplayManager.Instance;
 			if (cachedChart != game.Chart || scoreDirty) RebuildScoreCache(game.Chart);
 			int score;

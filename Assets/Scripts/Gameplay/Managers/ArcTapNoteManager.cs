@@ -20,6 +20,14 @@ namespace Arcade.Gameplay
 		[HideInInspector]
 		[System.NonSerialized]
 		public List<ArcTap> Taps = new List<ArcTap>();
+        internal readonly List<ArcTap> RenderingTaps = new List<ArcTap>();
+        private readonly List<ArcTap> renderCandidates = new List<ArcTap>();
+        private readonly ArcJudgementCursor<ArcTap> judgement = new ArcJudgementCursor<ArcTap>();
+        private readonly List<ArcTap> crossedTaps = new List<ArcTap>();
+        internal void ResetJudgement() => judgement.Reset();
+        private readonly Dictionary<(ArcTimingGroup, int), (float position, float length)> framePositions
+            = new Dictionary<(ArcTimingGroup, int), (float, float)>();
+        private readonly ArcVisibleNoteIndex<ArcTap> renderIndex = new ArcVisibleNoteIndex<ArcTap>(n => n.Timing);
 		[HideInInspector]
 		public readonly float[] Lanes = { 10.625f, 6.375f, 2.125f, -2.125f, -6.375f, -10.625f };
 		public GameObject TapNotePrefab;
@@ -32,6 +40,7 @@ namespace Arcade.Gameplay
 		{
 			foreach (var t in Taps) t.Destroy();
 			Taps.Clear();
+            renderIndex.Clear(); renderCandidates.Clear(); RenderingTaps.Clear(); judgement.Clear(); crossedTaps.Clear(); framePositions.Clear();
 		}
 		public void Load(List<ArcTap> taps)
 		{
@@ -101,43 +110,63 @@ namespace Arcade.Gameplay
 
 		private void RenderTapNotes()
 		{
+
+            foreach (var note in RenderingTaps) note.Enable = false;
+            RenderingTaps.Clear();
+            framePositions.Clear();
+            renderIndex.Query(Taps, renderCandidates);
 			ArcTimingManager timing = ArcTimingManager.Instance;
             Matrix4x4 parentMatrix = NoteLayer.localToWorldMatrix;
             Quaternion rotation = TapNotePrefab.transform.localRotation;
             float widthScale = WidthScale;
             float spriteHeight = DefaultSprite ? DefaultSprite.bounds.size.y : 1f;
+            Matrix4x4 basis = parentMatrix * Matrix4x4.TRS(Vector3.zero, rotation, new Vector3(-widthScale, 1, 1));
+            Vector4 lengthAxis = basis.GetColumn(1);
 
-			foreach (var t in Taps)
+			foreach (var t in renderCandidates)
 			{
 				if (!timing.ShouldTryRender(t.Timing, t.TimingGroup) || t.Judged || t.GroupHide())
 				{
 					t.Enable = false;
 					continue;
 				}
-				t.Position = timing.CalculatePositionByTiming(t.Timing, t.TimingGroup);
-				if (t.Position > 100000 || t.Position < -100000)
-				{
-					t.Enable = false;
-					continue;
-				}
-				t.Enable = true;
-				float pos = t.Position / 1000f;
+                var key = (t.TimingGroup, t.Timing);
+                if (!framePositions.TryGetValue(key, out var framePosition))
+                {
+                    float notePosition = timing.CalculatePositionByTiming(t.Timing, t.TimingGroup);
+                    float noteLength = ArcCameraManager.Instance.EditorCamera ? 2f
+                        : NoteMeshDefinitions.TapLength(notePosition / 1000f,
+                            timing.CalculateVelocityAtTiming(t.Timing, t.TimingGroup)) / spriteHeight;
+                    framePosition = (notePosition, noteLength);
+                    framePositions.Add(key, framePosition);
+                }
+                t.Position = framePosition.position;
+                if (t.Position > 100000 || t.Position < -100000)
+                {
+                    t.Enable = false;
+                    continue;
+                }
+                t.Enable = true;
+                RenderingTaps.Add(t);
+                float pos = t.Position / 1000f;
                 Vector3 position = new Vector3(t.WorldX, pos, 0);
-                float lengthScale = ArcCameraManager.Instance.EditorCamera
-                    ? 2f
-                    : NoteMeshDefinitions.TapLength(pos,
-                        timing.CalculateVelocityAtTiming(t.Timing, t.TimingGroup)) / spriteHeight;
-                Vector3 scale = new Vector3(widthScale, lengthScale, 1);
-                // Skin sprites face left; flip their mesh without flipping the picking/connection transform.
-                t.RenderMatrix = parentMatrix * Matrix4x4.TRS(position, rotation, new Vector3(-scale.x, scale.y, scale.z));
+                float lengthScale = framePosition.length;
+                // Only translation and length vary; reuse the rotated/scaled parent basis.
+                Matrix4x4 matrix = basis;
+                matrix.SetColumn(1, lengthAxis * lengthScale);
+                Vector3 world = parentMatrix.MultiplyPoint3x4(position);
+                matrix.SetColumn(3, new Vector4(world.x, world.y, world.z, 1));
+                t.RenderMatrix = matrix;
 				t.Alpha = pos < 90 ? 1 : (100 - pos) / 10f;
 			}
 		}
 		private void JudgeTapNotes()
 		{
+
 			ArcTimingManager timing = ArcTimingManager.Instance;
 			int currentTiming = ArcGameplayManager.Instance.ChartTiming;
-			foreach (var t in Taps)
+            judgement.Advance(Taps, currentTiming, crossedTaps);
+			foreach (var t in crossedTaps)
 			{
 				if (t.NoInput())
 				{

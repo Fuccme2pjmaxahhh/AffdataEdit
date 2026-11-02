@@ -35,6 +35,15 @@ namespace Arcade.Gameplay
 		public List<ArcArc> Arcs = new List<ArcArc>();
         internal readonly List<ArcArc> RenderingArcs = new List<ArcArc>();
         internal readonly List<ArcArcTap> RenderingArcTaps = new List<ArcArcTap>();
+        private readonly List<ArcArc> renderCandidates = new List<ArcArc>(), flaggedArcs = new List<ArcArc>();
+        private readonly List<ArcArcTap> allArcTaps = new List<ArcArcTap>(), arcTapCandidates = new List<ArcArcTap>();
+        private readonly ArcVisibleNoteIndex<ArcArc> renderIndex = new ArcVisibleNoteIndex<ArcArc>(n => Math.Max(n.EndTiming, n.RenderEndTiming));
+        private readonly ArcVisibleNoteIndex<ArcArcTap> arcTapIndex = new ArcVisibleNoteIndex<ArcArcTap>(n => n.Timing);
+        private long arcTapVersion = -1;
+        private readonly ArcJudgementCursor<ArcArcTap> judgement = new ArcJudgementCursor<ArcArcTap>();
+        private readonly List<ArcArcTap> crossedArcTaps = new List<ArcArcTap>();
+        internal void ResetJudgement() => judgement.Reset();
+        private readonly HashSet<ArcArc> candidateArcs = new HashSet<ArcArc>();
 
 		public GameObject ArcNotePrefab, ArcTapPrefab, SfxArcTapPrefab;
 		public Transform ArcLayer;
@@ -69,6 +78,8 @@ namespace Arcade.Gameplay
 		{
             RenderingArcs.Clear();
             RenderingArcTaps.Clear();
+            renderIndex.Clear(); arcTapIndex.Clear(); allArcTaps.Clear(); candidateArcs.Clear();
+            renderCandidates.Clear(); arcTapCandidates.Clear(); flaggedArcs.Clear(); arcTapVersion = -1; judgement.Clear(); crossedArcTaps.Clear();
 			foreach (var t in Arcs)
 			{
 				t.Destroy();
@@ -249,21 +260,22 @@ namespace Arcade.Gameplay
 
 		private void RenderArcs()
 		{
+
+            renderIndex.Query(Arcs, renderCandidates);
+            candidateArcs.Clear();
+            candidateArcs.UnionWith(renderCandidates);
+            foreach (var arc in RenderingArcs) if (!candidateArcs.Contains(arc)) arc.Enable = false;
+            foreach (var tap in RenderingArcTaps) tap.Enable = false;
             RenderingArcs.Clear();
             RenderingArcTaps.Clear();
 			ArcTimingManager timingManager = ArcTimingManager.Instance;
 			int currentTiming = ArcGameplayManager.Instance.ChartTiming;
 
-			foreach (var t in Arcs)
-			{
-				foreach (var arctap in t.ArcTaps)
-				{
-					RenderArcTap(arctap);
-				}
-				if (t.ConvertedVariousSizedArctap != null)
-				{
-					RenderArcTap(t.ConvertedVariousSizedArctap);
-				}
+            RefreshArcTaps();
+            arcTapIndex.Query(allArcTaps, arcTapCandidates);
+            foreach (var tap in arcTapCandidates) RenderArcTap(tap);
+            foreach (var t in renderCandidates)
+            {
 				int duration = t.EndTiming - t.Timing;
 				if (!timingManager.ShouldTryRender(t.Timing, t.TimingGroup, duration, !t.IsVoid) || (t.Judged && !t.IsVoid) || t.GroupHide())
 				{
@@ -292,6 +304,7 @@ namespace Arcade.Gameplay
 						if (!a.Flag)
 						{
 							a.Flag = true;
+                            flaggedArcs.Add(a);
 							float alpha = 1;
 
 							if (a.Judging)
@@ -330,11 +343,24 @@ namespace Arcade.Gameplay
 				t.arcRenderer.UpdateArc();
                 RenderingArcs.Add(t);
 			}
-			foreach (var t in Arcs)
-			{
-				t.Flag = false;
-			}
+			foreach (var t in flaggedArcs) t.Flag = false;
+            flaggedArcs.Clear();
 		}
+
+        private void RefreshArcTaps()
+        {
+            if (arcTapVersion != ArcEvent.RenderIndexVersion)
+            {
+                allArcTaps.Clear();
+                foreach (var arc in Arcs)
+                {
+                    allArcTaps.AddRange(arc.ArcTaps);
+                    if (arc.ConvertedVariousSizedArctap != null) allArcTaps.Add(arc.ConvertedVariousSizedArctap);
+                }
+                arcTapIndex.Clear();
+                arcTapVersion = ArcEvent.RenderIndexVersion;
+            }
+        }
 
 		private void RenderArcTap(ArcArcTap t)
 		{
@@ -367,20 +393,17 @@ namespace Arcade.Gameplay
 
 		private void JudgeArcs()
 		{
+
 			int currentTiming = ArcGameplayManager.Instance.ChartTiming;
+            RefreshArcTaps();
+            judgement.Advance(allArcTaps, currentTiming, crossedArcTaps);
+            foreach (var tap in crossedArcTaps)
+                if (!tap.Arc.NoInput() && !tap.Arc.Designant) JudgeArcTap(tap);
 			foreach (ArcArc arc in Arcs)
 			{
 				if (arc.NoInput() || arc.Designant)
 				{
 					continue;
-				}
-				foreach (var arcTap in arc.ArcTaps)
-				{
-					JudgeArcTap(arcTap);
-				}
-				if (arc.ConvertedVariousSizedArctap != null)
-				{
-					JudgeArcTap(arc.ConvertedVariousSizedArctap);
 				}
 				if (arc.Judged) continue;
 				if (currentTiming > arc.EndTiming)

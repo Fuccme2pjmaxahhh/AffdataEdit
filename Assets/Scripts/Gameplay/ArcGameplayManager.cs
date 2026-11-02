@@ -188,6 +188,8 @@ namespace Arcade.Gameplay
 
 		public void ResetJudge()
 		{
+            if (ArcTapNoteManager.Instance) ArcTapNoteManager.Instance.ResetJudgement();
+            if (ArcArcManager.Instance) ArcArcManager.Instance.ResetJudgement();
             if (ArcEffectManager.Instance) ArcEffectManager.Instance.ResetHitSoundDeduplication();
             ArcLongNoteEffect.ResetAll();
 			if (ArcSlideManager.Instance) ArcSlideManager.Instance.ResetFeedback();

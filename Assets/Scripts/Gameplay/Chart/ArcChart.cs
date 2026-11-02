@@ -260,7 +260,14 @@ namespace Arcade.Gameplay.Chart
 	}
 	public abstract class ArcEvent
 	{
-		public int Timing;
+		internal static long RenderIndexVersion { get; private set; }
+        internal static void InvalidateRenderIndex() => RenderIndexVersion++;
+        private int timing;
+        public int Timing
+        {
+            get => timing;
+            set { if (timing == value) return; timing = value; InvalidateRenderIndex(); }
+        }
 		public virtual void Assign(ArcEvent newValues)
 		{
 			ArcScoreManager.Invalidate();
@@ -407,7 +414,12 @@ namespace Arcade.Gameplay.Chart
 		public float Duration;
 		public int TrackDisplayValue;
         public int EffectValue;
-		public ArcTimingGroup TimingGroup { get; set; }
+		private ArcTimingGroup timingGroup;
+        public ArcTimingGroup TimingGroup
+        {
+            get => timingGroup;
+            set { if (timingGroup == value) return; timingGroup = value; InvalidateRenderIndex(); }
+        }
 		public string RawType;
 		public List<IRawAffValue> RawParams;
 
@@ -468,7 +480,12 @@ namespace Arcade.Gameplay.Chart
 	}
 	public abstract class ArcLongNote : ArcNote
 	{
-		public int EndTiming;
+		private int endTiming;
+        public int EndTiming
+        {
+            get => endTiming;
+            set { if (endTiming == value) return; endTiming = value; InvalidateRenderIndex(); }
+        }
 		public override void Assign(ArcEvent newValues)
 		{
 			base.Assign(newValues);
@@ -497,7 +514,12 @@ namespace Arcade.Gameplay.Chart
         public float Width = 1;
         public bool IsMine;
         public float WorldX => LanePosition.WorldX(Track, FloatLane);
-		public ArcTimingGroup TimingGroup { get; set; }
+		private ArcTimingGroup timingGroup;
+        public ArcTimingGroup TimingGroup
+        {
+            get => timingGroup;
+            set { if (timingGroup == value) return; timingGroup = value; InvalidateRenderIndex(); }
+        }
 
 		internal readonly HashSet<ArcArcTap> ConnectedArcTaps = new HashSet<ArcArcTap>();
 
@@ -610,7 +632,12 @@ namespace Arcade.Gameplay.Chart
         // Kept so the chart saves unchanged; drawing still uses the default size.
         public float Width = 1;
         public float WorldX => LanePosition.WorldX(Track, FloatLane);
-		public ArcTimingGroup TimingGroup { get; set; }
+		private ArcTimingGroup timingGroup;
+        public ArcTimingGroup TimingGroup
+        {
+            get => timingGroup;
+            set { if (timingGroup == value) return; timingGroup = value; InvalidateRenderIndex(); }
+        }
 
 
 		public override void Destroy()
@@ -975,7 +1002,12 @@ namespace Arcade.Gameplay.Chart
 	public class ArcArc : ArcLongNote, IIntoRawItem, IHasTimingGroup, ISetableTimingGroup
 	{
         internal int RenderEndTiming = int.MinValue;
-		public ArcTimingGroup TimingGroup { get; set; }
+		private ArcTimingGroup timingGroup;
+        public ArcTimingGroup TimingGroup
+        {
+            get => timingGroup;
+            set { if (timingGroup == value) return; timingGroup = value; InvalidateRenderIndex(); }
+        }
 		public float XStart;
 		public float XEnd;
 		public ArcCurveType CurveType;
@@ -1288,7 +1320,12 @@ namespace Arcade.Gameplay.Chart
 	public class ArcCamera : ArcEvent, IIntoRawItem, IHasTimingGroup, ISetableTimingGroup
 	{
 
-		public ArcTimingGroup TimingGroup { get; set; }
+		private ArcTimingGroup timingGroup;
+        public ArcTimingGroup TimingGroup
+        {
+            get => timingGroup;
+            set { if (timingGroup == value) return; timingGroup = value; InvalidateRenderIndex(); }
+        }
 		public Vector3 Move, Rotate;
 		public CameraEaseType CameraType;
 		public int Duration;
