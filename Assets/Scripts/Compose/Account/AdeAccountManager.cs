@@ -1,5 +1,6 @@
+using Arcade.Util.UniTaskHelper;
+using Cysharp.Threading.Tasks;
 using System;
-using System.Collections;
 using System.Globalization;
 using System.IO;
 using System.Text;
@@ -204,7 +205,7 @@ namespace Arcade.Compose
 				SetStatus("请输入用户名和 6 位 PIN");
 				return;
 			}
-			StartCoroutine(Login());
+			Login().Forget();
 		}
 
 		private void SetStatus(string text)
@@ -258,56 +259,60 @@ namespace Arcade.Compose
 			}
 		}
 
-		private IEnumerator Login()
+		private async UniTask Login()
 		{
 			loggingIn = true;
-			UpdateView();
-			SetStatus("正在登录…");
-			string payload = JsonConvert.SerializeObject(new { username = usernameInput.text.Trim(), password = pinInput.text });
-			using (var request = new UnityWebRequest(LoginUrl, UnityWebRequest.kHttpVerbPOST))
-			{
-				request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(payload));
-				request.downloadHandler = new DownloadHandlerBuffer();
-				request.SetRequestHeader("Content-Type", "application/json");
-				request.timeout = 15;
-				yield return request.SendWebRequest();
-				loggingIn = false;
+            try
+            {
+				UpdateView();
+				SetStatus("正在登录…");
+				string payload = JsonConvert.SerializeObject(new { username = usernameInput.text.Trim(), password = pinInput.text });
+				using (var request = new UnityWebRequest(LoginUrl, UnityWebRequest.kHttpVerbPOST))
+				{
+					request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(payload));
+					request.downloadHandler = new DownloadHandlerBuffer();
+					request.SetRequestHeader("Content-Type", "application/json");
+					request.timeout = 15;
+					await request.SendWithResultAsync(destroyCancellationToken);
+					loggingIn = false;
 
-				JObject body = null;
-				try
-				{
-					body = JObject.Parse(request.downloadHandler.text ?? "");
-				}
-				catch (JsonException)
-				{
-				}
-
-				string token = (string)body?["token"];
-				string expiresAt = (string)body?["expiresAt"];
-				if (request.result == UnityWebRequest.Result.Success && !string.IsNullOrEmpty(token)
-					&& DateTime.TryParse(expiresAt, CultureInfo.InvariantCulture,
-						DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out DateTime expires))
-				{
-					session = new Session
+					JObject body = null;
+					try
 					{
-						Token = token,
-						Username = (string)body["user"]?["username"] ?? usernameInput.text.Trim(),
-						ExpiresAt = expires
-					};
-					pinInput.text = "";
-					if (!SaveSession()) { UpdateView(); yield break; }
-					dialog.Close();
-					AdeToast.Instance?.Show($"已登录 AffdataNet：{session.Username}");
+						body = JObject.Parse(request.downloadHandler.text ?? "");
+					}
+					catch (JsonException)
+					{
+					}
+
+					string token = (string)body?["token"];
+					string expiresAt = (string)body?["expiresAt"];
+					if (request.result == UnityWebRequest.Result.Success && !string.IsNullOrEmpty(token)
+						&& DateTime.TryParse(expiresAt, CultureInfo.InvariantCulture,
+							DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out DateTime expires))
+					{
+						session = new Session
+						{
+							Token = token,
+							Username = (string)body["user"]?["username"] ?? usernameInput.text.Trim(),
+							ExpiresAt = expires
+						};
+						pinInput.text = "";
+						if (!SaveSession()) { UpdateView(); return; }
+						dialog.Close();
+						AdeToast.Instance?.Show($"已登录 AffdataNet：{session.Username}");
+					}
+					else
+					{
+						UpdateView();
+						string error = (string)body?["error"];
+						SetStatus(request.responseCode == 423
+							? "PIN 已锁定，请在 AffdataNet 网站通过邮箱验证后重置 PIN。"
+							: "登录失败：" + (string.IsNullOrEmpty(error) ? request.error : error));
+					}
 				}
-				else
-				{
-					UpdateView();
-					string error = (string)body?["error"];
-					SetStatus(request.responseCode == 423
-						? "PIN 已锁定，请在 AffdataNet 网站通过邮箱验证后重置 PIN。"
-						: "登录失败：" + (string.IsNullOrEmpty(error) ? request.error : error));
-				}
-			}
+            }
+            finally { loggingIn = false; }
 		}
 
 		private void Logout()

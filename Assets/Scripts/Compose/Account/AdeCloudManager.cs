@@ -1,5 +1,6 @@
+using Arcade.Util.UniTaskHelper;
+using Cysharp.Threading.Tasks;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -132,7 +133,7 @@ namespace Arcade.Compose
 				Debug.LogWarning("Cloud button template not found");
 				return;
 			}
-			AdeUiKit.CreateIconButton(template.transform.parent, "CloudSave", "CloudUpload", () => StartCoroutine(Upload(true)));
+			AdeUiKit.CreateIconButton(template.transform.parent, "CloudSave", "CloudUpload", () => Upload(true).Forget());
 			realtimeIcon = AdeUiKit.CreateIconButton(template.transform.parent, "CloudRealtime", "Realtime", ToggleRealtime);
 			UpdateRealtimeLabel();
 			BuildDialogs();
@@ -199,7 +200,7 @@ namespace Arcade.Compose
 				}
 				listDialog.Title.text = "云端谱面";
 				listDialog.Open();
-				StartCoroutine(LoadList());
+				LoadList().Forget();
 			});
 
 			listDialog = AdeUiKit.CloneDialog(basic, "CloudChartsDialog");
@@ -244,7 +245,7 @@ namespace Arcade.Compose
 			if (realtime && !busy && !uploading && Time.unscaledTime >= nextSyncTime)
 			{
 				nextSyncTime = Time.unscaledTime + 1f;
-				StartCoroutine(Upload(false));
+				Upload(false).Forget();
 			}
 		}
 
@@ -263,20 +264,20 @@ namespace Arcade.Compose
 			using (var sha = SHA256.Create()) return BitConverter.ToString(sha.ComputeHash(data));
 		}
 
-		private IEnumerator Upload(bool manual)
+		private async UniTask Upload(bool manual)
 		{
 			ArcGameplayManager gameplay = ArcGameplayManager.Instance;
 			AdeProjectManager project = AdeProjectManager.Instance;
 			if (!TryGetCurrentArchive(out int archiveId) || gameplay?.Chart == null || project.IsLoading)
 			{
 				if (manual) AdeToast.Instance?.Show("当前打开的不是云端谱面");
-				yield break;
+				return;
 			}
-			if (!manual && gameplay.IsPlaying) yield break;
+			if (!manual && gameplay.IsPlaying) return;
 			if (!AdeAccountManager.IsLoggedIn)
 			{
 				if (manual) AdeAccountManager.Instance?.ShowLoginWindow();
-				yield break;
+				return;
 			}
 
 			int difficulty = project.CurrentDifficulty;
@@ -294,57 +295,61 @@ namespace Arcade.Compose
 				syncedChart = gameplay.Chart;
 				syncedKey = key;
 				syncedHash = hash;
-				if (!manual) yield break;
+				if (!manual) return;
 			}
-			if (!manual && hash == syncedHash) yield break;
+			if (!manual && hash == syncedHash) return;
 			if (openedCharts.TryGetValue(archiveId, out CloudChart chart))
 			{
 				if (!chart.EnabledDiffs.Contains(difficulty))
 				{
 					if (manual) AdeToast.Instance?.Show($"云端谱面未启用 {DifficultyNames[difficulty]} 难度，无法保存");
-					yield break;
+					return;
 				}
 				if (chart.RankedDiffs.Contains(difficulty))
 				{
 					if (manual) AdeToast.Instance?.Show($"{DifficultyNames[difficulty]} 难度已 Ranked 冻结，无法保存到云端");
-					yield break;
+					return;
 				}
 			}
 
 			uploading = true;
-			try
-			{
-				File.WriteAllBytes(Path.Combine(project.CurrentProjectFolder, $"{difficulty}.aff"), data);
-			}
-			catch (Exception error) when (error is IOException || error is UnauthorizedAccessException)
-			{
-				Debug.LogWarning($"Cloud chart local write failed: {error.Message}");
-			}
-			using (var request = new UnityWebRequest($"{ApiUrl}/v2/game/editor/charts/{archiveId}/difficulties/{difficulty}", UnityWebRequest.kHttpVerbPUT))
-			{
-				request.uploadHandler = new UploadHandlerRaw(data);
-				request.downloadHandler = new DownloadHandlerBuffer();
-				request.SetRequestHeader("Content-Type", "text/plain; charset=utf-8");
-				request.SetRequestHeader("Authorization", "Bearer " + AdeAccountManager.Token);
-				request.timeout = 30;
-				yield return request.SendWebRequest();
-				uploading = false;
-				if (request.result == UnityWebRequest.Result.Success)
+            try
+            {
+				try
 				{
-					if (syncedKey == key) syncedHash = hash;
-					realtimeErrorShown = false;
-					if (manual) AdeToast.Instance?.Show($"已保存到云端：{DifficultyNames[difficulty]}");
+					File.WriteAllBytes(Path.Combine(project.CurrentProjectFolder, $"{difficulty}.aff"), data);
 				}
-				else
+				catch (Exception error) when (error is IOException || error is UnauthorizedAccessException)
 				{
-					nextSyncTime = Time.unscaledTime + 5f;
-					if (manual || !realtimeErrorShown)
+					Debug.LogWarning($"Cloud chart local write failed: {error.Message}");
+				}
+				using (var request = new UnityWebRequest($"{ApiUrl}/v2/game/editor/charts/{archiveId}/difficulties/{difficulty}", UnityWebRequest.kHttpVerbPUT))
+				{
+					request.uploadHandler = new UploadHandlerRaw(data);
+					request.downloadHandler = new DownloadHandlerBuffer();
+					request.SetRequestHeader("Content-Type", "text/plain; charset=utf-8");
+					request.SetRequestHeader("Authorization", "Bearer " + AdeAccountManager.Token);
+					request.timeout = 30;
+					await request.SendWithResultAsync(destroyCancellationToken);
+					uploading = false;
+					if (request.result == UnityWebRequest.Result.Success)
 					{
-						realtimeErrorShown = !manual;
-						AdeToast.Instance?.Show("保存到云端失败：" + ErrorText(request));
+						if (syncedKey == key) syncedHash = hash;
+						realtimeErrorShown = false;
+						if (manual) AdeToast.Instance?.Show($"已保存到云端：{DifficultyNames[difficulty]}");
+					}
+					else
+					{
+						nextSyncTime = Time.unscaledTime + 5f;
+						if (manual || !realtimeErrorShown)
+						{
+							realtimeErrorShown = !manual;
+							AdeToast.Instance?.Show("保存到云端失败：" + ErrorText(request));
+						}
 					}
 				}
-			}
+            }
+            finally { uploading = false; }
 		}
 
 		private static string ErrorText(UnityWebRequest request)
@@ -369,37 +374,41 @@ namespace Arcade.Compose
 			return request;
 		}
 
-		private IEnumerator LoadList()
+		private async UniTask LoadList()
 		{
 			SetBusy(true);
-			SetMessage("正在获取云端谱面…");
-			using (UnityWebRequest request = Get("/v2/game/editor/charts"))
-			{
-				yield return request.SendWebRequest();
-				SetBusy(false);
-				if (request.result != UnityWebRequest.Result.Success)
+            try
+            {
+				SetMessage("正在获取云端谱面…");
+				using (UnityWebRequest request = Get("/v2/game/editor/charts"))
 				{
-					SetMessage("获取失败：" + ErrorText(request));
-					yield break;
+					await request.SendWithResultAsync(destroyCancellationToken);
+					SetBusy(false);
+					if (request.result != UnityWebRequest.Result.Success)
+					{
+						SetMessage("获取失败：" + ErrorText(request));
+						return;
+					}
+					try
+					{
+						charts = JObject.Parse(request.downloadHandler.text)["items"]?.ToObject<List<CloudChart>>() ?? new List<CloudChart>();
+						SetMessage(charts.Count == 0 ? "还没有上传过谱面" : "");
+						RebuildList();
+					}
+					catch (JsonException error)
+					{
+						SetMessage("解析失败：" + error.Message);
+					}
 				}
-				try
-				{
-					charts = JObject.Parse(request.downloadHandler.text)["items"]?.ToObject<List<CloudChart>>() ?? new List<CloudChart>();
-					SetMessage(charts.Count == 0 ? "还没有上传过谱面" : "");
-					RebuildList();
-				}
-				catch (JsonException error)
-				{
-					SetMessage("解析失败：" + error.Message);
-				}
-			}
+            }
+            finally { if (this) SetBusy(false); }
 		}
 
-		private IEnumerator Download(string url, string path, bool required, Action<bool> done)
+		private async UniTask Download(string url, string path, bool required, Action<bool> done)
 		{
 			using (UnityWebRequest request = Get(url))
 			{
-				yield return request.SendWebRequest();
+				await request.SendWithResultAsync(destroyCancellationToken);
 				string error = null;
 				if (request.result == UnityWebRequest.Result.Success)
 				{
@@ -407,7 +416,7 @@ namespace Arcade.Compose
 					{
 						File.WriteAllBytes(path, request.downloadHandler.data);
 						done(true);
-						yield break;
+						return;
 					}
 					catch (Exception writeError) when (writeError is IOException || writeError is UnauthorizedAccessException)
 					{
@@ -425,7 +434,7 @@ namespace Arcade.Compose
 			string folder = Path.Combine(CloudRoot, chart.ArchiveId.ToString());
 			if (!Directory.Exists(folder))
 			{
-				StartCoroutine(DownloadChart(chart));
+				DownloadChart(chart).Forget();
 				return;
 			}
 			string versionFile = Path.Combine(folder, "Arcade", "RemoteVersion.txt");
@@ -435,7 +444,7 @@ namespace Arcade.Compose
 			{
 				if (complete && File.Exists(versionFile) && File.ReadAllText(versionFile) == (chart.UpdatedAt ?? ""))
 				{
-					StartCoroutine(OpenDownloadedChart(chart, folder));
+					OpenDownloadedChart(chart, folder).Forget();
 					return;
 				}
 			}
@@ -456,25 +465,25 @@ namespace Arcade.Compose
 			AdeUiKit.SetOnClick(updateDialog.LeftButton, () =>
 			{
 				updateDialog.Close();
-				StartCoroutine(OpenDownloadedChart(chart, folder));
+				OpenDownloadedChart(chart, folder).Forget();
 			});
 			AdeUiKit.SetOnClick(updateDialog.RightButton, () =>
 			{
 				updateDialog.Close();
-				StartCoroutine(DownloadChart(chart));
+				DownloadChart(chart).Forget();
 			});
 			updateDialog.Open();
 		}
 
-		private IEnumerator OpenDownloadedChart(CloudChart chart, string folder)
+		private async UniTask OpenDownloadedChart(CloudChart chart, string folder)
 		{
 			SetBusy(true);
 			try
 			{
 				openedCharts[chart.ArchiveId] = chart;
-				while (AdeProjectManager.Instance.IsLoading) yield return null;
+				while (AdeProjectManager.Instance.IsLoading) await UniTask.NextFrame(destroyCancellationToken);
 				AdeProjectManager.Instance.OpenProjectFolder(folder);
-				while (AdeProjectManager.Instance.IsLoading) yield return null;
+				while (AdeProjectManager.Instance.IsLoading) await UniTask.NextFrame(destroyCancellationToken);
 				string background = Path.Combine(folder, "Arcade", "CloudBackground.jpg");
 				string track = Path.Combine(folder, "Arcade", "CloudTrack.png");
 				ApplySkin(folder, ResolveSkin(chart).Side, File.Exists(background) ? background : null,
@@ -482,10 +491,10 @@ namespace Arcade.Compose
 				listDialog.Close();
 				AdeToast.Instance?.Show("已打开云端谱面的本地副本：" + chart.Title);
 			}
-			finally { SetBusy(false); }
+			finally { if (this) SetBusy(false); }
 		}
 
-		private IEnumerator DownloadChart(CloudChart chart)
+		private async UniTask DownloadChart(CloudChart chart)
 		{
 			SetBusy(true);
 			string target = Path.Combine(CloudRoot, chart.ArchiveId.ToString());
@@ -497,7 +506,7 @@ namespace Arcade.Compose
 			{
 				SetBusy(false);
 				SetMessage("无法创建下载目录：" + error.Message);
-				yield break;
+				return;
 			}
 			try
 			{
@@ -505,27 +514,27 @@ namespace Arcade.Compose
 				bool ok = true;
 
 				SetMessage("正在下载音乐…");
-				yield return Download(files + "base.opus", Path.Combine(folder, "base.opus"), true, result => ok = result);
-				if (!ok) { SetBusy(false); yield break; }
+				await Download(files + "base.opus", Path.Combine(folder, "base.opus"), true, result => ok = result);
+				if (!ok) { SetBusy(false); return; }
 				SetMessage("正在下载封面…");
-				yield return Download(files + "base.jpg", Path.Combine(folder, "base.jpg"), false, _ => { });
+				await Download(files + "base.jpg", Path.Combine(folder, "base.jpg"), false, _ => { });
 				foreach (int difficulty in chart.EnabledDiffs)
 				{
 					SetMessage($"正在下载 {DifficultyNames[difficulty]} 谱面…");
-					yield return Download(files + $"{difficulty}.aff", Path.Combine(folder, $"{difficulty}.aff"), true, result => ok = result);
-					if (!ok) { SetBusy(false); yield break; }
+					await Download(files + $"{difficulty}.aff", Path.Combine(folder, $"{difficulty}.aff"), true, result => ok = result);
+					if (!ok) { SetBusy(false); return; }
 				}
 				foreach (string sfx in chart.SfxArctap ?? new string[0])
 				{
 					SetMessage($"正在下载音效 {sfx}…");
-					yield return Download(files + Uri.EscapeDataString(sfx), Path.Combine(folder, Path.GetFileName(sfx)), false, _ => { });
+					await Download(files + Uri.EscapeDataString(sfx), Path.Combine(folder, Path.GetFileName(sfx)), false, _ => { });
 				}
 
 				AppliedSkin skin = ResolveSkin(chart);
 				if (skin.TrackUrl == null && skin.BackgroundUrl != null && skin.BackgroundUrl.StartsWith("/v2/game/backgrounds/", StringComparison.Ordinal))
 				{
 					SetMessage("正在获取皮肤信息…");
-					yield return ResolvePresetTrack(skin);
+					await ResolvePresetTrack(skin);
 				}
 				string backgroundPath = Path.Combine(arcadeFolder, "CloudBackground.jpg");
 				string trackPath = Path.Combine(arcadeFolder, "CloudTrack.png");
@@ -533,12 +542,12 @@ namespace Arcade.Compose
 				if (skin.BackgroundUrl != null)
 				{
 					SetMessage("正在下载背景…");
-					yield return Download(skin.BackgroundUrl, backgroundPath, false, result => hasBackground = result);
+					await Download(skin.BackgroundUrl, backgroundPath, false, result => hasBackground = result);
 				}
 				if (skin.TrackUrl != null)
 				{
 					SetMessage("正在下载轨道…");
-					yield return Download(skin.TrackUrl, trackPath, false, result => hasTrack = result);
+					await Download(skin.TrackUrl, trackPath, false, result => hasTrack = result);
 				}
 				try
 				{
@@ -549,16 +558,16 @@ namespace Arcade.Compose
 				catch (Exception error) when (error is IOException || error is UnauthorizedAccessException)
 				{
 					SetMessage("无法保存下载的谱面：" + error.Message);
-					yield break;
+					return;
 				}
 				folder = target;
 				arcadeFolder = Path.Combine(folder, "Arcade");
 				backgroundPath = Path.Combine(arcadeFolder, "CloudBackground.jpg");
 				trackPath = Path.Combine(arcadeFolder, "CloudTrack.png");
 				openedCharts[chart.ArchiveId] = chart;
-				while (AdeProjectManager.Instance.IsLoading) yield return null;
+				while (AdeProjectManager.Instance.IsLoading) await UniTask.NextFrame(destroyCancellationToken);
 				AdeProjectManager.Instance.OpenProjectFolder(folder);
-				while (AdeProjectManager.Instance.IsLoading) yield return null;
+				while (AdeProjectManager.Instance.IsLoading) await UniTask.NextFrame(destroyCancellationToken);
 				ApplySkin(folder, skin.Side, hasBackground ? backgroundPath : null, hasTrack ? trackPath : null);
 				SetBusy(false);
 				SetMessage("");
@@ -567,7 +576,7 @@ namespace Arcade.Compose
 			}
 			finally
 			{
-				SetBusy(false);
+				if (this) SetBusy(false);
 				if (Directory.Exists(staging))
 				{
 					try { Directory.Delete(staging, true); }
@@ -604,13 +613,13 @@ namespace Arcade.Compose
 			return skin;
 		}
 
-		private IEnumerator ResolvePresetTrack(AppliedSkin skin)
+		private async UniTask ResolvePresetTrack(AppliedSkin skin)
 		{
 			string background = Path.GetFileNameWithoutExtension(Uri.UnescapeDataString(skin.BackgroundUrl.Substring("/v2/game/backgrounds/".Length)));
 			using (UnityWebRequest request = Get("/v2/game/skin"))
 			{
-				yield return request.SendWebRequest();
-				if (request.result != UnityWebRequest.Result.Success) yield break;
+				await request.SendWithResultAsync(destroyCancellationToken);
+				if (request.result != UnityWebRequest.Result.Success) return;
 				try
 				{
 					string track = (string)JObject.Parse(request.downloadHandler.text)[background]?["track"];

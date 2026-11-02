@@ -1,3 +1,5 @@
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using Arcade.Aff;
 using Arcade.Compose;
 using Arcade.Gameplay;
@@ -222,7 +224,7 @@ namespace Arcade.Compose
         private readonly List<Issue> issues = new List<Issue>();
         private readonly List<Button> rows = new List<Button>();
         private ArcChart chart;
-        private Coroutine checking, rendering;
+        private CancellationTokenSource checking, rendering;
         private float nextCheck;
         private bool dirty;
         private int revision, themeRevision = -1;
@@ -245,6 +247,8 @@ namespace Arcade.Compose
 
         private void OnDestroy()
         {
+            CancelCheck();
+            StopRendering();
             if (ArcGameplayManager.Instance) ArcGameplayManager.Instance.OnChartLoad.RemoveListener(Schedule);
             if (Command.AdeCommandManager.Instance) Command.AdeCommandManager.Instance.onCommandExecuted -= OnCommand;
             if (card) card.Opened -= Render;
@@ -256,7 +260,7 @@ namespace Arcade.Compose
         private void Schedule()
         {
             revision++;
-            if (checking != null) { StopCoroutine(checking); checking = null; }
+            CancelCheck();
             chart = ArcGameplayManager.Instance.Chart;
             nextCheck = Time.unscaledTime + .6f;
             dirty = true;
@@ -276,11 +280,14 @@ namespace Arcade.Compose
                 && !AdeProjectManager.Instance.IsLoading && !ArcGameplayManager.Instance.IsPlaying;
             if (checking != null && !canCheck)
             {
-                StopCoroutine(checking); checking = null;
+                CancelCheck();
                 dirty = true; nextCheck = Time.unscaledTime + .6f;
             }
             if (dirty && checking == null && canCheck && Time.unscaledTime >= nextCheck)
-                checking = StartCoroutine(Check(revision));
+                {
+                checking = CancellationTokenSource.CreateLinkedTokenSource(destroyCancellationToken);
+                CheckAsync(revision, checking).Forget();
+            }
             if (themeRevision != AdeUiTheme.Revision)
             {
                 themeRevision = AdeUiTheme.Revision;
@@ -288,31 +295,44 @@ namespace Arcade.Compose
             }
         }
 
-        private System.Collections.IEnumerator Check(int version)
+        private async UniTask CheckAsync(int version, CancellationTokenSource cancellation)
         {
-            dirty = false;
-            if (chart == null) { checking = null; yield break; }
-            Status.text = "正在检查…";
-            var next = new List<Issue>();
-            Fault[] checks = {
-                new ShortHoldFault(), new TapOverlapFault(), new TapTooCloseFault(), new HoldOverlapFault(),
-                new ArcTapOverlapFault(), new TimingOverlapFault(), new TapHoldOverlapFault(), new NegativeArcFault(),
-                new ShortLongNoteFault(), new CrossTimingFault(), new ZeroTimeArcTapFault(), new ArcTapOutsideArcFault(),
-                new MissingSfxFault() };
-            foreach (var check in checks)
+            try
             {
-                check.Check(chart);
-                foreach (var overlap in check.Overlaps)
-                    next.Add(new Issue { Reason = check.Reason, Event = overlap.Current, Related = overlap.Other });
-                foreach (var item in check.Faults) next.Add(new Issue { Reason = check.Reason, Event = item });
-                yield return null;
-                if (version != revision || chart != ArcGameplayManager.Instance.Chart) yield break;
+                dirty = false;
+                if (chart == null) return;
+                Status.text = "正在检查…";
+                var next = new List<Issue>();
+                Fault[] checks = {
+                    new ShortHoldFault(), new TapOverlapFault(), new TapTooCloseFault(), new HoldOverlapFault(),
+                    new ArcTapOverlapFault(), new TimingOverlapFault(), new TapHoldOverlapFault(), new NegativeArcFault(),
+                    new ShortLongNoteFault(), new CrossTimingFault(), new ZeroTimeArcTapFault(), new ArcTapOutsideArcFault(),
+                    new MissingSfxFault() };
+                foreach (var check in checks)
+                {
+                    check.Check(chart);
+                    foreach (var overlap in check.Overlaps)
+                        next.Add(new Issue { Reason = check.Reason, Event = overlap.Current, Related = overlap.Other });
+                    foreach (var item in check.Faults) next.Add(new Issue { Reason = check.Reason, Event = item });
+                    await UniTask.NextFrame(cancellation.Token);
+                    if (version != revision || chart != ArcGameplayManager.Instance.Chart) return;
+                }
+                issues.Clear();
+                issues.AddRange(next.OrderBy(i => i.Event.Timing));
+                UpdateSummary();
+                if (card.IsOpen) Render();
             }
-            issues.Clear();
-            issues.AddRange(next.OrderBy(i => i.Event.Timing));
+            finally
+            {
+                if (checking == cancellation) checking = null;
+                cancellation.Dispose();
+            }
+        }
+
+        private void CancelCheck()
+        {
+            checking?.Cancel();
             checking = null;
-            UpdateSummary();
-            if (card.IsOpen) Render();
         }
 
         private void UpdateSummary()

@@ -1,5 +1,6 @@
 using Arcade.Audio;
-using System.Collections;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using LitMotion;
 
@@ -62,15 +63,17 @@ namespace Arcade.Compose
 					Right.pivot = rightPivot;
 				});
 		}
-		public IEnumerator OpenCoroutine()
+		public async UniTask OpenAsync(CancellationToken cancellationToken = default)
 		{
+            using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(destroyCancellationToken, cancellationToken);
 			Open();
-			yield return new WaitForSeconds(OpenDuration);
+			await UniTask.WaitForSeconds(OpenDuration, cancellationToken: lifetime.Token);
 		}
-		public IEnumerator CloseCoroutine()
+		public async UniTask CloseAsync(CancellationToken cancellationToken = default)
 		{
+            using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(destroyCancellationToken, cancellationToken);
 			Close();
-			yield return new WaitForSeconds(CloseDuration);
+			await UniTask.WaitForSeconds(CloseDuration, cancellationToken: lifetime.Token);
 		}
 	}
 }

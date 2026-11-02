@@ -1,6 +1,6 @@
+using Cysharp.Threading.Tasks;
 using Arcade.Audio;
 using System;
-using System.Collections;
 using System.IO;
 using System.Linq;
 using Arcade.Compose.Dialog;
@@ -68,7 +68,7 @@ namespace Arcade.Compose
 		private Texture2D Cover;
 		private Sprite CoverSprite;
 
-		private Coroutine loadingCoroutine;
+		private bool loading;
 		private FileSystemWatcher watcher = new FileSystemWatcher();
 		private bool shouldReload = false;
 		private bool audioOverrided = false;
@@ -112,7 +112,7 @@ namespace Arcade.Compose
 			watcher.NotifyFilter = NotifyFilters.LastWrite;
 			watcher.Changed += OnWatcherChanged;
 			watcher.EnableRaisingEvents = false;
-			StartCoroutine(AutosaveCoroutine());
+			AutosaveAsync().Forget();
 		}
 		private void Update()
 		{
@@ -174,11 +174,11 @@ namespace Arcade.Compose
 			ArcEffectManager.Instance.CleanSpecialEffectAudios();
 			ArcGameplayManager.Instance.Clean();
 		}
-		public bool IsLoading => loadingCoroutine != null;
+		public bool IsLoading => loading;
 
 		public void OpenProject()
 		{
-			if (loadingCoroutine != null)
+			if (loading)
 			{
 				return;
 			}
@@ -191,7 +191,7 @@ namespace Arcade.Compose
 		}
 		public void OpenLocalProject()
 		{
-			if (loadingCoroutine != null)
+			if (loading)
 			{
 				return;
 			}
@@ -199,7 +199,7 @@ namespace Arcade.Compose
 			{
 				string folder = Util.Shell.FileBrowser.OpenFolderDialog("选择您的 Arcaea 自制谱文件夹 (包含 0/1/2.aff, base.mp3/ogg/wav, base.jpg)");
 				if (folder == null) return;
-				loadingCoroutine = StartCoroutine(LoadProjectCoroutine(folder));
+				RunLoadingAsync(() => LoadProject(folder), false).Forget();
 			}
 			catch (Exception Ex)
 			{
@@ -211,11 +211,11 @@ namespace Arcade.Compose
 		}
 		public bool OpenProjectFolder(string folder)
 		{
-			if (loadingCoroutine != null)
+			if (loading)
 			{
 				return false;
 			}
-			loadingCoroutine = StartCoroutine(LoadProjectCoroutine(folder));
+			RunLoadingAsync(() => LoadProject(folder), false).Forget();
 			return true;
 		}
 		public void SaveProject()
@@ -241,11 +241,11 @@ namespace Arcade.Compose
 			fs.Close();
 		}
 
-		private IEnumerator AutosaveCoroutine()
+		private async UniTask AutosaveAsync()
 		{
 			while (true)
 			{
-				yield return new WaitForSeconds(30f);
+				await UniTask.WaitForSeconds(30f, cancellationToken: destroyCancellationToken);
 				if (CurrentProjectMetadata == null || CurrentProjectFolder == null) continue;
 				if (ArcGameplayManager.Instance.Chart == null) continue;
 				if (ArcGameplayManager.Instance.IsPlaying) continue;
@@ -263,40 +263,22 @@ namespace Arcade.Compose
 			}
 		}
 
-		private IEnumerator LoadChartCoroutine(int difficulty)
-		{
-			yield return AdeShutterManager.Instance.CloseCoroutine();
-			LoadChart(difficulty);
-			if (!ArcGameplayManager.Instance.IsLoaded)
-			{
-				SetTutorialMessage("无法加载谱面文件，请修正谱面文件格式或删除谱面文件后重新打开谱面文件夹");
-			}
-			yield return AdeShutterManager.Instance.OpenCoroutine();
-			loadingCoroutine = null;
-		}
-
-		private IEnumerator LoadDifficultyCoroutine(int difficulty)
-		{
-			yield return AdeShutterManager.Instance.CloseCoroutine();
-			LoadDifficulty(difficulty);
-			if (!ArcGameplayManager.Instance.IsLoaded)
-			{
-				SetTutorialMessage("无法加载谱面文件，请修正谱面文件格式或删除谱面文件后重新打开谱面文件夹");
-			}
-			yield return AdeShutterManager.Instance.OpenCoroutine();
-			loadingCoroutine = null;
-		}
-
-		private IEnumerator LoadProjectCoroutine(string folder)
-		{
-			yield return AdeShutterManager.Instance.CloseCoroutine();
-			LoadProject(folder);
-			yield return AdeShutterManager.Instance.OpenCoroutine();
-			loadingCoroutine = null;
-		}
+        private async UniTask RunLoadingAsync(Action load, bool checkChart)
+        {
+            loading = true;
+            try
+            {
+                await AdeShutterManager.Instance.CloseAsync(destroyCancellationToken);
+                load();
+                if (checkChart && !ArcGameplayManager.Instance.IsLoaded)
+                    SetTutorialMessage("无法加载谱面文件，请修正谱面文件格式或删除谱面文件后重新打开谱面文件夹");
+                await AdeShutterManager.Instance.OpenAsync(destroyCancellationToken);
+            }
+            finally { loading = false; }
+        }
 		public void ReloadChart()
 		{
-			if (loadingCoroutine != null)
+			if (loading)
 			{
 				return;
 			}
@@ -304,11 +286,11 @@ namespace Arcade.Compose
 			{
 				return;
 			}
-			loadingCoroutine = StartCoroutine(LoadChartCoroutine(CurrentDifficulty));
+			RunLoadingAsync(() => LoadChart(CurrentDifficulty), true).Forget();
 		}
 		public void SwitchDifficulty(int difficulty)
 		{
-			if (loadingCoroutine != null)
+			if (loading)
 			{
 				return;
 			}
@@ -316,7 +298,7 @@ namespace Arcade.Compose
 			{
 				return;
 			}
-			loadingCoroutine = StartCoroutine(LoadDifficultyCoroutine(difficulty));
+			RunLoadingAsync(() => LoadDifficulty(difficulty), true).Forget();
 		}
 
 		public void SetDefaultCover(Sprite cover)

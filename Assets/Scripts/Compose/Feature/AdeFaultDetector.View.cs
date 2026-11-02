@@ -1,4 +1,5 @@
-using System.Collections;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using System.Globalization;
 using System.Linq;
 using Arcade.Compose.Editing;
@@ -14,42 +15,50 @@ namespace Arcade.Compose
     {
         private void Render()
         {
-            if (rendering != null) StopCoroutine(rendering);
+            StopRendering();
             foreach (var row in rows) row.gameObject.SetActive(false);
-            rendering = StartCoroutine(RenderIssues());
+            rendering = CancellationTokenSource.CreateLinkedTokenSource(destroyCancellationToken);
+            RenderIssuesAsync(rendering).Forget();
         }
 
         private void StopRendering()
         {
             if (rendering == null) return;
-            StopCoroutine(rendering);
+            rendering.Cancel();
             rendering = null;
         }
 
-        private IEnumerator RenderIssues()
+        private async UniTask RenderIssuesAsync(CancellationTokenSource cancellation)
         {
-            for (int i = 0; i < issues.Count; i++)
+            try
             {
-                if (i >= rows.Count)
+                for (int i = 0; i < issues.Count; i++)
                 {
-                    int index = i;
-                    var row = Instantiate(issueTemplate, content, false);
-                    row.name = "Issue";
-                    row.onClick.AddListener(() => { if (index < issues.Count) Jump(issues[index]); });
-                    rows.Add(row);
+                    if (i >= rows.Count)
+                    {
+                        int index = i;
+                        var row = Instantiate(issueTemplate, content, false);
+                        row.name = "Issue";
+                        row.onClick.AddListener(() => { if (index < issues.Count) Jump(issues[index]); });
+                        rows.Add(row);
+                    }
+                    var item = issues[i];
+                    rows[i].gameObject.SetActive(true);
+                    rows[i].transform.Find("Reason").GetComponent<TMP_Text>().text = item.Reason;
+                    var group = GroupOf(item.Event);
+                    string location = item.Event.Timing.ToString(CultureInfo.InvariantCulture) + " ms · "
+                        + (group == null ? "默认组" : "组 " + group.Id);
+                    if (item.Related != null) location += " · 相关物件 " + item.Related.Timing.ToString(CultureInfo.InvariantCulture) + " ms";
+                    rows[i].transform.Find("Location").GetComponent<TMP_Text>().text = location;
+                    StyleRow(rows[i]);
+                    if (i % 24 == 23) await UniTask.NextFrame(cancellation.Token);
                 }
-                var item = issues[i];
-                rows[i].gameObject.SetActive(true);
-                rows[i].transform.Find("Reason").GetComponent<TMP_Text>().text = item.Reason;
-                var group = GroupOf(item.Event);
-                string location = item.Event.Timing.ToString(CultureInfo.InvariantCulture) + " ms · "
-                    + (group == null ? "默认组" : "组 " + group.Id);
-                if (item.Related != null) location += " · 相关物件 " + item.Related.Timing.ToString(CultureInfo.InvariantCulture) + " ms";
-                rows[i].transform.Find("Location").GetComponent<TMP_Text>().text = location;
-                StyleRow(rows[i]);
-                if (i % 24 == 23) yield return null;
             }
-            rendering = null;
+            finally
+            {
+                if (rendering == cancellation) rendering = null;
+                cancellation.Dispose();
+            }
         }
 
         private void StyleRow(Button row)

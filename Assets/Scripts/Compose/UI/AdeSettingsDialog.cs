@@ -1,5 +1,5 @@
+using Cysharp.Threading.Tasks;
 using TMPro;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -56,10 +56,12 @@ namespace Arcade.Compose
             if (scene.name == "ArcEditor") new GameObject(nameof(AdeSettingsDialog)).AddComponent<AdeSettingsDialog>();
         }
 
-        private IEnumerator Start()
+        private void Start() => InitializeAsync().Forget();
+
+        private async UniTask InitializeAsync()
         {
             // Theme rows and account controls are built in Start.
-            yield return null;
+            await UniTask.NextFrame(destroyCancellationToken);
             var compose = ArcadeComposeManager.Instance;
             var originals = FindObjectsByType<AdeDialog>(FindObjectsInactive.Include);
             var template = originals.OfType<AdeSingleDialog>().FirstOrDefault(d => d.name == "Setting");
@@ -76,7 +78,7 @@ namespace Arcade.Compose
                     if (entry) entry.gameObject.SetActive(true);
                 }
                 compose.LeftBarView.Find("Top/SaveMode").gameObject.SetActive(true);
-                yield break;
+                return;
             }
             font = AdeEditorText.Font;
             checkmark = Resources.Load<Sprite>("AffdataEdit/Icons/Checkmark");
@@ -301,13 +303,13 @@ namespace Arcade.Compose
             sources[(int)page]?.OnOpen?.Invoke();
             if (page == Page.Account) AdeAccountManager.Instance.PrepareSettingsView();
             Style();
-            StartCoroutine(ScrollToTop(page));
+            ScrollToTop(page).Forget();
         }
 
-        private IEnumerator ScrollToTop(Page page)
+        private async UniTask ScrollToTop(Page page)
         {
-            yield return null;
-            if (!mounted || activePage != page) yield break;
+            await UniTask.NextFrame(destroyCancellationToken);
+            if (!mounted || activePage != page) return;
             Canvas.ForceUpdateCanvases();
             pages[(int)page].parent.parent.GetComponent<ScrollRect>().verticalNormalizedPosition = 1;
         }

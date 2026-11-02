@@ -1,3 +1,4 @@
+using Cysharp.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
 using TMPro;
@@ -54,7 +55,7 @@ namespace Arcade.Compose
             if (!coverLoading && coverQueue.Count > 0)
             {
                 coverLoading = true;
-                StartCoroutine(LoadListCovers());
+                LoadListCovers().Forget();
             }
         }
 

@@ -1,3 +1,4 @@
+using Cysharp.Threading.Tasks;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -81,7 +82,7 @@ namespace Arcade.Compose
             {
                 displayedDark = AdeUiTheme.Dark;
                 for (int i = 0; i < themeSections.Length; i++) themeSections[i].gameObject.SetActive((i == 0) == AdeUiTheme.Dark);
-                if (mounted && activePage == Page.Appearance) StartCoroutine(ScrollToTop(Page.Appearance));
+                if (mounted && activePage == Page.Appearance) ScrollToTop(Page.Appearance).Forget();
             }
             foreach (var label in appearanceLabels) label.color = AdeUiTheme.Current.Text;
             foreach (var card in themeCards)

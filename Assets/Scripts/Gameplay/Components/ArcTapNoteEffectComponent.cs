@@ -1,4 +1,5 @@
-using System.Collections;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using Arcade.Util.Pooling;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -13,6 +14,7 @@ namespace Arcade.Gameplay
 		[SerializeField] private bool isSfx;
 		[SerializeField] private bool useConflictBlend;
 		private Material material;
+        private CancellationTokenSource effectCancellation;
 
 		private void Awake()
 		{
@@ -46,15 +48,33 @@ namespace Arcade.Gameplay
 			var main = Effect.main;
 			main.startSize = 9.5f * 1.5f * 1.8f * height / 40f * Mathf.Min(camera.aspect / (16f / 9), 1);
 			Effect.Emit(new ParticleSystem.EmitParams { position = pos, applyShapeToPosition = true }, 1);
-			StartCoroutine(WaitForEnd());
+			effectCancellation?.Cancel();
+            effectCancellation = CancellationTokenSource.CreateLinkedTokenSource(destroyCancellationToken);
+            WaitForEndAsync(effectCancellation).Forget();
 		}
 
-		private IEnumerator WaitForEnd()
-		{
-			yield return new WaitForSeconds(Effect.main.startLifetime.constantMax);
-			Effect.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-			Available = true;
-		}
+        private async UniTask WaitForEndAsync(CancellationTokenSource cancellation)
+        {
+            try
+            {
+                await UniTask.WaitForSeconds(Effect.main.startLifetime.constantMax, cancellationToken: cancellation.Token);
+                Effect.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                Available = true;
+            }
+            finally
+            {
+                if (effectCancellation == cancellation) effectCancellation = null;
+                cancellation.Dispose();
+            }
+        }
+
+        private void OnDisable()
+        {
+            effectCancellation?.Cancel();
+            effectCancellation = null;
+            if (Effect) Effect.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            Available = true;
+        }
 
 		public void SetTexture(Texture2D texture)
 		{

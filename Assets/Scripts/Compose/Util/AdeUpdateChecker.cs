@@ -1,5 +1,6 @@
+using Arcade.Util.UniTaskHelper;
+using Cysharp.Threading.Tasks;
 using System;
-using System.Collections;
 using System.Diagnostics;
 using System.IO;
 using System.Security.Cryptography;
@@ -72,8 +73,8 @@ namespace Arcade.Compose
             dialog.LeftButtonText.text = "重试";
             AdeUiKit.SetOnClick(dialog.LeftButton, () =>
             {
-                if (updateRequired) StartCoroutine(LaunchUpdater());
-                else StartCoroutine(CheckAtStartup());
+                if (updateRequired) LaunchUpdater().Forget();
+                else CheckAtStartup().Forget();
             });
             AdeUiKit.SetOnClick(dialog.RightButton, () =>
             {
@@ -102,7 +103,7 @@ namespace Arcade.Compose
 
             AdeInputManager.Instance.Controls.Disable();
             dialog.Open();
-            StartCoroutine(CheckAtStartup());
+            CheckAtStartup().Forget();
         }
 
         private void SetState(bool isChecking, string text)
@@ -134,7 +135,7 @@ namespace Arcade.Compose
             if (!refreshingUpdater) Destroy(gameObject);
         }
 
-        private IEnumerator CheckAtStartup()
+        private async UniTask CheckAtStartup()
         {
             SetState(true, "正在检查最新版本…");
             string versionPath = Path.Combine(Folder, "build-version.txt");
@@ -142,7 +143,7 @@ namespace Arcade.Compose
             if (!File.Exists(versionPath) || !File.Exists(configPath))
             {
                 FailCheck();
-                yield break;
+                return;
             }
 
             string currentVersion;
@@ -156,7 +157,7 @@ namespace Arcade.Compose
                     || manifestUri.Scheme != Uri.UriSchemeHttps)
                 {
                     FailCheck();
-                    yield break;
+                    return;
                 }
             }
             catch (Exception error) when (error is IOException || error is UnauthorizedAccessException
@@ -164,7 +165,7 @@ namespace Arcade.Compose
             {
                 Debug.Log($"Update check skipped: {error.Message}");
                 FailCheck();
-                yield break;
+                return;
             }
 
             string latestVersion;
@@ -172,17 +173,17 @@ namespace Arcade.Compose
             {
                 request.timeout = 10;
                 request.SetRequestHeader("Cache-Control", "no-cache");
-                yield return request.SendWebRequest();
+                await request.SendWithResultAsync(destroyCancellationToken);
                 if (request.result != UnityWebRequest.Result.Success)
                 {
                     FailCheck();
                     Debug.Log($"Update check unavailable: {request.error}");
-                    yield break;
+                    return;
                 }
                 try
                 {
                     JObject manifest = JObject.Parse(request.downloadHandler.text);
-                    if ((int?)manifest["schema"] != 1) { FailCheck(); yield break; }
+                    if ((int?)manifest["schema"] != 1) { FailCheck(); return; }
                     latestVersion = (string)manifest["version"];
                 }
                 catch (Exception error) when (error is JsonException || error is ArgumentException
@@ -190,19 +191,19 @@ namespace Arcade.Compose
                 {
                     FailCheck();
                     Debug.Log($"Update check skipped: {error.Message}");
-                    yield break;
+                    return;
                 }
             }
-            if (!refreshingUpdater) StartCoroutine(RefreshUpdater(manifestUri));
+            if (!refreshingUpdater) RefreshUpdater(manifestUri).Forget();
             if (latestVersion == null || !CommitPattern.IsMatch(latestVersion))
             {
                 FailCheck();
-                yield break;
+                return;
             }
             if (string.Equals(currentVersion, latestVersion, StringComparison.OrdinalIgnoreCase))
             {
                 Pass();
-                yield break;
+                return;
             }
             updateRequired = true;
             SetState(false, "当前版本不是最新版，请先更新。\n\n点击“立即更新”后 AffdataEdit 会退出，\n更新器完成更新后会重新启动它。");
@@ -210,77 +211,77 @@ namespace Arcade.Compose
 
         // Replaces the updater beside AffdataEdit when its manifest lists a different file.
         // Failures only keep the current updater, which can still update AffdataEdit.
-        private IEnumerator RefreshUpdater(Uri manifestUri)
+        private async UniTask RefreshUpdater(Uri manifestUri)
         {
             refreshingUpdater = true;
-            var updaterUri = new Uri(manifestUri, $"../updater/{(Mac ? "macos" : "windows")}/latest.json");
-            string target = Path.Combine(Folder, UpdaterName);
-            string sha;
-            long size;
-            using (var request = UnityWebRequest.Get(updaterUri.AbsoluteUri))
+            try
             {
-                request.timeout = 10;
-                request.SetRequestHeader("Cache-Control", "no-cache");
-                yield return request.SendWebRequest();
-                if (request.result != UnityWebRequest.Result.Success)
+                var updaterUri = new Uri(manifestUri, $"../updater/{(Mac ? "macos" : "windows")}/latest.json");
+                string target = Path.Combine(Folder, UpdaterName);
+                string sha;
+                long size;
+                using (var request = UnityWebRequest.Get(updaterUri.AbsoluteUri))
                 {
-                    Debug.Log($"Updater check unavailable: {request.error}");
-                    EndRefresh();
-                    yield break;
-                }
-                try
-                {
-                    JToken file = JObject.Parse(request.downloadHandler.text)["files"]?[0];
-                    sha = ((string)file?["sha256"])?.ToLowerInvariant();
-                    size = (long?)file?["size"] ?? -1;
-                    if ((string)file?["path"] != UpdaterName || sha == null || sha.Length != 64 || size < 0)
-                        throw new FormatException("unexpected updater manifest");
-                    if (File.Exists(target) && new FileInfo(target).Length == size && Hash(target) == sha)
+                    request.timeout = 10;
+                    request.SetRequestHeader("Cache-Control", "no-cache");
+                    await request.SendWithResultAsync(destroyCancellationToken);
+                    if (request.result != UnityWebRequest.Result.Success)
                     {
-                        EndRefresh();
-                        yield break;
+                        Debug.Log($"Updater check unavailable: {request.error}");
+                        return;
+                    }
+                    try
+                    {
+                        JToken file = JObject.Parse(request.downloadHandler.text)["files"]?[0];
+                        sha = ((string)file?["sha256"])?.ToLowerInvariant();
+                        size = (long?)file?["size"] ?? -1;
+                        if ((string)file?["path"] != UpdaterName || sha == null || sha.Length != 64 || size < 0)
+                            throw new FormatException("unexpected updater manifest");
+                        if (File.Exists(target) && new FileInfo(target).Length == size && Hash(target) == sha)
+                        {
+                            return;
+                        }
+                    }
+                    catch (Exception error) when (error is JsonException || error is ArgumentException || error is FormatException
+                        || error is InvalidCastException || error is OverflowException || error is IOException || error is UnauthorizedAccessException)
+                    {
+                        Debug.Log($"Updater check skipped: {error.Message}");
+                        return;
                     }
                 }
-                catch (Exception error) when (error is JsonException || error is ArgumentException || error is FormatException
-                    || error is InvalidCastException || error is OverflowException || error is IOException || error is UnauthorizedAccessException)
+                string download = target + ".download";
+                using (var request = new UnityWebRequest(new Uri(updaterUri, "objects/" + sha).AbsoluteUri, "GET",
+                    new DownloadHandlerFile(download) { removeFileOnAbort = true }, null))
                 {
-                    Debug.Log($"Updater check skipped: {error.Message}");
-                    EndRefresh();
-                    yield break;
+                    request.timeout = 120;
+                    await request.SendWithResultAsync(destroyCancellationToken);
+                    try
+                    {
+                        if (request.result != UnityWebRequest.Result.Success)
+                            throw new IOException(request.error);
+                        if (new FileInfo(download).Length != size || Hash(download) != sha)
+                            throw new IOException("updater hash mismatch");
+                        if (Mac) Process.Start("/bin/chmod", $"755 \"{download}\"").WaitForExit();
+                        // Replaced by renaming; on Windows a running updater cannot be deleted and is kept.
+                        if (File.Exists(target)) File.Delete(target);
+                        File.Move(download, target);
+                        Debug.Log("Updater refreshed");
+                    }
+                    catch (Exception error) when (error is IOException || error is UnauthorizedAccessException
+                        || error is InvalidOperationException || error is System.ComponentModel.Win32Exception)
+                    {
+                        Debug.Log($"Updater refresh failed: {error.Message}");
+                        try { File.Delete(download); } catch (Exception) { }
+                    }
                 }
             }
-            string download = target + ".download";
-            using (var request = new UnityWebRequest(new Uri(updaterUri, "objects/" + sha).AbsoluteUri, "GET",
-                new DownloadHandlerFile(download) { removeFileOnAbort = true }, null))
-            {
-                request.timeout = 120;
-                yield return request.SendWebRequest();
-                try
-                {
-                    if (request.result != UnityWebRequest.Result.Success)
-                        throw new IOException(request.error);
-                    if (new FileInfo(download).Length != size || Hash(download) != sha)
-                        throw new IOException("updater hash mismatch");
-                    if (Mac) Process.Start("/bin/chmod", $"755 \"{download}\"").WaitForExit();
-                    // Replaced by renaming; on Windows a running updater cannot be deleted and is kept.
-                    if (File.Exists(target)) File.Delete(target);
-                    File.Move(download, target);
-                    Debug.Log("Updater refreshed");
-                }
-                catch (Exception error) when (error is IOException || error is UnauthorizedAccessException
-                    || error is InvalidOperationException || error is System.ComponentModel.Win32Exception)
-                {
-                    Debug.Log($"Updater refresh failed: {error.Message}");
-                    try { File.Delete(download); } catch (Exception) { }
-                }
-            }
-            EndRefresh();
+            finally { EndRefresh(); }
         }
 
         private void EndRefresh()
         {
             refreshingUpdater = false;
-            if (entered) Destroy(gameObject);
+            if (this && entered) Destroy(gameObject);
         }
 
         private static string Hash(string path)
@@ -291,10 +292,10 @@ namespace Arcade.Compose
         }
 
         // Opens the updater (in Terminal on macOS) and quits so it can replace AffdataEdit.
-        private IEnumerator LaunchUpdater()
+        private async UniTask LaunchUpdater()
         {
             AdeUiKit.SetInteractable(dialog.LeftButton, false);
-            while (refreshingUpdater) yield return null;
+            while (refreshingUpdater) await UniTask.NextFrame(destroyCancellationToken);
             string updater = Path.Combine(Folder, UpdaterName);
             try
             {
