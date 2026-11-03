@@ -29,11 +29,12 @@ namespace Arcade.Gameplay
         private void SortVisibleItems()
         {
             EnsureFrameBuffers();
+            if (!nativeTapModels.IsCreated) nativeTapModels = new NativeArray<TapModel>(1, Allocator.Persistent);
             NativeArray<FrameInput>.Copy(frameInputs, nativeInputs, items.Count);
             NativeArray<SortKey>.Copy(sortKeys, nativeSortKeys, items.Count);
             connectionFallbacks.Clear();
             var preparation = new PrepareVisibleJob {
-                Inputs = nativeInputs, Keys = nativeSortKeys, Geometry = preparedGeometry, Fallbacks = connectionFallbacks.AsParallelWriter(),
+                Inputs = nativeInputs, Keys = nativeSortKeys, Geometry = preparedGeometry, TapModels = nativeTapModels, Projection = tapProjection, Fallbacks = connectionFallbacks.AsParallelWriter(),
                 Plane0 = frustum[0], Plane1 = frustum[1], Plane2 = frustum[2], Plane3 = frustum[3], Plane4 = frustum[4], Plane5 = frustum[5],
                 CameraPosition = cameraPosition, CameraForward = cameraForward, Orthographic = orthographic
             }.Schedule(items.Count, 64);
@@ -44,7 +45,7 @@ namespace Arcade.Gameplay
             visibleItemCount = 0;
             while (visibleItemCount < items.Count && !sortKeys[visibleItemCount].Culled) visibleItemCount++;
             if (visibleItemCount > 0)
-                new PackVisibleJob { Inputs = nativeInputs, Keys = nativeSortKeys, Output = packedInstances }
+                new PackVisibleJob { Inputs = nativeInputs, Keys = nativeSortKeys, Output = packedInstances, TapFrames = packedTapFrames }
                     .Schedule(visibleItemCount, 64).Complete();
         }
 

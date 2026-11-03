@@ -33,10 +33,11 @@ namespace Arcade.Gameplay
         private struct Item
         {
             public ArcNote Note;
+            public bool ResidentTap;
             public Mesh Mesh;
             public Texture Texture;
             public int Submesh, Layer, LayerValue, Order, Queue, DepthTest, DepthWrite;
-            public bool SameDraw(Item other) => ReferenceEquals(Mesh, other.Mesh) && ReferenceEquals(Texture, other.Texture) && Submesh == other.Submesh
+            public bool SameDraw(Item other) => ResidentTap == other.ResidentTap && ReferenceEquals(Mesh, other.Mesh) && ReferenceEquals(Texture, other.Texture) && Submesh == other.Submesh
                 && Layer == other.Layer && Queue == other.Queue
                 && DepthTest == other.DepthTest && DepthWrite == other.DepthWrite;
         }
@@ -51,7 +52,7 @@ namespace Arcade.Gameplay
         private readonly List<Item> items = new List<Item>();
         private readonly List<GraphicsBuffer.IndirectDrawIndexedArgs> commands = new List<GraphicsBuffer.IndirectDrawIndexedArgs>();
         private readonly List<Draw> draws = new List<Draw>();
-        private readonly Dictionary<(int,int,int), Material> materials = new Dictionary<(int,int,int), Material>();
+        private readonly Dictionary<(int,int,int,bool), Material> materials = new Dictionary<(int,int,int,bool), Material>();
         private readonly Plane[] frustum = new Plane[6];
         private readonly Dictionary<Mesh, Bounds> meshBounds = new Dictionary<Mesh, Bounds>();
         private readonly Dictionary<string, (int id, int value)> sortingLayers = new Dictionary<string, (int, int)>();
@@ -94,6 +95,7 @@ namespace Arcade.Gameplay
             connectionColor = ArcArcManager.Instance.ConnectionColor;
             connectionPositions.Clear();
             PrepareStyles();
+            FlushTapChanges();
             ArcTimingManager.Instance.SubmitBeatlines(this, cameraForFrame);
             Arcade.Compose.AdeGridManager.Instance?.SubmitGrid(this, cameraForFrame);
             var taps = ArcTapNoteManager.Instance;
@@ -103,9 +105,16 @@ namespace Arcade.Gameplay
                 Mesh mesh = ArcNoteMeshes.Sprite(sprite);
                 Texture texture = sprite.texture;
                 int queue = taps.ShaderdMaterial.renderQueue;
+                int layer = SortingLayer.NameToID("Note"), layerValue = SortingLayer.GetLayerValueFromID(layer);
+                var template = new Item { Mesh = mesh, Texture = texture, Layer = layer, LayerValue = layerValue, Queue = queue, DepthTest = 4 };
+                var input = new FrameInput { Data = NoteInstance.Create(Matrix4x4.identity, 0), LocalBounds = mesh.bounds };
+                var key = new SortKey { LayerValue = layerValue, Queue = queue };
                 foreach (var tap in taps.RenderingTaps)
                 {
-                    SubmitGroundNote(tap.RenderMatrix, mesh, texture, tap.Selected, tap.Alpha, 0, 1, 0, queue, tap);
+                    if (residentFrame == Time.frameCount && tap.TimingGroup == null)
+                        QueueResidentTap(tap, template, input, key);
+                    else
+                        SubmitGroundNote(taps.GetRenderMatrix(tap), mesh, texture, tap.Selected, tap.Alpha, 0, 1, 0, queue, tap);
                     SubmitConnections(tap);
                 }
             }
@@ -150,7 +159,8 @@ namespace Arcade.Gameplay
         {
             if (tap.ConnectedArcTaps.Count == 0) return;
             // Undo the skin's X flip and width scale, as the former connection prefab did.
-            Matrix4x4 parent = tap.RenderMatrix * undoTapSkin;
+            Matrix4x4 parent = ArcTapNoteManager.Instance.GetRenderMatrix(tap) * undoTapSkin;
+            if (tap.Position > 100000 || tap.Position < -100000) return;
             Vector3 start = parent.MultiplyPoint3x4(Vector3.zero);
             // Keep the quad in the transformed connection plane, including vertical lines.
             Vector3 normal = Vector3.Cross(parent.MultiplyVector(Vector3.right), parent.MultiplyVector(Vector3.forward));
@@ -261,9 +271,10 @@ namespace Arcade.Gameplay
         }
         private Material GetMaterial(Item item)
         {
-            var key = (item.Queue,item.DepthWrite,item.DepthTest);
+            var key = (item.Queue,item.DepthWrite,item.DepthTest,item.ResidentTap);
             if (materials.TryGetValue(key, out var material)) return material;
             material = new Material(Resources.Load<Shader>("NoteIndirect")) { name = "Indirect notes", enableInstancing = true, renderQueue = item.Queue };
+            if (item.ResidentTap) material.EnableKeyword("_RESIDENT_TAP");
             material.SetInt("_ZWrite", item.DepthWrite); material.SetInt("_ZTest", item.DepthTest);
             if (slideLines) material.SetTexture("_ArchTexture", slideLines);
             if (slideDots) material.SetTexture("_DotTexture", slideDots);
@@ -312,13 +323,31 @@ namespace Arcade.Gameplay
             if (visibleItemCount == 0) return;
             EnsureBuffer(ref instanceBuffer, GraphicsBuffer.Target.Structured, visibleItemCount, Marshal.SizeOf<NoteInstance>());
             EnsureBuffer(ref commandBuffer, GraphicsBuffer.Target.IndirectArguments, commands.Count, GraphicsBuffer.IndirectDrawIndexedArgs.size);
-            instanceBuffer.SetData(packedInstances, 0, 0, visibleItemCount);
+            // Resident Taps upload compact geometry and IDs; generic runs retain their offsets.
+            int offset = 0, uploadStart = -1;
+            for (int i = 0; i <= commands.Count; i++)
+            {
+                bool generic = i < commands.Count && !draws[i].Item.ResidentTap;
+                if (generic && uploadStart < 0) uploadStart = offset;
+                if (!generic && uploadStart >= 0)
+                {
+                    instanceBuffer.SetData(packedInstances, uploadStart, uploadStart, offset - uploadStart);
+                    uploadStart = -1;
+                }
+                if (i < commands.Count) offset += (int)commands[i].instanceCount;
+            }
+            if (residentFrame == Time.frameCount)
+            {
+                EnsureBuffer(ref tapFrameBuffer, GraphicsBuffer.Target.Structured, visibleItemCount, Marshal.SizeOf<TapFrame>());
+                tapFrameBuffer.SetData(packedTapFrames, 0, 0, visibleItemCount);
+            }
             commandBuffer.SetData(commands);
             for (int i = 0; i < commands.Count; i++)
             {
                 var draw = draws[i];
                 SetProperties(draw.Properties, draw.Item.Texture, false);
                 SetProperties(draw.SelectionProperties, draw.Item.Texture, true);
+                if (draw.Item.ResidentTap) { BindResidentTaps(draw.Properties); BindResidentTaps(draw.SelectionProperties); }
             }
         }
         private void SetProperties(MaterialPropertyBlock properties, Texture texture, bool selection)
@@ -367,6 +396,7 @@ namespace Arcade.Gameplay
         {
             instanceBuffer?.Dispose(); commandBuffer?.Dispose();
             DisposeFrameBuffers();
+            DisposeResidentTaps();
             foreach (var material in materials.Values) Destroy(material);
             ArcNoteMeshes.Release();
             if (Instance == this) Instance = null;

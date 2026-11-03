@@ -129,6 +129,10 @@ namespace Arcade.Gameplay
             float defaultBpm = constantDefault ? defaultTimings[0].Bpm : 0;
             float baseBpm = timing.BaseBpm, velocity = timing.SettingVelocity;
             float defaultVelocity = defaultBpm / baseBpm * velocity;
+            bool resident = constantDefault && ArcNoteRenderer.Instance
+                && ArcNoteRenderer.Instance.PrepareResidentTaps(Taps, new ArcNoteRenderer.TapProjection {
+                    Layer = parentMatrix, Basis = basis, Timing = currentTiming, Bpm = defaultBpm,
+                    BaseBpm = baseBpm, Velocity = velocity, SpriteHeight = spriteHeight, EditorCamera = editorCamera });
 
 			foreach (var t in renderCandidates)
 			{
@@ -138,6 +142,12 @@ namespace Arcade.Gameplay
 					t.Enable = false;
 					continue;
 				}
+                if (resident && t.TimingGroup == null)
+                {
+                    t.Enable = true; t.GpuPresentationFrame = Time.frameCount;
+                    RenderingTaps.Add(t);
+                    continue;
+                }
                 (float position, float length) framePosition;
                 if (constantDefault && t.TimingGroup == null)
                 {
@@ -184,6 +194,19 @@ namespace Arcade.Gameplay
 				t.Alpha = pos < 90 ? 1 : (100 - pos) / 10f;
 			}
 		}
+        internal Matrix4x4 GetRenderMatrix(ArcTap tap)
+        {
+            if (tap.GpuPresentationFrame != Time.frameCount) return tap.RenderMatrix;
+            var timing = ArcTimingManager.Instance;
+            tap.Position = timing.CalculatePositionByTiming(tap.Timing, tap.TimingGroup);
+            float pos = tap.Position / 1000f;
+            float length = ArcCameraManager.Instance.EditorCamera ? 2f
+                : NoteMeshDefinitions.TapLength(pos, timing.CalculateVelocityAtTiming(tap.Timing, tap.TimingGroup)) / DefaultSprite.bounds.size.y;
+            tap.Alpha = pos < 90 ? 1 : (100 - pos) / 10f;
+            tap.RenderMatrix = NoteLayer.localToWorldMatrix * Matrix4x4.TRS(new Vector3(tap.WorldX, pos, 0),
+                TapNotePrefab.transform.localRotation, new Vector3(-WidthScale, length, 1));
+            return tap.RenderMatrix;
+        }
 		private void JudgeTapNotes()
 		{
 

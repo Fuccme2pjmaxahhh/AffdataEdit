@@ -12,7 +12,9 @@ namespace Arcade.Gameplay
         {
             public NoteInstance Data;
             public Bounds LocalBounds;
-            public bool Connection;
+            public bool Connection, ResidentTap;
+            public int TapIndex;
+            public Vector2 TapGeometry;
             public Vector3 ConnectionEnd, ConnectionNormal;
         }
         private struct PreparedGeometry
@@ -37,6 +39,7 @@ namespace Arcade.Gameplay
             preparedGeometry = new NativeArray<PreparedGeometry>(capacity, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             packedInstances = new NativeArray<NoteInstance>(capacity, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
             connectionFallbacks = new NativeList<int>(capacity, Allocator.Persistent);
+            packedTapFrames = new NativeArray<TapFrame>(capacity, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
         }
         private void DisposeFrameBuffers()
         {
@@ -45,6 +48,7 @@ namespace Arcade.Gameplay
             if (preparedGeometry.IsCreated) preparedGeometry.Dispose();
             if (packedInstances.IsCreated) packedInstances.Dispose();
             if (connectionFallbacks.IsCreated) connectionFallbacks.Dispose();
+            if (packedTapFrames.IsCreated) packedTapFrames.Dispose();
         }
 
         private void PrepareConnectionFallbacks()
@@ -73,6 +77,8 @@ namespace Arcade.Gameplay
         private struct PrepareVisibleJob : IJobParallelFor
         {
             public NativeArray<FrameInput> Inputs;
+            [ReadOnly] public NativeArray<TapModel> TapModels;
+            public TapProjection Projection;
             public NativeList<int>.ParallelWriter Fallbacks;
             public NativeArray<SortKey> Keys;
             [WriteOnly] public NativeArray<PreparedGeometry> Geometry;
@@ -82,6 +88,20 @@ namespace Arcade.Gameplay
             public void Execute(int index)
             {
                 var input = Inputs[index];
+                if (input.ResidentTap)
+                {
+                    var model = TapModels[input.TapIndex];
+                    input.Data.Transform = Projection.Evaluate(model, out float position, out float alpha, out float length);
+                    input.Data.Options.y = alpha;
+                    input.TapGeometry = new Vector2(position / 1000f, length);
+                    if (position > 100000 || position < -100000)
+                    {
+                        var hidden = Keys[index]; hidden.Culled = true; Keys[index] = hidden;
+                        Geometry[index] = default;
+                        return;
+                    }
+                    Inputs[index] = input;
+                }
                 if (input.Connection)
                 {
                     Matrix4x4 parent = input.Data.Transform;
@@ -143,7 +163,13 @@ namespace Arcade.Gameplay
             [ReadOnly] public NativeArray<FrameInput> Inputs;
             [ReadOnly] public NativeArray<SortKey> Keys;
             [WriteOnly] public NativeArray<NoteInstance> Output;
-            public void Execute(int index) => Output[index] = Inputs[Keys[index].Index].Data;
+            [WriteOnly] public NativeArray<TapFrame> TapFrames;
+            public void Execute(int index)
+            {
+                var input = Inputs[Keys[index].Index];
+                if (!input.ResidentTap) Output[index] = input.Data;
+                TapFrames[index] = new TapFrame { Id = (uint)input.TapIndex, Position = input.TapGeometry.x, Length = input.TapGeometry.y };
+            }
         }
     }
 }

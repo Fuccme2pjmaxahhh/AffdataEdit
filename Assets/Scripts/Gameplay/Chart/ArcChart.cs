@@ -507,9 +507,11 @@ namespace Arcade.Gameplay.Chart
 	public class ArcTap : ArcNote, IIntoRawItem, IHasTimingGroup, ISetableTimingGroup
 	{
         internal Matrix4x4 RenderMatrix;
+        internal int ResidentIndex = -1, GpuPresentationFrame = -1;
 		private int track;
-        public int Track { get => track; set { track = value; FloatLane = null; } }
-        public float? FloatLane;
+        public int Track { get => track; set { track = value; FloatLane = null; ArcNoteRenderer.UpdateResidentTap(this); } }
+        private float? floatLane;
+        public float? FloatLane { get => floatLane; set { if (floatLane == value) return; floatLane = value; ArcNoteRenderer.UpdateResidentTap(this); } }
         // Kept so the chart saves unchanged; drawing still uses the default size.
         public float Width = 1;
         public bool IsMine;
@@ -549,7 +551,12 @@ namespace Arcade.Gameplay.Chart
 		}
 
 		public float Alpha { get; set; }
-		public override bool Selected { get; set; }
+		private bool selected;
+        public override bool Selected
+        {
+            get => selected;
+            set { if (selected == value) return; selected = value; ArcNoteRenderer.UpdateResidentTap(this); }
+        }
 		public override void Destroy()
 		{
 			base.Destroy();
