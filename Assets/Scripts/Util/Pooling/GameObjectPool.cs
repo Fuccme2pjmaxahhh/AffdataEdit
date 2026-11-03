@@ -14,6 +14,7 @@ namespace Arcade.Util.Pooling
 		private GameObject prefab;
 		private Transform root;
 		private List<TComponent> pool = new List<TComponent>();
+        private int nextSearch;
 		public GameObjectPool(GameObject prefab, Transform root, int initialCapacity)
 		{
 			this.prefab = prefab;
@@ -33,14 +34,16 @@ namespace Arcade.Util.Pooling
 		public delegate void Initializer(TComponent component);
 		public TComponent Get(Initializer initializer)
 		{
-			foreach (TComponent component in pool)
-			{
-				if (component.Available)
-				{
-					initializer(component);
-					return component;
-				}
-			}
+            // Continue after the last rental instead of rescanning the busy prefix for every hit.
+            int count = pool.Count;
+            for (int visited = 0; visited < count; visited++)
+            {
+                if (nextSearch >= count) nextSearch = 0;
+                TComponent component = pool[nextSearch++];
+                if (!component.Available) continue;
+                initializer(component);
+                return component;
+            }
 			TComponent newComponent = ExpandAndGetNew();
 			initializer(newComponent);
 			return newComponent;

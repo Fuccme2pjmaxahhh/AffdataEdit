@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Arcade.Util.Pooling;
@@ -9,18 +10,35 @@ namespace Arcade.Gameplay
 	public class ArcTapNoteEffectComponent : MonoBehaviour, IPoolable
 	{
 		public bool Available { get; private set; } = true;
+        private double endTime;
 		public ParticleSystem Effect;
 		public Texture2D Texture;
 		[SerializeField] private bool isSfx;
 		[SerializeField] private bool useConflictBlend;
 		private Material material;
+        private sealed class SharedMaterial
+        {
+            public Material Material;
+            public int Users;
+        }
+        // All instances of a pool receive the same skin/blend updates from ArcEffectManager.
+        private static readonly Dictionary<(Material, bool), SharedMaterial> sharedMaterials = new Dictionary<(Material, bool), SharedMaterial>();
+        private (Material, bool) materialKey;
+        private SharedMaterial sharedMaterial;
         private CancellationTokenSource effectCancellation;
 
 		private void Awake()
 		{
 			Effect.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
 			var renderer = Effect.GetComponent<ParticleSystemRenderer>();
-			material = new Material(renderer.sharedMaterial);
+            materialKey = (renderer.sharedMaterial, isSfx);
+            if (!sharedMaterials.TryGetValue(materialKey, out sharedMaterial))
+            {
+                sharedMaterial = new SharedMaterial { Material = new Material(renderer.sharedMaterial) };
+                sharedMaterials.Add(materialKey, sharedMaterial);
+            }
+            sharedMaterial.Users++;
+            material = sharedMaterial.Material;
 			renderer.sharedMaterial = material;
 			renderer.sortingLayerName = "Effect";
 			renderer.renderingLayerMask = 1u & ~ArcGameplayManager.Instance.SelectionLayerMask;
@@ -39,7 +57,8 @@ namespace Arcade.Gameplay
 
 		public void PlayAt(Vector3 pos)
 		{
-			Available = false;
+            bool startLifetime = Available;
+            Available = false;
 			var camera = ArcEffectManager.Instance.EffectPlane.ReferenceCamera;
 			transform.SetPositionAndRotation(pos, camera.transform.rotation);
 			float depth = Vector3.Dot(pos - camera.transform.position, camera.transform.forward);
@@ -48,16 +67,19 @@ namespace Arcade.Gameplay
 			var main = Effect.main;
 			main.startSize = 9.5f * 1.5f * 1.8f * height / 40f * Mathf.Min(camera.aspect / (16f / 9), 1);
 			Effect.Emit(new ParticleSystem.EmitParams { position = pos, applyShapeToPosition = true }, 1);
-			effectCancellation?.Cancel();
-            effectCancellation = CancellationTokenSource.CreateLinkedTokenSource(destroyCancellationToken);
-            WaitForEndAsync(effectCancellation).Forget();
+            endTime = Time.timeAsDouble + Effect.main.startLifetime.constantMax;
+            if (startLifetime)
+            {
+                effectCancellation = CancellationTokenSource.CreateLinkedTokenSource(destroyCancellationToken);
+                WaitForEndAsync(effectCancellation).Forget();
+            }
 		}
 
         private async UniTask WaitForEndAsync(CancellationTokenSource cancellation)
         {
             try
             {
-                await UniTask.WaitForSeconds(Effect.main.startLifetime.constantMax, cancellationToken: cancellation.Token);
+                await UniTask.WaitUntil(() => Time.timeAsDouble >= endTime, cancellationToken: cancellation.Token);
                 Effect.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
                 Available = true;
             }
@@ -92,7 +114,13 @@ namespace Arcade.Gameplay
 
 		private void OnDestroy()
 		{
-			if (material) Destroy(material);
+            if (sharedMaterial == null) return;
+            sharedMaterial.Users--;
+            if (sharedMaterial.Users == 0)
+            {
+                sharedMaterials.Remove(materialKey);
+                Destroy(sharedMaterial.Material);
+            }
 		}
 	}
 }

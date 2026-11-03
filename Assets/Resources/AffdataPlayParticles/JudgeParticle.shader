@@ -113,6 +113,9 @@ Shader "Gameplay/JudgeParticle"
                 col *= i.color;
             #endif
 
+                // Zero-alpha output is a blend identity in both Light and Conflict modes.
+                // Reject it before the dense hit quads reach the framebuffer blending stage.
+                clip(col.a == 0 ? -1 : 1);
                 col.rgb *= col.a;
                 return col;
             }
@@ -211,6 +214,9 @@ Shader "Gameplay/JudgeParticle"
                 col *= i.color;
                 #endif
 
+                // Zero-alpha output is a blend identity in both Light and Conflict modes.
+                // Reject it before the dense hit quads reach the framebuffer blending stage.
+                clip(col.a == 0 ? -1 : 1);
                 col.rgb *= col.a;
                 return col;
             }

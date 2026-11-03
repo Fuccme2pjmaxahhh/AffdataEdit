@@ -161,6 +161,10 @@ namespace Arcade.Gameplay
 
 		private GameObjectPool<ArcTapNoteEffectComponent> tapNoteEffectPool;
 		private GameObjectPool<ArcTapNoteEffectComponent> sfxTapNoteEffectPool;
+        // Co-located hits emitted in the same frame retain every particle, but share one renderer.
+        private readonly Dictionary<(Vector3, Quaternion), ArcTapNoteEffectComponent> groundEmitters
+            = new Dictionary<(Vector3, Quaternion), ArcTapNoteEffectComponent>();
+        private int groundEmitterFrame = -1;
 
 		void Update()
 		{
@@ -195,6 +199,27 @@ namespace Arcade.Gameplay
 
 		public void PlayTapNoteEffectAt(Vector2 pos, bool isArc = false, string arcTapEffect = "none")
 		{
+            if (!isArc && !arcTapEffect.EndsWith("_wav"))
+            {
+                if (groundEmitterFrame != Time.frameCount)
+                {
+                    groundEmitters.Clear();
+                    groundEmitterFrame = Time.frameCount;
+                }
+                Vector3 world = EffectPlane.GetPositionOnPlane(pos);
+                var key = (world, EffectPlane.ReferenceCamera.transform.rotation);
+                if (groundEmitters.TryGetValue(key, out var emitter) && emitter && !emitter.Available)
+                {
+                    emitter.PlayAt(world);
+                }
+                else
+                {
+                    var effect = tapNoteEffectPool.Get(item => item.PlayAt(world));
+                    groundEmitters[key] = effect;
+                }
+                PlayTapSound();
+                return;
+            }
 			if (arcTapEffect.EndsWith("_wav"))
 			{
 				sfxTapNoteEffectPool.Get((effect) =>
