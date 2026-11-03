@@ -122,23 +122,46 @@ namespace Arcade.Gameplay
             float spriteHeight = DefaultSprite ? DefaultSprite.bounds.size.y : 1f;
             Matrix4x4 basis = parentMatrix * Matrix4x4.TRS(Vector3.zero, rotation, new Vector3(-widthScale, 1, 1));
             Vector4 lengthAxis = basis.GetColumn(1);
+            int currentTiming = ArcGameplayManager.Instance.ChartTiming;
+            bool editorCamera = ArcCameraManager.Instance.EditorCamera;
+            var defaultTimings = timing.GetTiming(null);
+            bool constantDefault = defaultTimings.Count == 1;
+            float defaultBpm = constantDefault ? defaultTimings[0].Bpm : 0;
+            float baseBpm = timing.BaseBpm, velocity = timing.SettingVelocity;
+            float defaultVelocity = defaultBpm / baseBpm * velocity;
 
 			foreach (var t in renderCandidates)
 			{
-				if (!timing.ShouldTryRender(t.Timing, t.TimingGroup) || t.Judged || t.GroupHide())
+				// The index has already checked this group's visible time range.
+                if (unchecked(t.Timing + ArcTimingManager.LostDelay) < currentTiming || t.Judged || t.GroupHide())
 				{
 					t.Enable = false;
 					continue;
 				}
-                var key = (t.TimingGroup, t.Timing);
-                if (!framePositions.TryGetValue(key, out var framePosition))
+                (float position, float length) framePosition;
+                if (constantDefault && t.TimingGroup == null)
                 {
-                    float notePosition = timing.CalculatePositionByTiming(t.Timing, t.TimingGroup);
-                    float noteLength = ArcCameraManager.Instance.EditorCamera ? 2f
-                        : NoteMeshDefinitions.TapLength(notePosition / 1000f,
-                            timing.CalculateVelocityAtTiming(t.Timing, t.TimingGroup)) / spriteHeight;
-                    framePosition = (notePosition, noteLength);
-                    framePositions.Add(key, framePosition);
+                    // Keep the integration order, including reversed and unchecked time differences.
+                    bool reversed = currentTiming > t.Timing;
+                    int start = reversed ? t.Timing : currentTiming;
+                    int end = reversed ? currentTiming : t.Timing;
+                    float constantPosition = 0;
+                    constantPosition += unchecked(end - start) * defaultBpm / baseBpm * velocity;
+                    if (reversed) constantPosition = -constantPosition;
+                    framePosition = (constantPosition, editorCamera ? 2f : NoteMeshDefinitions.TapLength(constantPosition / 1000f, defaultVelocity) / spriteHeight);
+                }
+                else
+                {
+                    var key = (t.TimingGroup, t.Timing);
+                    if (!framePositions.TryGetValue(key, out framePosition))
+                    {
+                        float notePosition = timing.CalculatePositionByTiming(t.Timing, t.TimingGroup);
+                        float noteLength = editorCamera ? 2f
+                            : NoteMeshDefinitions.TapLength(notePosition / 1000f,
+                                timing.CalculateVelocityAtTiming(t.Timing, t.TimingGroup)) / spriteHeight;
+                        framePosition = (notePosition, noteLength);
+                        framePositions.Add(key, framePosition);
+                    }
                 }
                 t.Position = framePosition.position;
                 if (t.Position > 100000 || t.Position < -100000)
@@ -153,9 +176,10 @@ namespace Arcade.Gameplay
                 float lengthScale = framePosition.length;
                 // Only translation and length vary; reuse the rotated/scaled parent basis.
                 Matrix4x4 matrix = basis;
-                matrix.SetColumn(1, lengthAxis * lengthScale);
+                matrix.m01 = lengthAxis.x * lengthScale; matrix.m11 = lengthAxis.y * lengthScale;
+                matrix.m21 = lengthAxis.z * lengthScale; matrix.m31 = lengthAxis.w * lengthScale;
                 Vector3 world = parentMatrix.MultiplyPoint3x4(position);
-                matrix.SetColumn(3, new Vector4(world.x, world.y, world.z, 1));
+                matrix.m03 = world.x; matrix.m13 = world.y; matrix.m23 = world.z; matrix.m33 = 1;
                 t.RenderMatrix = matrix;
 				t.Alpha = pos < 90 ? 1 : (100 - pos) / 10f;
 			}

@@ -98,25 +98,30 @@ namespace Arcade.Gameplay
         private ArcNote RaycastNote(Ray ray, ref float closest, bool tracesOnly, bool collectAll = false, ArcNote onlyNote = null)
         {
             ArcNote result = null;
-            foreach (var item in items)
+            for (int itemIndex = 0; itemIndex < items.Count; itemIndex++)
             {
+                var geometryState = preparedGeometry[itemIndex];
+                if (!geometryState.Visible) continue;
+                var item = items[itemIndex];
+                var data = nativeInputs[itemIndex].Data;
+                Bounds bounds = geometryState.Bounds;
                 if (onlyNote != null && item.Note != onlyNote) continue;
-                if (item.Note == null || (!item.Note.Enable && !(item.Note is ArcSlide)) || item.Data.Options.y <= 0) continue;
+                if (item.Note == null || (!item.Note.Enable && !(item.Note is ArcSlide)) || data.Options.y <= 0) continue;
                 if (tracesOnly && !(item.Note is ArcArc arc && arc.IsVoid)) continue;
                 bool alreadyHit = pickingHits.TryGetValue(item.Note, out var previous);
                 float itemDistance = collectAll && alreadyHit ? previous.Distance : closest;
-                if (!item.Bounds.IntersectRay(ray, out float entry)
-                    || (!item.Bounds.Contains(ray.origin) && entry > itemDistance)) continue;
+                if (!bounds.IntersectRay(ray, out float entry)
+                    || (!bounds.Contains(ray.origin) && entry > itemDistance)) continue;
                 var geometry = GetPickingMesh(item.Mesh);
                 var triangles = geometry.Triangles[item.Submesh];
-                Matrix4x4 inverse = item.Data.Transform.inverse;
+                Matrix4x4 inverse = data.Transform.inverse;
                 // Zero-duration Arc bodies flatten into XY, so their transform has no inverse.
                 // Intersect their rendered triangles in world space instead.
                 bool worldSpace = inverse == Matrix4x4.zero;
                 Vector3 origin = worldSpace ? ray.origin : inverse.MultiplyPoint3x4(ray.origin);
                 // Do not normalize: the intersection parameter must stay in world units under scaling.
                 Vector3 direction = worldSpace ? ray.direction : inverse.MultiplyVector(ray.direction);
-                int mode = (int)item.Data.Options.x;
+                int mode = (int)data.Options.x;
                 bool hitItem = false;
                 for (int i = 0; i < triangles.Count; i += 3)
                 {
@@ -124,9 +129,9 @@ namespace Arcade.Gameplay
                     Vector3 va = geometry.Vertices[a], vb = geometry.Vertices[b], vc = geometry.Vertices[c];
                     if (worldSpace)
                     {
-                        va = item.Data.Transform.MultiplyPoint3x4(va);
-                        vb = item.Data.Transform.MultiplyPoint3x4(vb);
-                        vc = item.Data.Transform.MultiplyPoint3x4(vc);
+                        va = data.Transform.MultiplyPoint3x4(va);
+                        vb = data.Transform.MultiplyPoint3x4(vb);
+                        vc = data.Transform.MultiplyPoint3x4(vc);
                     }
                     if (!IntersectTriangle(origin, direction, va, vb, vc,
                         out float distance, out Vector2 barycentric) || distance >= itemDistance) continue;
@@ -134,7 +139,7 @@ namespace Arcade.Gameplay
                     {
                         float v = geometry.Uv[a].y * (1 - barycentric.x - barycentric.y)
                             + geometry.Uv[b].y * barycentric.x + geometry.Uv[c].y * barycentric.y;
-                        if (v < item.Data.ClipHeight.x || v > item.Data.ClipHeight.y) continue;
+                        if (v < data.ClipHeight.x || v > data.ClipHeight.y) continue;
                     }
                     if (item.Note is ArcSlide && !ArcSlideVisual.IsWithinRenderDistance(ray.GetPoint(distance).z)) continue;
                     itemDistance = distance;

@@ -33,10 +33,8 @@ namespace Arcade.Gameplay
         private struct Item
         {
             public ArcNote Note;
-            public Bounds Bounds;
             public Mesh Mesh;
             public Texture Texture;
-            public NoteInstance Data;
             public int Submesh, Layer, LayerValue, Order, Queue, DepthTest, DepthWrite;
             public bool SameDraw(Item other) => ReferenceEquals(Mesh, other.Mesh) && ReferenceEquals(Texture, other.Texture) && Submesh == other.Submesh
                 && Layer == other.Layer && Queue == other.Queue
@@ -51,7 +49,6 @@ namespace Arcade.Gameplay
             public readonly MaterialPropertyBlock SelectionProperties = new MaterialPropertyBlock();
         }
         private readonly List<Item> items = new List<Item>();
-        private readonly List<NoteInstance> instances = new List<NoteInstance>();
         private readonly List<GraphicsBuffer.IndirectDrawIndexedArgs> commands = new List<GraphicsBuffer.IndirectDrawIndexedArgs>();
         private readonly List<Draw> draws = new List<Draw>();
         private readonly Dictionary<(int,int,int), Material> materials = new Dictionary<(int,int,int), Material>();
@@ -68,7 +65,7 @@ namespace Arcade.Gameplay
         private Color connectionColor;
         private readonly Dictionary<ArcArcTap, Vector2> connectionPositions = new Dictionary<ArcArcTap, Vector2>();
         private int frame = -1;
-        public int VisibleInstanceCount => instances.Count;
+        public int VisibleInstanceCount => visibleItemCount;
         public int DrawCount => commands.Count;
         private static readonly int NotesId = Shader.PropertyToID("_Notes"), OffsetId = Shader.PropertyToID("_NoteOffset"),
             SelectionId = Shader.PropertyToID("_NoteSelection"), TextureId = Shader.PropertyToID("_MainTex");
@@ -78,7 +75,7 @@ namespace Arcade.Gameplay
         {
 
             frame = Time.frameCount;
-            items.Clear(); instances.Clear(); commands.Clear();
+            items.Clear(); commands.Clear(); visibleItemCount = 0;
             meshBounds.Clear(); sortingLayers.Clear();
             if (pickingChart != ArcGameplayManager.Instance.Chart)
             {
@@ -96,6 +93,7 @@ namespace Arcade.Gameplay
             undoTapSkin = Matrix4x4.Scale(new Vector3(-1f / ArcTapNoteManager.Instance.WidthScale, 1, 1));
             connectionColor = ArcArcManager.Instance.ConnectionColor;
             connectionPositions.Clear();
+            PrepareStyles();
             ArcTimingManager.Instance.SubmitBeatlines(this, cameraForFrame);
             Arcade.Compose.AdeGridManager.Instance?.SubmitGrid(this, cameraForFrame);
             var taps = ArcTapNoteManager.Instance;
@@ -127,20 +125,25 @@ namespace Arcade.Gameplay
         {
             if (!tap.Enable) return;
             var manager = ArcArcManager.Instance;
-            Matrix4x4 parent = tap.ParentMatrix;
+            Matrix4x4 parent = tap.GetParentMatrix(arcLayerMatrix);
             Mesh mesh = tap.Arc.IsSfx ? ArcNoteMeshes.Sfx : ArcNoteMeshes.Cube;
             var data = NoteInstance.Create(parent * tap.ModelMatrix, 3, tap.Selected);
             data.HighColor = tap.TintColor;
             data.Options.y = tap.Alpha;
-            for (int submesh = 0; submesh < mesh.subMeshCount; submesh++)
+            for (int submesh = 0, count = tap.Arc.IsSfx ? sfxTapSubmeshes : normalTapSubmeshes; submesh < count; submesh++)
             {
                 Material material = tap.Arc.IsSfx ? (submesh == 0 ? manager.SfxArcTapNoteMaterial : manager.SfxArcTapCoreMaterial) : manager.ArcTapMaterial;
-                data.UvTransform = TextureTransform(material);
-                Submit(mesh, material.mainTexture, data, "ArcTap", 0, material.renderQueue, submesh, depthWrite: 1, note: tap);
+                var style = GetStyle(material);
+                data.UvTransform = style.Uv;
+                Submit(mesh, style.Texture, data, "ArcTap", 0, style.Queue, submesh, depthWrite: 1, note: tap);
             }
-            var shadow = manager.ArcTapShadowStyle(tap.Arc.IsSfx);
-            if (tap.TryGetShadowMatrix(manager.ArcTapShadowSkin, shadow.transform.localRotation, out Matrix4x4 local))
+            var shadow = tap.Arc.IsSfx ? sfxTapShadow : normalTapShadow;
+            if (manager.ArcTapShadowSkin)
+            {
+                var style = GetStyle(shadow);
+                Matrix4x4 local = tap.GetShadowMatrix(GetSprite(manager.ArcTapShadowSkin).Bounds, style.Rotation);
                 SubmitSprite(manager.ArcTapShadowSkin, parent * local, tap.ShadowColor, shadow, shadow.sortingOrder, 0);
+            }
         }
 
         private void SubmitConnections(ArcTap tap)
@@ -161,13 +164,10 @@ namespace Arcade.Gameplay
                     position = arcTap.GetConnectionPosition();
                     connectionPositions.Add(arcTap, position);
                 }
-                Vector3 end = parent.MultiplyPoint3x4(new Vector3(position.x - tap.WorldX, 0, position.y));
-                Vector3 direction = end - start;
-                float length = direction.magnitude;
-                if (length <= 0.000001f) continue;
-                var data = NoteInstance.Create(ConnectionTransform(start, direction, normal, length), 0);
+                var data = NoteInstance.Create(parent, 0);
                 data.HighColor = color;
-                Submit(connectionMesh, null, data, "Arc", 3);
+                Submit(connectionMesh, null, data, "Arc", 3, connection: true,
+                    connectionEnd: new Vector3(position.x - tap.WorldX, 0, position.y), connectionNormal: normal);
             }
         }
 
@@ -203,11 +203,13 @@ namespace Arcade.Gameplay
         internal void SubmitSprite(Sprite sprite, Matrix4x4 matrix, Color color, SpriteRenderer style, int order, int mode, bool always = false)
         {
             if (!sprite) return;
-            matrix *= Matrix4x4.Scale(new Vector3(style.flipX ? -1 : 1, style.flipY ? -1 : 1, 1));
+            var cached = GetStyle(style);
+            var geometry = GetSprite(sprite);
+            matrix *= cached.Flip;
             var data = NoteInstance.Create(matrix, mode);
             data.HighColor = color;
-            Submit(ArcNoteMeshes.Sprite(sprite), sprite.texture, data, style.sortingLayerName,
-                order, style.sharedMaterial.renderQueue, depthTest: always ? 8 : 4);
+            Submit(geometry.Mesh, geometry.Texture, data, cached.Layer,
+                order, cached.Queue, depthTest: always ? 8 : 4);
         }
 
         internal void SubmitHead(ArcArcVisual arc, Matrix4x4 parent, Texture texture)
@@ -234,14 +236,8 @@ namespace Arcade.Gameplay
             data.Overlap = overlap;
             Submit(mesh, texture, data, layer, order, queue, note: note);
         }
-        private static Vector4 TextureTransform(Material material)
-        {
-            Vector2 scale = material.mainTextureScale, offset = material.mainTextureOffset;
-            return new Vector4(scale.x,scale.y,offset.x,offset.y);
-        }
-
-        internal void Submit(Mesh mesh, Texture texture, NoteInstance data, string layer, int order,
-            int queue = 3000, int submesh = 0, int depthWrite = 0, int depthTest = 4, int? arcSortKey = null, ArcNote note = null)
+        internal void Submit(Mesh mesh, Texture texture, in NoteInstance data, string layer, int order,
+            int queue = 3000, int submesh = 0, int depthWrite = 0, int depthTest = 4, int? arcSortKey = null, ArcNote note = null, bool connection = false, Vector3 connectionEnd = default, Vector3 connectionNormal = default)
         {
             // Shared meshes and sorting layers need one native lookup per frame, not per segment.
             if (!meshBounds.TryGetValue(mesh, out var localBounds))
@@ -249,31 +245,19 @@ namespace Arcade.Gameplay
                 localBounds = mesh.bounds;
                 meshBounds.Add(mesh, localBounds);
             }
-            Bounds bounds = TransformBounds(localBounds, data.Transform);
-            if (!GeometryUtility.TestPlanesAABB(frustum, bounds)) return;
             if (!sortingLayers.TryGetValue(layer, out var sortingLayer))
             {
                 int id = SortingLayer.NameToID(layer);
                 sortingLayer = (id, SortingLayer.GetLayerValueFromID(id));
                 sortingLayers.Add(layer, sortingLayer);
             }
-            float distance = orthographic ? Vector3.Dot(bounds.center - cameraPosition, cameraForward)
-                : (bounds.center - cameraPosition).sqrMagnitude;
             EnsureSortCapacity(items.Count + 1);
+            frameInputs[items.Count] = new FrameInput { Data = data, LocalBounds = localBounds, Connection = connection, ConnectionEnd = connectionEnd, ConnectionNormal = connectionNormal };
             sortKeys[items.Count] = new SortKey { Index = items.Count, LayerValue = sortingLayer.value, Order = order, Queue = queue,
-                Distance = distance, PrimaryDistance = layer == "Arc" ? distance : 0,
-                ArcFace = arcSortKey.HasValue, ArcKey = arcSortKey.GetValueOrDefault() };
-            items.Add(new Item { Note = note, Bounds = bounds, Mesh = mesh, Texture = texture ? texture : whiteTexture, Data = data,
+                DistanceOrdered = layer == "Arc", ArcFace = arcSortKey.HasValue, ArcKey = arcSortKey.GetValueOrDefault() };
+            items.Add(new Item { Note = note, Mesh = mesh, Texture = texture ? texture : whiteTexture,
                 Layer = sortingLayer.id, LayerValue = sortingLayer.value, Order = order, Queue = queue,
                 Submesh = submesh, DepthWrite = depthWrite, DepthTest = depthTest });
-        }
-        private static Bounds TransformBounds(Bounds bounds, Matrix4x4 matrix)
-        {
-            Vector3 x = matrix.MultiplyVector(new Vector3(bounds.extents.x,0,0));
-            Vector3 y = matrix.MultiplyVector(new Vector3(0,bounds.extents.y,0));
-            Vector3 z = matrix.MultiplyVector(new Vector3(0,0,bounds.extents.z));
-            return new Bounds(matrix.MultiplyPoint3x4(bounds.center), 2 * new Vector3(
-                Mathf.Abs(x.x)+Mathf.Abs(y.x)+Mathf.Abs(z.x), Mathf.Abs(x.y)+Mathf.Abs(y.y)+Mathf.Abs(z.y), Mathf.Abs(x.z)+Mathf.Abs(y.z)+Mathf.Abs(z.z)));
         }
         private Material GetMaterial(Item item)
         {
@@ -305,7 +289,7 @@ namespace Arcade.Gameplay
             // Sort compact keys, keeping matrices and instance data out of the sort's copies.
             SortVisibleItems();
             // Keep transparent order: adjacent compatible items can share a draw even across sort orders.
-            for (int start = 0; start < items.Count;)
+            for (int start = 0; start < visibleItemCount;)
             {
                 Item item = items[sortKeys[start].Index];
                 int command = commands.Count;
@@ -315,10 +299,9 @@ namespace Arcade.Gameplay
                 int end = start;
                 do
                 {
-                    var next = items[sortKeys[end].Index];
-                    instances.Add(next.Data); draw.Selected |= next.Data.Options.w > .5f;
+                    draw.Selected |= frameInputs[sortKeys[end].Index].Data.Options.w > .5f;
                     end++;
-                } while (end < items.Count && item.SameDraw(items[sortKeys[end].Index]));
+                } while (end < visibleItemCount && item.SameDraw(items[sortKeys[end].Index]));
                 commands.Add(new GraphicsBuffer.IndirectDrawIndexedArgs {
                     indexCountPerInstance = item.Mesh.GetIndexCount(item.Submesh), instanceCount = (uint)(end-start),
                     startIndex = item.Mesh.GetIndexStart(item.Submesh), baseVertexIndex = item.Mesh.GetBaseVertex(item.Submesh), startInstance = 0 });
@@ -326,9 +309,10 @@ namespace Arcade.Gameplay
                 draw.SelectionProperties.SetInt(OffsetId, start);
                 start = end;
             }
-            EnsureBuffer(ref instanceBuffer, GraphicsBuffer.Target.Structured, instances.Count, Marshal.SizeOf<NoteInstance>());
+            if (visibleItemCount == 0) return;
+            EnsureBuffer(ref instanceBuffer, GraphicsBuffer.Target.Structured, visibleItemCount, Marshal.SizeOf<NoteInstance>());
             EnsureBuffer(ref commandBuffer, GraphicsBuffer.Target.IndirectArguments, commands.Count, GraphicsBuffer.IndirectDrawIndexedArgs.size);
-            instanceBuffer.SetData(instances);
+            instanceBuffer.SetData(packedInstances, 0, 0, visibleItemCount);
             commandBuffer.SetData(commands);
             for (int i = 0; i < commands.Count; i++)
             {
@@ -382,7 +366,7 @@ namespace Arcade.Gameplay
         private void OnDestroy()
         {
             instanceBuffer?.Dispose(); commandBuffer?.Dispose();
-            if (nativeSortKeys.IsCreated) nativeSortKeys.Dispose();
+            DisposeFrameBuffers();
             foreach (var material in materials.Values) Destroy(material);
             ArcNoteMeshes.Release();
             if (Instance == this) Instance = null;

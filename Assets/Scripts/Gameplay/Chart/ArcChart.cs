@@ -786,7 +786,7 @@ namespace Arcade.Gameplay.Chart
 
 		// ArcNoteRenderer draws the model and shadow from these values, as in AffdataPlay.
 		private float rootZ;
-		internal Matrix4x4 ParentMatrix => ArcArcManager.Instance.ArcLayer.localToWorldMatrix * Matrix4x4.Translate(new Vector3(0, 0, rootZ));
+		internal Matrix4x4 GetParentMatrix(Matrix4x4 layer) => layer * Matrix4x4.Translate(new Vector3(0, 0, rootZ));
 		internal Matrix4x4 ModelMatrix
 		{
 			get
@@ -949,11 +949,8 @@ namespace Arcade.Gameplay.Chart
 
         private float shadowDepthScale = 1f;
 
-        internal bool TryGetShadowMatrix(Sprite sprite, Quaternion rotation, out Matrix4x4 matrix)
+        internal Matrix4x4 GetShadowMatrix(Bounds bounds, Quaternion rotation)
         {
-            matrix = default;
-            if (!sprite) return false;
-            Bounds bounds = sprite.bounds;
             float xScale = localScale * NoteMeshDefinitions.ArcTapShadowWidth / bounds.size.x;
             float yScale = NoteMeshDefinitions.ArcTapShadowDepth * shadowDepthScale / bounds.size.y;
             Vector3 p = localPosition;
@@ -962,8 +959,7 @@ namespace Arcade.Gameplay.Chart
             // Sprite local Y becomes world +Z. Keep its near edge at the ArcTap timing,
             // extending the far edge as speed changes instead of stretching around the centre.
             p.z -= NoteMeshDefinitions.ArcTapCenter.z + bounds.max.y * yScale;
-            matrix = Matrix4x4.TRS(p, rotation, new Vector3(xScale, yScale, 1));
-            return true;
+            return Matrix4x4.TRS(p, rotation, new Vector3(xScale, yScale, 1));
         }
 
 		internal static readonly Vector3 NormalArcTapScale = new Vector3(-4.4625f, 0.6f, -1.2f);
