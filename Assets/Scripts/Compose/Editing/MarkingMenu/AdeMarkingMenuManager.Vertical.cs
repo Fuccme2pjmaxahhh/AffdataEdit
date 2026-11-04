@@ -117,7 +117,7 @@ namespace Arcade.Compose
 			var soMore = Derived(so, ArcCurveType.So, Find(combined, "SOSI"), Find(combined, "SOSO"));
 			arc.VerticalLeaf = true;
 
-			// 颜色 derives one row per color; a fresh parent keeps 切换颜色's cycling out of hover and click.
+			// Common colors are direct choices; the remaining colors share a submenu.
 			var colors = new MarkingMenuItem[ArcColors.BlackId + 1];
 			for (int id = 0; id < colors.Length; id++)
 			{
@@ -126,14 +126,14 @@ namespace Arcade.Compose
 				colors[id].OnConfirmed.AddListener(() => create.SetArcColor(value));
 				colors[id].IconKind = () => create.ArcColor == value ? "check" : null;
 			}
-			var colorMenu = CloneVerticalItem(arc, "ContextMenuArcColors", "颜色");
-			colorMenu.VerticalSubItems = colors;
+			var colorMenu = CloneVerticalItem(arc, "ContextMenuArcColors", "其他颜色");
+			colorMenu.VerticalSubItems = new[] { colors[ArcColors.GreenId], colors[ArcColors.GrayId], colors[ArcColors.BlackId] };
 
 			arcMoreItem = CloneVerticalItem(arc, "ContextMenuArcOptions", "");
 			arcMoreItem.OnConfirmed.AddListener(arc.OnConfirmed.Invoke);
 			arcMoreItem.VerticalLeaf = false;
 			arcMoreItem.VerticalWidth = VerticalButtonWidth;
-			var items = new List<MarkingMenuItem> { isVoid, colorMenu, s, si, siMore, so, soMore, b };
+			var items = new List<MarkingMenuItem> { isVoid, colors[ArcColors.BlueId], colors[ArcColors.RedId], colorMenu, s, si, siMore, so, soMore, b };
 			items.RemoveAll(item => !item);
 			arcMoreItem.VerticalSubItems = items.ToArray();
 		}
