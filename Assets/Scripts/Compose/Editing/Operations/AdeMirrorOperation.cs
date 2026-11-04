@@ -61,7 +61,7 @@ namespace Arcade.Compose.Operation
             verticalEntry.gameObject.SetActive(false);
             convertToSlideEntry = Instantiate(Entry, Entry.transform.parent);
             convertToSlideEntry.name = "Convert Arc to Slide";
-            convertToSlideEntry.StartupText = "转换为 Slide";
+            convertToSlideEntry.StartupText = "转Slide";
             convertToSlideEntry.HasSubMenu = false;
             convertToSlideEntry.SubItems = new MarkingMenuItem[0];
             convertToSlideEntry.OnHangOver = new UnityEvent();

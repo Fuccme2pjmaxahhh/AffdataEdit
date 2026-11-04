@@ -108,7 +108,7 @@ namespace Arcade.Compose
                     {
                         choices.Add(new MenuChoice("mirror-x", "水平镜像", mirror.Entry));
                         choices.Add(new MenuChoice("mirror-y", "上下翻转", mirror.VerticalItem));
-                        choices.Add(new MenuChoice("convert-slide", "转换为 Slide", mirror.ConvertToSlideItem));
+                        choices.Add(new MenuChoice("convert-slide", "转Slide", mirror.ConvertToSlideItem));
                     }
                     else if (provider is AdeClickToCreate)
                         choices.Add(new MenuChoice("create-toggle", "点立得", create.Entry[0]));
