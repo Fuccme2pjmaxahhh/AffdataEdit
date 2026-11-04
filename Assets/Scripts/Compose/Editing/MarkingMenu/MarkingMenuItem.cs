@@ -260,8 +260,8 @@ namespace Arcade.Compose.MarkingMenu
 				return;
 			}
 			themeRevision = AdeUiTheme.Revision;
-			Background.sprite = verticalStyle ? null : AdeUiTheme.ContextMenuSurface(PointerInItem);
-			Background.type = verticalStyle ? Image.Type.Simple : Image.Type.Sliced;
+			Background.sprite = verticalStyle ? AdeUiTheme.RoundedSurface : AdeUiTheme.ContextMenuSurface(PointerInItem);
+			Background.type = Image.Type.Sliced;
 			Background.color = verticalStyle ? (PointerInItem || expanded ? AdeUiTheme.Current.Selection : Color.clear) : Color.white;
 			Background.rectTransform.sizeDelta = Vector2.zero;
 			AdeEditorText.Configure(ItemText, verticalStyle ? 26 : AdeEditorText.BodySize);
