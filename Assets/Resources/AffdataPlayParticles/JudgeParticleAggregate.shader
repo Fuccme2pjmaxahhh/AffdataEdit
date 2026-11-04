@@ -160,4 +160,6 @@ Shader "Gameplay/JudgeParticleAggregate"
         }
     }
 
+    // Platforms without framebuffer fetch use the normal particle rendering path.
+    Fallback "Gameplay/JudgeParticle"
 }
