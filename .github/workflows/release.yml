@@ -13,6 +13,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: write
+    steps:
+      - name: Delete previous workflow runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          CURRENT_RUN_ID: ${{ github.run_id }}
+        run: |
+          gh api --paginate "repos/$GH_REPO/actions/runs?per_page=100" \
+            --jq ".workflow_runs[] | select(.id < ($CURRENT_RUN_ID | tonumber)) | .id" > "$RUNNER_TEMP/old-runs.txt"
+          while read -r run_id; do
+            # Concurrency cancellation can still be finishing when this job starts.
+            for attempt in $(seq 1 60); do
+              status=$(gh api "repos/$GH_REPO/actions/runs/$run_id" --jq .status)
+              if [ "$status" = completed ]; then
+                gh api --method DELETE "repos/$GH_REPO/actions/runs/$run_id"
+                break
+              fi
+              if [ "$attempt" -eq 60 ]; then
+                echo "::error::Run $run_id did not finish cancellation within 10 minutes"
+                exit 1
+              fi
+              sleep 10
+            done
+          done < "$RUNNER_TEMP/old-runs.txt"
+
   build:
     runs-on: ubuntu-24.04
     env:
