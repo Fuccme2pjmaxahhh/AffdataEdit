@@ -19,10 +19,12 @@ namespace Arcade.Compose
             highlighted ? Current.Selection : Current.Panel, highlighted ? Current.Accent : Current.Border);
         internal static Sprite VerticalContextMenuSurface => Instance.Shape(
             "ThemeVerticalContextMenu", PanelRadius, Current.Panel, Current.Border);
+		internal static Sprite VerticalContextMenuHighlight(int corners) => Instance.Shape(
+			"ThemeVerticalContextMenuHighlight" + corners, PanelRadius, Color.white, Color.white, roundedCorners: corners);
 
 		// One geometry for the fill and its 1px inset border. Slicing preserves the radius
 		// at any panel size; 2x sampling keeps the edge smooth on scaled canvases.
-		private Sprite Shape(string name, float radius, Color fill, Color border, bool topOnly = false)
+		private Sprite Shape(string name, float radius, Color fill, Color border, bool topOnly = false, int roundedCorners = 15)
 		{
 			string key = Current.Id + "/" + name;
 			if (shapes.TryGetValue(key, out Sprite sprite)) return sprite;
@@ -36,7 +38,8 @@ namespace Arcade.Compose
 			{
 				for (int x = 0; x < size; x++)
 				{
-					float r = topOnly && y < size / 2 ? 0 : radius;
+					int corner = y >= size / 2 ? (x < size / 2 ? 1 : 2) : (x < size / 2 ? 4 : 8);
+					float r = (topOnly && y < size / 2) || (roundedCorners & corner) == 0 ? 0 : radius;
 					Vector2 q = new Vector2(Mathf.Abs((x + 0.5f) / scale - half), Mathf.Abs((y + 0.5f) / scale - half)) - Vector2.one * (half - r);
 					float distance = new Vector2(Mathf.Max(q.x, 0), Mathf.Max(q.y, 0)).magnitude + Mathf.Min(Mathf.Max(q.x, q.y), 0) - r;
 					Color color = Color.Lerp(border, fill, Mathf.Clamp01(0.5f - (distance + 1) * scale));

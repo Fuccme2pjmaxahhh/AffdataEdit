@@ -89,7 +89,7 @@ namespace Arcade.Compose
 		private void LayoutVerticalMenu(int depth, Vector2 origin, MarkingMenuItem[] items, MarkingMenuItem parent)
 		{
 			if (items.Length == 0) return;
-			const float padding = 4, rowSpacing = 4;
+			const float padding = 0, rowSpacing = 0;
 			// A row holds one item, or a left/right pair; a right item with VerticalWidth is a fixed-width button.
 			var rows = new List<(MarkingMenuItem Left, MarkingMenuItem Right)>();
 			for (int i = 0; i < items.Length; i++)
@@ -130,10 +130,12 @@ namespace Arcade.Compose
 				var (left, right) = rows[row];
 				float leftWidth = !right ? width : right.VerticalWidth > 0 ? width - right.VerticalWidth : width / 2;
 				float y = -padding - height * (row + .5f) - rowSpacing * row;
-				left.SetRowSize(leftWidth, height, row < count - 1);
+				// Only the panel's outer corners clip the edge-to-edge row highlights.
+				int corners = (row == 0 ? 3 : 0) | (row == count - 1 ? 12 : 0);
+				left.SetRowSize(leftWidth, height, row < count - 1, right ? corners & 5 : corners);
 				left.Position = topLeft + new Vector2(padding + leftWidth / 2, y);
 				if (!right) continue;
-				right.SetRowSize(width - leftWidth, height, row < count - 1);
+				right.SetRowSize(width - leftWidth, height, row < count - 1, corners & 10);
 				right.Position = topLeft + new Vector2(padding + (leftWidth + width) / 2, y);
 			}
 			var root = ArcadeComposeManager.Instance.EditorCanvas;

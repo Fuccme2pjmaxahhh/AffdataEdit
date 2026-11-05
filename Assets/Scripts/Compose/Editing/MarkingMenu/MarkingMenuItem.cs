@@ -90,6 +90,7 @@ namespace Arcade.Compose.MarkingMenu
 		private Text chevron;
 		private MotionHandle fadeMotion;
 		private int themeRevision = -1;
+		private int panelCorners;
 
 		private void Start()
 		{
@@ -178,8 +179,10 @@ namespace Arcade.Compose.MarkingMenu
 			if (IconKind != null) SetIcon(IconKind());
 			ApplyTheme();
 		}
-		internal void SetRowSize(float width, float height, bool dividerAfter = true)
+		internal void SetRowSize(float width, float height, bool dividerAfter = true, int corners = 0)
 		{
+			panelCorners = corners;
+			ApplyTheme();
 			var fitter = GetComponent<ContentSizeFitter>();
 			fitter.horizontalFit = fitter.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
 			ItemRectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
@@ -260,8 +263,10 @@ namespace Arcade.Compose.MarkingMenu
 				return;
 			}
 			themeRevision = AdeUiTheme.Revision;
-			Background.sprite = verticalStyle ? null : AdeUiTheme.ContextMenuSurface(PointerInItem);
-			Background.type = verticalStyle ? Image.Type.Simple : Image.Type.Sliced;
+			Background.sprite = verticalStyle
+				? (panelCorners == 0 ? null : AdeUiTheme.VerticalContextMenuHighlight(panelCorners))
+				: AdeUiTheme.ContextMenuSurface(PointerInItem);
+			Background.type = Background.sprite ? Image.Type.Sliced : Image.Type.Simple;
 			Background.color = verticalStyle ? (PointerInItem || expanded ? AdeUiTheme.Current.Selection : Color.clear) : Color.white;
 			Background.rectTransform.sizeDelta = Vector2.zero;
 			AdeEditorText.Configure(ItemText, verticalStyle ? 26 : AdeEditorText.BodySize);
