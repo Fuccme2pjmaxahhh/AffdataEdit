@@ -113,6 +113,9 @@ namespace Arcade.Compose.Scripting
             // The copy keeps the source card's visibility; start closed like the other cards.
             view.gameObject.SetActive(false);
             title.text = "外置脚本";
+            status.textWrappingMode = TextWrappingModes.Normal;
+            status.alignment = TextAlignmentOptions.TopLeft;
+            status.GetComponent<LayoutElement>().preferredHeight = -1;
             rowTemplate.gameObject.SetActive(false);
             foreach (Transform child in content)
                 if (child != rowTemplate.transform) Destroy(child.gameObject);

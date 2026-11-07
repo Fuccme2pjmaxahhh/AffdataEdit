@@ -34,6 +34,8 @@ namespace Arcade.Compose
             }
             if (!texture) return;
 
+            material.SetFloat("_Opacity", Mathf.Clamp01(compose.ArcadePreference.SpectrumOpacity));
+
             bool dark = ArcSkinManager.Instance.IsDarkSide;
             if (darkSide != dark)
             {

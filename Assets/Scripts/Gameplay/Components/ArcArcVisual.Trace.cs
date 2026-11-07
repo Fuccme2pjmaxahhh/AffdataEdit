@@ -81,9 +81,14 @@ namespace Arcade.Gameplay
                 segment.UseGoldTrace = UsesGoldTrace;
                 segment.HighColor = SegmentColor(currentHighColor);
                 segment.LowColor = SegmentColor(currentLowColor);
-                segment.From = 0;
-                segment.To = 1;
-                segment.Enable = !carrier && (noClip || !segment.TraceHidden);
+                // Same far limit as solid Arcs, measured along the drawn part of the segment.
+                Vector3 start = segment.TraceClippedStart ?? segment.FromPos;
+                float pos = -(RootZ + start.z), endPos = -(RootZ + segment.ToPos.z);
+                float farClip = pos == endPos ? 0 : Mathf.Clamp01((100 - pos) / (endPos - pos));
+                segment.From = pos > 100 ? farClip : 0;
+                segment.To = endPos > 100 ? farClip : 1;
+                segment.Enable = !carrier && (noClip || !segment.TraceHidden)
+                    && Mathf.Min(pos, endPos) <= 100 && Mathf.Max(pos, endPos) >= -100;
                 segment.DrawShadow = velocity > 0;
             }
 

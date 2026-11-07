@@ -126,6 +126,27 @@ namespace Arcade.Compose
                 compose.ArcadePreference.ShowSpectrum = value;
                 compose.SavePreferences();
             });
+            var brightness = Instantiate(Dialog.AdeSoundDialogContent.Instance.ChartAudioInput, parent);
+            brightness.name = "SpectrumBrightness";
+            brightness.transform.Find("Text").GetComponent<TMP_Text>().text = "频谱亮度 (%)";
+            brightness.SliderValueScale = 1;
+            brightness.NumberFormat = "0";
+            brightness.slider.Slider.minValue = 0;
+            brightness.slider.Slider.maxValue = 100;
+            brightness.slider.Slider.wholeNumbers = true;
+            brightness.SetValueWithoutNotify(compose.ArcadePreference.SpectrumOpacity * 100);
+            brightness.onValueEdited = value =>
+            {
+                if (float.IsNaN(value) || float.IsInfinity(value))
+                {
+                    brightness.SetValueWithoutNotify(compose.ArcadePreference.SpectrumOpacity * 100);
+                    return;
+                }
+                value = Mathf.Round(Mathf.Clamp(value, 0, 100));
+                compose.ArcadePreference.SpectrumOpacity = value / 100;
+                brightness.SetValueWithoutNotify(value);
+                compose.SavePreferences();
+            };
             gameObject.AddComponent<AdeAudioSpectrum>();
         }
 
