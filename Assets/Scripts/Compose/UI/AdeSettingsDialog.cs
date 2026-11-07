@@ -84,6 +84,7 @@ namespace Arcade.Compose
             checkmark = Resources.Load<Sprite>("AffdataEdit/Icons/Checkmark");
             if (Arcade.Audio.BassOutputSettings.IsWindows) AdeAudioOutputSettings.AddTo(compose);
             BuildSpectrumSetting(settings.Find("Wraper"));
+            BuildHitTypeSetting(settings.Find("Wraper"));
             BuildContextMenuSetting(settings.Find("Wraper"));
             BuildChartSortSetting(settings.Find("Wraper"));
             BuildDragEditingSettings(settings.Find("Wraper"));
@@ -112,6 +113,21 @@ namespace Arcade.Compose
 
         private void Register(Transform row, Page page) => rows.Add(new BorrowedRow
         { Row = row, Parent = row.parent, Index = row.GetSiblingIndex(), Page = page });
+
+        private void BuildHitTypeSetting(Transform parent)
+        {
+            var compose = ArcadeComposeManager.Instance;
+            var template = compose.PlaybackSyncToggle.GetComponentInParent<HorizontalLayoutGroup>(true).transform;
+            var row = AdeUiKit.CloneRow(template, parent, "ShowJudgementDetails");
+            row.GetComponentInChildren<TMP_Text>(true).text = "显示判定详情";
+            var toggle = row.GetComponentInChildren<Toggle>(true);
+            toggle.SetIsOnWithoutNotify(compose.ArcadePreference.ShowJudgementDetails);
+            toggle.onValueChanged.AddListener(value =>
+            {
+                compose.ArcadePreference.ShowJudgementDetails = value;
+                compose.SavePreferences();
+            });
+        }
 
         private void BuildSpectrumSetting(Transform parent)
         {

@@ -136,6 +136,8 @@ namespace Arcade.Gameplay
                 bool hit = slide.IsValid && game.Auto && !slide.NoInput() && !slide.GroupHide()
                     && now >= slide.Timing && now < slide.EndTiming;
                 slide.Judging = hit;
+                if (slide.IsValid && !slide.NoInput() && !slide.GroupHide())
+                    ArcEffectManager.Instance.ShowSlideHitType(slide);
                 // Sound at the group's head, or when playback starts inside an active segment.
                 // Paused scrubbing and discontinuous seeks must never produce hit sounds.
                 if (game.Auto && slide.IsValid && !slide.NoInput() && !slide.GroupHide() && !seeked

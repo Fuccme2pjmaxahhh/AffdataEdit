@@ -341,6 +341,8 @@ namespace Arcade.Gameplay
                     t.arcRenderer.Alpha = t.RenderingAlpha;
                 }
 				t.arcRenderer.UpdateArc();
+                if (!t.IsVoid && t.Judging)
+                    ArcEffectManager.Instance.ShowLongNoteHitType(t, t.arcRenderer.JudgePosition);
                 RenderingArcs.Add(t);
 			}
 			foreach (var t in flaggedArcs) t.Flag = false;

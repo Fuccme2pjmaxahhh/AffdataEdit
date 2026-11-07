@@ -31,6 +31,7 @@ namespace Arcade.Compose
 		public uint UndoBufferSize = 200;
 		public bool PlaybackSync = false;
 		public bool ShowSpectrum = false;
+		public bool ShowJudgementDetails = false;
 		public float SpectrumOpacity = 0.5f;
 		public bool KeepContextMenuOpen = true;
 		public bool VerticalContextMenu = true;
