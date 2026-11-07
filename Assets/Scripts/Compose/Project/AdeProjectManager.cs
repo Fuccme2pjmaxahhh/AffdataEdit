@@ -165,7 +165,7 @@ namespace Arcade.Compose
 			Composer.interactable = false;
 			Diff.interactable = false;
 			AdeTimingSlider.Instance.Enable = false;
-			OpenLabel.color = new Color(1, 1, 1, 1);
+			OpenLabel.gameObject.SetActive(true);
 			BaseBpm.interactable = false;
 			AudioOffset.interactable = false;
 			CurrentTimingGroup.interactable = false;
@@ -222,23 +222,32 @@ namespace Arcade.Compose
 		{
 			if (CurrentProjectMetadata == null || CurrentProjectFolder == null) return;
 			if (ArcGameplayManager.Instance.Chart == null) return;
-			CurrentProjectMetadata.LastWorkingDifficulty = CurrentDifficulty;
-			CurrentProjectMetadata.LastWorkingTiming = ArcGameplayManager.Instance.AudioTiming;
-			File.WriteAllText(ProjectMetadataFilePath, JsonConvert.SerializeObject(CurrentProjectMetadata));
-			string path = Path.Combine(CurrentProjectFolder, $"{CurrentDifficulty}.aff");
-			string backupPath = Path.Combine(ProjectBackupFolder, $"{CurrentDifficulty}_{DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss")}.aff");
-			File.Copy(path, backupPath);
-			FileStream fs = new FileStream(path, FileMode.Create);
 			try
 			{
-				ArcGameplayManager.Instance.Chart.Serialize(fs, ArcadeComposeManager.Instance.ArcadePreference.ChartSortMode);
+				// Finish serialization before touching the existing chart file.
+				using (var snapshot = new MemoryStream())
+				{
+					ArcGameplayManager.Instance.Chart.Serialize(snapshot, ArcadeComposeManager.Instance.ArcadePreference.ChartSortMode);
+					string path = Path.Combine(CurrentProjectFolder, $"{CurrentDifficulty}.aff");
+					if (File.Exists(path)) File.Copy(path, NewSnapshotPath(ProjectBackupFolder, CurrentDifficulty), true);
+					CurrentProjectMetadata.LastWorkingDifficulty = CurrentDifficulty;
+					CurrentProjectMetadata.LastWorkingTiming = ArcGameplayManager.Instance.AudioTiming;
+					File.WriteAllText(ProjectMetadataFilePath, JsonConvert.SerializeObject(CurrentProjectMetadata));
+					File.WriteAllBytes(path, snapshot.ToArray());
+				}
+				AdeToast.Instance.Show("谱面已保存");
 			}
 			catch (Exception Ex)
 			{
 				AdeBasicSingleDialogContent.Instance.Show(Ex.Message + "\n" + Ex.ToString(), "保存错误");
 			}
-			AdeToast.Instance.Show("谱面已保存");
-			fs.Close();
+		}
+
+		private static string NewSnapshotPath(string folder, int difficulty)
+		{
+			Directory.CreateDirectory(folder);
+			// Repeated saves within one second intentionally replace that snapshot.
+			return Path.Combine(folder, $"{difficulty}_{DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss", CultureInfo.InvariantCulture)}.aff");
 		}
 
 		private async UniTask AutosaveAsync()
@@ -249,17 +258,21 @@ namespace Arcade.Compose
 				if (CurrentProjectMetadata == null || CurrentProjectFolder == null) continue;
 				if (ArcGameplayManager.Instance.Chart == null) continue;
 				if (ArcGameplayManager.Instance.IsPlaying) continue;
-				string backupPath = Path.Combine(ProjectAutosaveFolder, $"{CurrentDifficulty}_{DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss")}.aff");
-				FileStream fs = new FileStream(backupPath, FileMode.Create);
 				try
 				{
-					ArcGameplayManager.Instance.Chart.Serialize(fs, ArcadeComposeManager.Instance.ArcadePreference.ChartSortMode);
+					using (var snapshot = new MemoryStream())
+					{
+						ArcGameplayManager.Instance.Chart.Serialize(snapshot, ArcadeComposeManager.Instance.ArcadePreference.ChartSortMode);
+						// The AFF writer closes its stream; ToArray remains valid after Close.
+						byte[] bytes = snapshot.ToArray();
+						using (var fs = new FileStream(NewSnapshotPath(ProjectAutosaveFolder, CurrentDifficulty), FileMode.Create, FileAccess.Write, FileShare.None))
+							fs.Write(bytes, 0, bytes.Length);
+					}
 				}
 				catch (Exception Ex)
 				{
 					AdeBasicSingleDialogContent.Instance.Show(Ex.Message + "\n" + Ex.ToString(), "自动保存错误");
 				}
-				fs.Close();
 			}
 		}
 
@@ -380,7 +393,8 @@ namespace Arcade.Compose
 			Name.interactable = true;
 			Composer.interactable = true;
 			Diff.interactable = true;
-			OpenLabel.color = new Color(0, 0, 0, 0);
+			// Visibility is project state, not a color that theme refreshes can overwrite.
+			OpenLabel.gameObject.SetActive(false);
 		}
 
 		private void LoadCover(int difficulty)

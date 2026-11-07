@@ -267,7 +267,7 @@ namespace Arcade.Compose.MarkingMenu
 				? (panelCorners == 0 ? null : AdeUiTheme.VerticalContextMenuHighlight(panelCorners))
 				: AdeUiTheme.ContextMenuSurface(PointerInItem);
 			Background.type = Background.sprite ? Image.Type.Sliced : Image.Type.Simple;
-			Background.color = verticalStyle ? (PointerInItem || expanded ? AdeUiTheme.Current.Selection : Color.clear) : Color.white;
+			Background.color = verticalStyle ? (PointerInItem || expanded ? AdeUiTheme.ContextMenuSelection : Color.clear) : Color.white;
 			Background.rectTransform.sizeDelta = Vector2.zero;
 			AdeEditorText.Configure(ItemText, verticalStyle ? 26 : AdeEditorText.BodySize);
 			ItemText.alignment = verticalStyle ? TMPro.TextAlignmentOptions.Left : TMPro.TextAlignmentOptions.Center;
@@ -278,7 +278,7 @@ namespace Arcade.Compose.MarkingMenu
 			if (shadow)
 			{
 				shadow.enabled = !verticalStyle;
-				shadow.effectColor = new Color(0, 0, 0, AdeUiTheme.Dark ? .24f : .12f);
+				shadow.effectColor = new Color(0, 0, 0, AdeUiTheme.Dark || PointerInItem ? .24f : .12f);
 			}
 		}
 

@@ -226,6 +226,7 @@ namespace Arcade.Gameplay
         }
 
         public const int ContinuityToleranceMilliseconds = 2;
+        public const double MinimumContinuityOverlap = 0.01;
         public static void UpdateConnections(IReadOnlyList<ArcSlide> slides)
         {
             // AFF saves in time order. Use stable time order here too so saving/reloading
@@ -248,18 +249,15 @@ namespace Arcade.Gameplay
                 var key = (current.TimingGroup, current.Height);
                 if (previous.TryGetValue(key, out var before))
                 {
-                    // Logical continuity does not require horizontally overlapping ranges.
-                    if (System.Math.Abs((long)current.Timing - before.EndTiming) <= ContinuityToleranceMilliseconds)
+                    var a = before.Range(1); var b = current.Range(0);
+                    float left = Mathf.Max(a.x, b.x), right = Mathf.Min(a.y, b.y);
+                    // Coordinates have three decimals; remove float noise at the strict threshold.
+                    double overlapWidth = System.Math.Round((double)right - left, 6);
+                    if (System.Math.Abs((long)current.Timing - before.EndTiming) <= ContinuityToleranceMilliseconds
+                        && overlapWidth > MinimumContinuityOverlap)
                     {
                         current.GroupRoot = before.GroupRoot;
                         before.IsGroupTail = current.IsGroupHead = false;
-                    }
-                    // Source rendering treats exact seams independently of the 2ms tolerance.
-                    if (before.EndTiming == current.Timing)
-                    {
-                        var a = before.Range(1); var b = current.Range(0);
-                        float left = Mathf.Max(a.x, b.x), right = Mathf.Min(a.y, b.y);
-                        if (left > right) left = right = 0;
                         before.Overlap.z = current.Overlap.x = left;
                         before.Overlap.w = current.Overlap.y = right;
                     }

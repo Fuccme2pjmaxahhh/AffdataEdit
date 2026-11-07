@@ -24,7 +24,7 @@ namespace Arcade.Gameplay
 			phaseShaderId = Shader.PropertyToID("_Phase");
 		}
 
-		private int settingVelocity = 30;
+		private int settingVelocity = 165;
 		public float BaseBpm = 100;
 		public Transform BeatlineLayer;
 		public GameObject BeatlinePrefab;

@@ -252,6 +252,13 @@ namespace Arcade.Compose
 
         private void Apply(Graphic graphic)
         {
+            // Playback HUD uses its own surface palette.
+            if (IsPlaybackHud(graphic)) return;
+            if (AdeToast.Instance && (graphic == AdeToast.Instance.Content || graphic == AdeToast.Instance.Background))
+            {
+                AdeToast.Instance.RefreshAppearance();
+                return;
+            }
             if (graphic.GetComponentInParent<ArcBitmapText>()) return;
             var button = graphic is Text ? graphic.GetComponentInParent<Button>(true) : null;
             if (button && button.image && button.image.sprite && button.image.sprite.name == "ThemeCloseButton")
