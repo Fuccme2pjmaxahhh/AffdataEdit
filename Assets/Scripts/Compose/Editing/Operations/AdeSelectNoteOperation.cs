@@ -134,7 +134,8 @@ namespace Arcade.Compose.Operation
 			ArcNoteRenderer.PickNotes(camera, position, hits);
 			if (hits.Count == 0) { ResetCycle(); return null; }
 			same &= hits.Count == cycleNotes.Count;
-			for (int i = 0; same && i < hits.Count; i++) same = hits[i] == cycleNotes[i];
+			// Animated Slide meshes can reorder near-equal ray depths without changing the overlapping notes.
+			for (int i = 0; same && i < hits.Count; i++) same = cycleNotes.Contains(hits[i]);
 			if (same) cycleIndex = (cycleIndex + 1) % cycleNotes.Count;
 			else
 			{

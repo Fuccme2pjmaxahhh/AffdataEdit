@@ -313,14 +313,14 @@ namespace Arcade.Aff
 				}
 				SlideHeight height = SlideHeight.Sky;
 				if (!TryInt(Value(args[0]), out int start) || !TryInt(Value(args[1]), out int end)
-					|| !TryFloat(Value(args[2]), out float startCenter) || !TryFloat(Value(args[3]), out float startWidth)
-					|| !TryFloat(Value(args[4]), out float endCenter) || !TryFloat(Value(args[5]), out float endWidth)
+					|| !SlideCoordinate(args[2], out float startCenter) || !SlideCoordinate(args[3], out float startWidth)
+					|| !SlideCoordinate(args[4], out float endCenter) || !SlideCoordinate(args[5], out float endWidth)
 					|| !SlideCurve(args[6], out int left) || !SlideCurve(args[7], out int right)
 					|| (args.Count == 9 && !SlideHeightValue(args[8], out height))
 					|| (long)end - start < 2 || (long)end - start > int.MaxValue
 					|| !ArcSlide.ValidShape(startCenter, startWidth, endCenter, endWidth, left, right))
 				{
-					chart.error.Add($"第 {Number(eventLine + 1)} 行：slide 参数无效；需要至少 2ms、有效范围、0/1/2/3（b）曲线及 0/1/2 高度。");
+					chart.error.Add($"第 {Number(eventLine + 1)} 行：slide 参数无效；需要至少 2ms、三位小数下宽度大于 0 且边界不交叉、0/1/2/3（b）曲线及 0/1/2 高度。");
 					return null;
 				}
 				return new RawAffSlide
@@ -564,6 +564,13 @@ namespace Arcade.Aff
 				}
 				return count == 2 && TryFloat(Value(values[start]), out width)
 					&& TryInt(Value(values[start + 1]), out int mineColor) && mineColor == 4 && (mine = true);
+			}
+
+			private bool SlideCoordinate(Arg arg, out float coordinate)
+			{
+				if (!TryFloat(Value(arg), out coordinate)) return false;
+				coordinate = RawAffSlide.RoundCoordinate(coordinate);
+				return true;
 			}
 
 			private bool SlideCurve(Arg arg, out int curve)

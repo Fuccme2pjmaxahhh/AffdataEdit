@@ -24,6 +24,7 @@ namespace Arcade.Gameplay
             public int Order;
         }
         private readonly Dictionary<ArcNote, PickingHit> pickingHits = new Dictionary<ArcNote, PickingHit>();
+        private readonly List<ArcNote> singlePickingResults = new List<ArcNote>();
         private static readonly Vector2[] TracePickOffsets =
         {
             new Vector2(-2, 0), new Vector2(2, 0), new Vector2(0, -2), new Vector2(0, 2)
@@ -31,19 +32,10 @@ namespace Arcade.Gameplay
 
         public static ArcNote PickNote(Camera camera, Vector2 screenPosition, float maxDistance = 120)
         {
-            var owner = BeginPicking(camera);
+            var owner = Instance;
             if (!owner) return null;
-
-            float distance = maxDistance;
-            ArcNote note = owner.RaycastNote(camera.ScreenPointToRay(screenPosition), ref distance, false);
-            if (note != null) return note;
-            // A small screen-space tolerance helps thin traces without expanding solid notes' hit areas.
-            foreach (var offset in TracePickOffsets)
-            {
-                var hit = owner.RaycastNote(camera.ScreenPointToRay(screenPosition + offset), ref distance, true);
-                if (hit != null) note = hit;
-            }
-            return note;
+            PickNotes(camera, screenPosition, owner.singlePickingResults, maxDistance);
+            return owner.singlePickingResults.Count > 0 ? owner.singlePickingResults[0] : null;
         }
 
         public static void PickNotes(Camera camera, Vector2 screenPosition, List<ArcNote> results, float maxDistance = 120)
@@ -64,6 +56,9 @@ namespace Arcade.Gameplay
 
         private int ComparePickingHits(ArcNote a, ArcNote b)
         {
+            bool firstFloorSlide = a is ArcSlide firstSlide && firstSlide.IsFloor;
+            bool secondFloorSlide = b is ArcSlide secondSlide && secondSlide.IsFloor;
+            if (firstFloorSlide != secondFloorSlide) return firstFloorSlide ? 1 : -1;
             var first = pickingHits[a];
             var second = pickingHits[b];
             int depth = first.Distance.CompareTo(second.Distance);

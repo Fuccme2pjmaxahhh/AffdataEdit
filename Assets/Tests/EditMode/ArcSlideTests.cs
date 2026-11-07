@@ -71,7 +71,7 @@ public class ArcSlideTests
         try
         {
             CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("fr-FR");
-            var raw = Parse("timing(0,120,4);timinggroup(noinput){timing(0,240,4);slide(1000,2500,0.5,0.00001,0.625,0.25,1,2);};");
+            var raw = Parse("timing(0,120,4);timinggroup(noinput){timing(0,240,4);slide(1000,2500,0.5,0.001,0.625,0.25,1,2);};");
             Assert.That(raw.error, Is.Empty);
             var chart = new ArcChart(raw);
             Assert.That(chart.Slides.Count, Is.EqualTo(1));
@@ -84,7 +84,7 @@ public class ArcSlideTests
                 var again = Parse(text.Substring(text.IndexOf("-\n", System.StringComparison.Ordinal) + 2));
                 Assert.That(again.error, Is.Empty, text);
                 var slide = new ArcChart(again).Slides[0];
-                Assert.That(slide.StartWidth, Is.EqualTo(0.00001f));
+                Assert.That(slide.StartWidth, Is.EqualTo(0.001f));
                 Assert.That(slide.EndTiming, Is.EqualTo(2500));
                 Assert.That(slide.LeftCurve, Is.EqualTo(1));
                 Assert.That(slide.RightCurve, Is.EqualTo(2));
@@ -148,11 +148,14 @@ public class ArcSlideTests
     }
 
     [Test]
-    public void WriterPreservesFullFloatPrecisionWithoutExponentTokens()
+    public void SlideCoordinatesRoundToThreeDecimalsBeforeAndAfterSaving()
     {
         var raw = new RawAffChart();
-        raw.items.Add(new RawAffSlide { Timing = 0, EndTiming = 500, StartCenter = .5f, StartWidth = 1f / 3,
-            EndCenter = .5f, EndWidth = .0000003f, LeftCurve = 0, RightCurve = 0 });
+        raw.items.Add(new RawAffSlide { Timing = 0, EndTiming = 500, StartCenter = -.1875f, StartWidth = 1f / 3,
+            EndCenter = 1.98765f, EndWidth = .12345f, LeftCurve = 0, RightCurve = 0 });
+        var original = new ArcChart(raw).Slides[0];
+        Assert.That(original.StartCenter, Is.EqualTo(-.188f));
+        Assert.That(original.EndCenter, Is.EqualTo(1.988f));
         using (var stream = new MemoryStream())
         {
             ArcaeaFileFormat.DumpToStream(stream, raw);
@@ -160,9 +163,27 @@ public class ArcSlideTests
             var parsed = Parse(text.Substring(text.IndexOf("-\n", System.StringComparison.Ordinal) + 2));
             Assert.That(parsed.error, Is.Empty, text);
             var slide = new ArcChart(parsed).Slides[0];
-            Assert.That(slide.StartWidth, Is.EqualTo(1f / 3));
-            Assert.That(slide.EndWidth, Is.EqualTo(.0000003f));
+            Assert.That(slide.StartCenter, Is.EqualTo(original.StartCenter));
+            Assert.That(slide.EndCenter, Is.EqualTo(original.EndCenter));
+            Assert.That(slide.StartWidth, Is.EqualTo(.333f));
+            Assert.That(slide.EndWidth, Is.EqualTo(.123f));
         }
+    }
+
+    [TestCase(-.188f, .625f)]
+    [TestCase(-.063f, .875f)]
+    [TestCase(1.688f, .625f)]
+    [TestCase(-2f, 4f)]
+    public void SlidesAcceptCoordinatesOutsideTheFormerBounds(float center, float width)
+    {
+        string range = center.ToString(CultureInfo.InvariantCulture) + "," + width.ToString(CultureInfo.InvariantCulture);
+        var raw = Parse($"slide(0,500,{range},{range},0,0);");
+        Assert.That(raw.error, Is.Empty);
+        var note = new ArcChart(raw).Slides[0];
+        Assert.That(note.IsValid, Is.True);
+        note.StartCenter = -2.12345f;
+        Assert.That(note.StartCenter, Is.EqualTo(-2.123f));
+        Assert.That(((ArcSlide)note.Clone()).StartCenter, Is.EqualTo(note.StartCenter));
     }
 
     [Test]

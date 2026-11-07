@@ -71,7 +71,12 @@ namespace Arcade.Aff
 		public SlideHeight Height = SlideHeight.Sky;
 		// Compatibility for callers using the former two-plane model.
 		public bool IsFloor { get => Height == SlideHeight.Ground; set => Height = value ? SlideHeight.Ground : SlideHeight.Sky; }
-		public float StartCenter, StartWidth, EndCenter, EndWidth;
+		private float startCenter, startWidth, endCenter, endWidth;
+		public float StartCenter { get => startCenter; set => startCenter = RoundCoordinate(value); }
+		public float StartWidth { get => startWidth; set => startWidth = RoundCoordinate(value); }
+		public float EndCenter { get => endCenter; set => endCenter = RoundCoordinate(value); }
+		public float EndWidth { get => endWidth; set => endWidth = RoundCoordinate(value); }
+		internal static float RoundCoordinate(float value) => (float)System.Math.Round(value, 3, System.MidpointRounding.AwayFromZero);
 	}
 	public class RawAffCamera : IRawAffNestableItem
 	{

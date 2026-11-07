@@ -200,8 +200,6 @@ namespace Arcade.Compose.Editing
             {
                 // Slide uses half the Arc's world width, and retains its endpoint width.
                 float center = .5f - (ArcAlgorithm.ArcXToWorld(coordinate.x) / slide.WorldWidth);
-                float width = end ? slide.EndWidth : slide.StartWidth;
-                center = Mathf.Clamp(center, ArcSlide.MinX + width / 2, ArcSlide.MaxX - width / 2);
                 if (end) slide.EndCenter = center; else slide.StartCenter = center;
                 if (!slide.IsValid)
                 {

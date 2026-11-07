@@ -38,10 +38,6 @@ namespace Arcade.Compose.Command
             command = null;
             long duration = (long)arc.EndTiming - arc.Timing;
             if (duration < 2 || duration > int.MaxValue) return false;
-            // Keep the horizontal trajectory; shrink the default width near the allowed edges.
-            float margin = Mathf.Min(arc.XStart - ArcSlide.MinX, ArcSlide.MaxX - arc.XStart,
-                arc.XEnd - ArcSlide.MinX, ArcSlide.MaxX - arc.XEnd);
-            float width = Mathf.Min(1f / 3, margin * 2);
             int curve = arc.CurveType == ArcCurveType.B ? 3
                 : arc.CurveType == ArcCurveType.Si || arc.CurveType == ArcCurveType.SiSi || arc.CurveType == ArcCurveType.SiSo ? 1
                 : arc.CurveType == ArcCurveType.So || arc.CurveType == ArcCurveType.SoSi || arc.CurveType == ArcCurveType.SoSo ? 2 : 0;
@@ -49,7 +45,7 @@ namespace Arcade.Compose.Command
             {
                 Timing = arc.Timing, EndTiming = arc.EndTiming, TimingGroup = arc.TimingGroup,
                 StartCenter = arc.XStart, EndCenter = arc.XEnd,
-                StartWidth = width, EndWidth = width, LeftCurve = curve, RightCurve = curve,
+                StartWidth = 1f / 3, EndWidth = 1f / 3, LeftCurve = curve, RightCurve = curve,
                 Height = SlideHeight.Sky,
             };
             if (!slide.IsValid) return false;

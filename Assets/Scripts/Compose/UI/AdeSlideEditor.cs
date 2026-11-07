@@ -50,7 +50,7 @@ namespace Arcade.Compose.UI
             rows.Add(shape);
             var help = Instantiate(editor.StartPos.GetComponentsInChildren<Text>(true)[0], editor.Timing.parent);
             help.name = "Slide range help";
-            help.text = "范围：中心,宽度；X：-0.5～1.5\n竖线随 X 网格设置；拖动四角自动吸附";
+            help.text = "范围：中心,宽度；自动保留三位小数\n竖线随 X 网格设置；拖动四角自动吸附";
             help.fontSize = 14; help.alignment = TMPro.TextAlignmentOptions.Left;
             help.gameObject.AddComponent<LayoutElement>().preferredHeight = 42;
             rows.Add(help.gameObject);
@@ -134,7 +134,7 @@ namespace Arcade.Compose.UI
         }
         private void Invalid()
         {
-            AdeToast.Instance.Show("Slide 左右边界须在 -0.5～1.5、宽度大于 0，左右边界不可交叉"); Refresh();
+            AdeToast.Instance.Show("Slide 坐标须为有限数值、三位小数下宽度大于 0，左右边界不可交叉"); Refresh();
         }
         private void Refresh()
         {

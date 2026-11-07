@@ -5,8 +5,13 @@ namespace Arcade.Gameplay.Chart
 {
     public class ArcSlide : ArcLongNote, IIntoRawItem, IHasTimingGroup, ISetableTimingGroup
     {
+        // Default preview span; authored coordinates are unrestricted.
         public const float MinX = -0.5f, MaxX = 1.5f;
-        public float StartCenter = 0.5f, StartWidth = 1f / 3, EndCenter = 0.5f, EndWidth = 1f / 3;
+        private float startCenter = 0.5f, startWidth = 0.333f, endCenter = 0.5f, endWidth = 0.333f;
+        public float StartCenter { get => startCenter; set => startCenter = RawAffSlide.RoundCoordinate(value); }
+        public float StartWidth { get => startWidth; set => startWidth = RawAffSlide.RoundCoordinate(value); }
+        public float EndCenter { get => endCenter; set => endCenter = RawAffSlide.RoundCoordinate(value); }
+        public float EndWidth { get => endWidth; set => endWidth = RawAffSlide.RoundCoordinate(value); }
         public int LeftCurve, RightCurve;
         public SlideHeight Height = SlideHeight.Sky;
         // Compatibility for callers using the former two-plane model.
@@ -48,7 +53,8 @@ namespace Arcade.Gameplay.Chart
         public bool IsValid => EndTiming > (long)Timing + 1 && (long)EndTiming - Timing <= int.MaxValue && LeftCurve >= 0 && LeftCurve <= 3 && RightCurve >= 0 && RightCurve <= 3
             && Height >= SlideHeight.Ground && Height <= SlideHeight.HighSky
             && ValidShape(StartCenter, StartWidth, EndCenter, EndWidth, LeftCurve, RightCurve);
-        public static bool ValidRange(float center, float width) => width > 0 && center - width / 2 >= MinX && center + width / 2 <= MaxX;
+        public static bool ValidRange(float center, float width) => !float.IsNaN(center) && !float.IsInfinity(center)
+            && width > 0 && !float.IsInfinity(width);
         // The two easing functions can cross even when both endpoints are valid.
         // Test the analytic extrema of width, not just sampled mesh rows.
         public static bool ValidShape(float sc, float sw, float ec, float ew, int left, int right)

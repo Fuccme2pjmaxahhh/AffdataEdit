@@ -123,7 +123,7 @@ namespace Arcade.Compose.Operation
                 if (commands.Count > 0)
                     AdeCommandManager.Instance.Add(new BatchCommand(commands.ToArray(), "Arc 转换为 Slide"));
                 if (skipped > 0)
-                    AdeToast.Instance.Show($"已跳过 {skipped} 条无法转换的 Arc（时长不足或横坐标超出 Slide 范围）");
+                    AdeToast.Instance.Show($"已跳过 {skipped} 条无法转换的 Arc（时长或坐标无效）");
                 return null;
             });
         }

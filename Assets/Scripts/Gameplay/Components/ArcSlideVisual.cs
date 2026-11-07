@@ -112,7 +112,7 @@ namespace Arcade.Gameplay
             Matrix4x4 root = Matrix4x4.Translate(new Vector3(0, note.WorldHeight, startZ));
             if (bodyVisible)
                 renderer.SubmitSlide(mesh, root, 6, bodyColor, slideParameters, missingRange, null,
-                    note.IsFloor ? "Note" : "Arc", note.IsFloor ? -1 : 0, manager.BodyMaterial.renderQueue, note.Selected, note);
+                    note.IsFloor ? "Grid" : "Arc", note.IsFloor ? 1 : 0, manager.BodyMaterial.renderQueue, note.Selected, note);
             if (shadowVisible)
                 renderer.SubmitSlide(mesh, root * Matrix4x4.Translate(new Vector3(0, -note.WorldHeight + 0.02f, 0)), 8,
                     ArcSkinManager.Instance.GetShadowTint(), Vector4.zero, Vector4.zero, null, "Shadow", 0, manager.ShadowMaterial.renderQueue, false);
@@ -122,7 +122,7 @@ namespace Arcade.Gameplay
                 if (!bracketVisible[i]) continue;
                 var matrix = root * Matrix4x4.TRS(bracketPositions[i], Quaternion.Euler(0, i == 0 ? 180 : 0, 0), BracketScale);
                 renderer.SubmitSlide(ArcNoteMeshes.Bracket, matrix, 7, bracket.HasColor("_Color") ? bracket.GetColor("_Color") : Color.white,
-                    Vector4.zero, Vector4.zero, bracket.mainTexture, "Arc", 0, bracket.renderQueue, false);
+                    Vector4.zero, Vector4.zero, bracket.mainTexture, note.IsFloor ? "Grid" : "Arc", note.IsFloor ? 1 : 0, bracket.renderQueue, false);
             }
         }
     }

@@ -25,6 +25,7 @@
 // band still renders, just with no triangle pattern in it.
 //
 // Blend is SrcAlpha/OneMinusSrcAlpha (material _SrcBlend 5 / _DstBlend 10), not additive.
+// AFF fits the quad and band to the active Slide's exact width and samples the grid in world space.
 Shader "Spc/SkyLineGlow"
 {
     Properties
@@ -73,6 +74,7 @@ Shader "Spc/SkyLineGlow"
             {
                 float4 positionCS : SV_POSITION;
                 float2 uv         : TEXCOORD0;
+                float skyX        : TEXCOORD1;
             };
 
             TEXTURE2D(_DownscaledGrid);
@@ -95,31 +97,32 @@ Shader "Spc/SkyLineGlow"
             Varyings Vert(Attributes v)
             {
                 Varyings o;
-                o.positionCS = TransformObjectToHClip(v.positionOS.xyz);
+                float3 positionWS = TransformObjectToWorld(v.positionOS.xyz);
+                o.positionCS = TransformWorldToHClip(positionWS);
                 o.uv = v.uv;
+                o.skyX = 0.5 - positionWS.x / 8.5;
                 return o;
             }
 
             float4 Frag(Varyings i) : SV_Target
             {
                 float2 uv = i.uv;
-                // The expanded quad covers sky X [-0.75, 1.75], including glow margins.
-                // Evaluate the original band in its original coordinate space, not stretched.
-                float originalU = uv.x * 2.0 - 0.5;
+                // The quad follows the active Slide's world-space endpoints every frame.
+                float originalU = i.skyX * 0.8 + 0.1;
 
                 // Rounded-box band around the active sky interval.
                 float2 p = float2((originalU - _CenterX * 0.8 - 0.1) * 40.0, uv.y * 2.0 - 1.0);
-                float2 d = abs(p) - float2(_Width * 16.8, _Opacity * 0.1) + 0.5;
+                float2 d = abs(p) - float2(_Width * 16.0, _Opacity * 0.1) + 0.5;
                 float box = length(max(d, 0.0)) + min(max(d.y, d.x), 0.0);
                 float vfade = 1.0 - 2.0 * abs(0.5 - uv.y);
                 float band = pow(saturate((1.0 - (box - 0.5)) * vfade), 0.74) * 1.05;
 
                 // The triangle grid, sharp and blurred, red channel only.
-                float g = max(SAMPLE_TEXTURE2D(_DownscaledGrid, sampler_DownscaledGrid, uv).r,
-                              SAMPLE_TEXTURE2D(_DownscaledBlurredGrid, sampler_DownscaledBlurredGrid, uv).r);
+                float2 gridUV = float2((originalU + 0.5) * 0.5, uv.y);
+                float g = max(SAMPLE_TEXTURE2D(_DownscaledGrid, sampler_DownscaledGrid, gridUV).r,
+                              SAMPLE_TEXTURE2D(_DownscaledBlurredGrid, sampler_DownscaledBlurredGrid, gridUV).r);
                 // AFF can contain disjoint simultaneous Slides. Each glow samples only its own range.
-                float skyX = (originalU - 0.1) / 0.8;
-                g *= step(_CenterX - _Width * 0.5 - 0.015, skyX) * step(skyX, _CenterX + _Width * 0.5 + 0.015);
+                g *= step(0.0, gridUV.x) * step(gridUV.x, 1.0);
                 // Source DXBC uses log/exp of the sampled grid directly: a cleared
                 // grid stays exactly zero, with no artificial epsilon haze.
                 float t = min(pow(max(g, 0.0), 0.3), 1.0);

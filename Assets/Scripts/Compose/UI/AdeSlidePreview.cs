@@ -81,10 +81,10 @@ namespace Arcade.Compose.UI
         {
             if(edit==null)return;
             RectTransformUtility.ScreenPointToLocalPointInRectangle(rectTransform,e.position,e.pressEventCamera,out var p);
-            float x=Mathf.Lerp(ArcSlide.MinX, ArcSlide.MaxX, Mathf.Clamp01((p.x-rectTransform.rect.xMin-8)/(rectTransform.rect.width-16)));
+            float x=Mathf.LerpUnclamped(ArcSlide.MinX, ArcSlide.MaxX, (p.x-rectTransform.rect.xMin-8)/(rectTransform.rect.width-16));
             float t=corner/2;var range=edit.Range(t);
-            if(corner%2==0)range.x=SnapX(x, ArcSlide.MinX, range.y-1f/48);
-            else range.y=SnapX(x, range.x+1f/48, ArcSlide.MaxX);
+            if(corner%2==0)range.x=SnapX(x, float.NegativeInfinity, range.y-1f/48);
+            else range.y=SnapX(x, range.x+1f/48, float.PositiveInfinity);
             if(corner<2){edit.StartCenter=(range.x+range.y)/2;edit.StartWidth=range.y-range.x;}else{edit.EndCenter=(range.x+range.y)/2;edit.EndWidth=range.y-range.x;}
             Note=edit;SetVerticesDirty();
         }

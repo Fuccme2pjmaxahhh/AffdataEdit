@@ -36,6 +36,7 @@ namespace Arcade.Gameplay
         private readonly ArcVisibleNoteIndex<ArcSlide> renderIndex = new ArcVisibleNoteIndex<ArcSlide>(n => n.EndTiming);
         private int previousTime = int.MinValue;
         private bool previousPlaying;
+        private uint previousSeekVersion;
 
         private void Awake()
         {
@@ -103,6 +104,7 @@ namespace Arcade.Gameplay
         public void ResetFeedback()
         {
             previousTime = int.MinValue; previousPlaying = false; grid?.ResetState(); floorGrid?.ResetState(); highGrid?.ResetState();
+            previousSeekVersion = ArcGameplayManager.Instance ? ArcGameplayManager.Instance.SeekVersion : 0;
             activeRanges.Clear(); floorRanges.Clear(); highRanges.Clear();
             foreach (var hit in feedback.Values) { hit.Opacity = 0; if (hit.Object) hit.Object.SetActive(false); }
         }
@@ -123,7 +125,9 @@ namespace Arcade.Gameplay
             if (!game || !game.IsLoaded) return;
             if (Slides.Count > 0) EnsureResources();
             int now = game.ChartTiming;
-            bool discontinuity = previousTime == int.MinValue || now < previousTime || (long)now - previousTime > 250;
+            bool startedPlaying = game.IsPlaying && !previousPlaying;
+            bool seeked = previousSeekVersion != game.SeekVersion;
+            bool discontinuity = seeked || previousTime == int.MinValue || now < previousTime || (long)now - previousTime > 250;
             if (discontinuity) ResetFeedback();
             activeRanges.Clear(); floorRanges.Clear(); highRanges.Clear(); activeSegments.Clear();
             foreach (var slide in Slides)
@@ -132,10 +136,11 @@ namespace Arcade.Gameplay
                 bool hit = slide.IsValid && game.Auto && !slide.NoInput() && !slide.GroupHide()
                     && now >= slide.Timing && now < slide.EndTiming;
                 slide.Judging = hit;
-                // One sound at a group's head, including short notes crossed in one frame.
+                // Sound at the group's head, or when playback starts inside an active segment.
                 // Paused scrubbing and discontinuous seeks must never produce hit sounds.
-                if (game.Auto && slide.IsValid && slide.IsGroupHead && !slide.NoInput() && !slide.GroupHide()
-                    && ShouldPlayHeadSound(slide.Timing, previousTime, now, previousPlaying, game.IsPlaying))
+                if (game.Auto && slide.IsValid && !slide.NoInput() && !slide.GroupHide() && !seeked
+                    && (slide.IsGroupHead && ShouldPlayHeadSound(slide.Timing, previousTime, now, previousPlaying, game.IsPlaying)
+                        || startedPlaying && hit))
                 {
                     if (slide.IsFloor) ArcEffectManager.Instance.PlayTapSound();
                     else ArcEffectManager.Instance.PlayArcSound();
@@ -173,8 +178,10 @@ namespace Arcade.Gameplay
                     (slide.IsFloor ? floorRanges : slide.Height == SlideHeight.HighSky ? highRanges : activeRanges).Add(effect.Range);
                 }
                 if (effect == null) continue;
-                effect.Object.transform.position = new Vector3(0, slide.WorldHeight + (slide.IsFloor ? .025f : 0), -.01f);
-                effect.Object.transform.localScale = new Vector3(slide.WorldWidth * 2f / .8f, slide.IsFloor ? 1f : .75f, 1);
+                float center = (effect.Range.x + effect.Range.y) / 2;
+                float width = effect.Range.y - effect.Range.x;
+                effect.Object.transform.position = new Vector3(slide.WorldX(center), slide.WorldHeight + (slide.IsFloor ? .025f : 0), -.01f);
+                effect.Object.transform.localScale = new Vector3(slide.WorldWidth * width, slide.IsFloor ? 1f : .75f, 1);
                 effect.Object.transform.rotation = Quaternion.Euler(slide.IsFloor ? 90 : 0, 180, 0);
                 effect.Renderer.sharedMaterial = slide.IsFloor ? floorGlowMaterial
                     : slide.Height == SlideHeight.HighSky ? highGlowMaterial : glowMaterial;
@@ -182,8 +189,8 @@ namespace Arcade.Gameplay
                     ? Mathf.Max(0, effect.Opacity - Time.deltaTime / 0.3f) : 0;
                 effect.Object.SetActive(effect.Opacity > 0);
                 effect.Properties.SetFloat("_Opacity", effect.Opacity);
-                effect.Properties.SetFloat("_CenterX", (effect.Range.x + effect.Range.y) / 2);
-                effect.Properties.SetFloat("_Width", effect.Range.y - effect.Range.x);
+                effect.Properties.SetFloat("_CenterX", center);
+                effect.Properties.SetFloat("_Width", width);
                 effect.Renderer.SetPropertyBlock(effect.Properties);
             }
             if (grid != null)
@@ -200,6 +207,7 @@ namespace Arcade.Gameplay
             }
             previousTime = now;
             previousPlaying = game.IsPlaying;
+            previousSeekVersion = game.SeekVersion;
         }
 
         public static bool ShouldPlayHeadSound(int start, int previous, int now, bool wasPlaying, bool playing)
