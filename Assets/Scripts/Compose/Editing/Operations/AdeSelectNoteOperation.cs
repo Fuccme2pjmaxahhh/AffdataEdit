@@ -71,9 +71,23 @@ namespace Arcade.Compose.Operation
 					}
 				}
 
-				ArcNote n = multiple || range ? ArcNoteRenderer.PickNote(camera, position) : PickCyclingNote(camera, position);
+				var create = AdeClickToCreate.Instance;
+				bool creating = !multiple && !range && ArcadeComposeManager.Instance.IsEditorMode
+					&& create.Enable && create.Mode != ClickToCreateMode.Idle;
+				ArcNote n = multiple || range || creating ? ArcNoteRenderer.PickNote(camera, position) : PickCyclingNote(camera, position);
 				if (n != null)
 				{
+					if (creating && AdeSelectionManager.Instance.SelectedNotes.Contains(n))
+					{
+						// ArcTap creation still needs the selected Arc as its host during this call.
+						var result = create.TryExecuteOperation();
+						if (result.operationExecuted)
+						{
+							AdeSelectionManager.Instance.DeselectNote(n);
+							ResetCycle();
+							return result;
+						}
+					}
 					if (!AdeInputManager.Instance.Inputs.MultipleSelection.IsPressed())
 					{
 						AdeSelectionManager.Instance.DeselectAllNotes();
