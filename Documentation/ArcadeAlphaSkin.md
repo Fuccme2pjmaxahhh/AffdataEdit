@@ -21,7 +21,7 @@ These imported resources retain their original owners and licenses; the project 
 | `Note/ArcTap/ArcTapDark.png` | `Textures/Gameplay/Note/tap_d.png` |
 | `Note/ArcBody/ArcBody.png` | `LowiroLimited/Note/Arc/arc_body.png` |
 | `Note/ArcBody/ArcBodyHighlight.png` | `LowiroLimited/Note/Arc/arc_body_hi.png` |
-| `Note/ArcCap.png` | `LowiroLimited/Note/Arc/arc_cap.png` |
+| `Note/ArcCap.png` | `Textures/Gameplay/5.0/arc_cap.png` (current 84×84 diamond; uncompressed) |
 | `Note/HeightIndicator.png` | `LowiroLimited/Note/Arc/height_indicator.png` |
 | `Particle/ParticleArc.png` | `Textures/Gameplay/Effect/particle_arc.png` |
 | `Particle/ParticleSfxTap.png` | `Scripts/Gameplay/EffectParticle/note_sfx.png` |
