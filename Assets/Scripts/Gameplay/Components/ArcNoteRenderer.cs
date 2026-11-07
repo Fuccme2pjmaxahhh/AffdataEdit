@@ -111,10 +111,14 @@ namespace Arcade.Gameplay
                 var key = new SortKey { LayerValue = layerValue, Queue = queue };
                 foreach (var tap in taps.RenderingTaps)
                 {
-                    if (residentFrame == Time.frameCount && tap.TimingGroup == null)
+                    if (tap.GpuPresentationFrame == Time.frameCount)
                         QueueResidentTap(tap, template, input, key);
                     else
-                        SubmitGroundNote(taps.GetRenderMatrix(tap), mesh, texture, tap.Selected, tap.Alpha, 0, 1, 0, queue, tap);
+                    {
+                        Sprite noteSprite = taps.GetSprite(tap);
+                        SubmitGroundNote(taps.GetRenderMatrix(tap), ArcNoteMeshes.Sprite(noteSprite), noteSprite.texture,
+                            tap.Selected, tap.Alpha, 0, 1, 0, queue, tap);
+                    }
                     SubmitConnections(tap);
                 }
             }
@@ -157,9 +161,10 @@ namespace Arcade.Gameplay
 
         private void SubmitConnections(ArcTap tap)
         {
-            if (tap.ConnectedArcTaps.Count == 0) return;
+            if (tap.ConnectedArcTaps.Count == 0 || tap.Width == 0) return;
             // Undo the skin's X flip and width scale, as the former connection prefab did.
-            Matrix4x4 parent = ArcTapNoteManager.Instance.GetRenderMatrix(tap) * undoTapSkin;
+            Matrix4x4 parent = ArcTapNoteManager.Instance.GetRenderMatrix(tap) * undoTapSkin
+                * Matrix4x4.Scale(new Vector3(1 / tap.Width, 1, 1));
             if (tap.Position > 100000 || tap.Position < -100000) return;
             Vector3 start = parent.MultiplyPoint3x4(Vector3.zero);
             // Keep the quad in the transformed connection plane, including vertical lines.

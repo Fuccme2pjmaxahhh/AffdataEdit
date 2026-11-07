@@ -38,7 +38,7 @@ Shader "Arcade/NoteIndirect"
                 float4 overlap;
             };
             #if defined(_RESIDENT_TAP)
-            struct TapModel { int timing; float x, selected, padding; };
+            struct TapModel { int timing; float x, selected, width; };
             StructuredBuffer<TapModel> _TapModels;
             struct TapFrame { uint id; float position, length, padding; };
             StructuredBuffer<TapFrame> _TapFrames;
@@ -76,7 +76,7 @@ Shader "Arcade/NoteIndirect"
                 TapModel tap = _TapModels[frame.id];
                 // CPU geometry also drives picking and culling, including reference length truncation.
                 float pos = frame.position;
-                float3 local = input.position; local.y *= frame.length;
+                float3 local = input.position; local.x *= tap.width; local.y *= frame.length;
                 float3 world = mul(_TapBasis, float4(local, 0)).xyz + mul(_TapLayer, float4(tap.x, pos, 0, 1)).xyz;
                 output.tapState = float2(pos < 90 ? 1 : (100-pos)/10, tap.selected);
                 #else

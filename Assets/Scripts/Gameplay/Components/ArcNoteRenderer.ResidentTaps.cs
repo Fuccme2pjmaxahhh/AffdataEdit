@@ -14,7 +14,7 @@ namespace Arcade.Gameplay
         internal struct TapModel
         {
             public int Timing;
-            public float X, Selected, Padding;
+            public float X, Selected, Width;
         }
         [StructLayout(LayoutKind.Sequential)]
         private struct TapFrame
@@ -38,6 +38,7 @@ namespace Arcade.Gameplay
                 float pos = position / 1000f;
                 length = EditorCamera ? 2 : NoteMeshDefinitions.TapLength(pos, Bpm / BaseBpm * Velocity) / SpriteHeight;
                 Matrix4x4 matrix = Basis;
+                matrix.SetColumn(0, matrix.GetColumn(0) * model.Width);
                 matrix.m01 *= length; matrix.m11 *= length; matrix.m21 *= length; matrix.m31 *= length;
                 Vector3 world = Layer.MultiplyPoint3x4(new Vector3(model.X, pos, 0));
                 matrix.m03 = world.x; matrix.m13 = world.y; matrix.m23 = world.z; matrix.m33 = 1;
@@ -68,7 +69,8 @@ namespace Arcade.Gameplay
                 for (int i = 0; i < taps.Count; i++)
                 {
                     taps[i].ResidentIndex = i;
-                    tapModels[i] = new TapModel { Timing = taps[i].Timing, X = taps[i].WorldX, Selected = taps[i].Selected ? 1 : 0 };
+                    tapModels[i] = new TapModel { Timing = taps[i].Timing, X = taps[i].WorldX,
+                        Selected = taps[i].Selected ? 1 : 0, Width = taps[i].Width };
                 }
                 tapModelBuffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, Math.Max(1, taps.Count), Marshal.SizeOf<TapModel>());
                 residentSource = taps; tapModelVersion = ArcEvent.RenderIndexVersion;
@@ -95,7 +97,8 @@ namespace Arcade.Gameplay
             int index = tap.ResidentIndex;
             if (index < 0 || index >= owner.tapModels.Length || index >= owner.residentSource.Count
                 || !ReferenceEquals(owner.residentSource[index], tap)) return;
-            owner.tapModels[index] = new TapModel { Timing = tap.Timing, X = tap.WorldX, Selected = tap.Selected ? 1 : 0 };
+            owner.tapModels[index] = new TapModel { Timing = tap.Timing, X = tap.WorldX,
+                Selected = tap.Selected ? 1 : 0, Width = tap.Width };
             owner.tapDirtyMin = Math.Min(owner.tapDirtyMin, index);
             owner.tapDirtyMax = Math.Max(owner.tapDirtyMax, index);
         }

@@ -126,7 +126,7 @@ namespace Arcade.Aff
 		// read back as the mine marker 4.
 		private static string FormatWidthAndMine(float width, bool mine)
 		{
-			string text = width == 1 ? "" : "," + width.ToString("0.0########", CultureInfo.InvariantCulture);
+			string text = width == 1 ? "" : "," + width.ToString("0.00", CultureInfo.InvariantCulture);
 			return mine ? text + ",4" : text;
 		}
 		private static string FormatSlideCoordinate(float value)

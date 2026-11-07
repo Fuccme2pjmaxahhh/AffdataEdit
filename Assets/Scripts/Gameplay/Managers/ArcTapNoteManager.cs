@@ -32,6 +32,14 @@ namespace Arcade.Gameplay
 		public readonly float[] Lanes = { 10.625f, 6.375f, 2.125f, -2.125f, -6.375f, -10.625f };
 		public GameObject TapNotePrefab;
         public Sprite DefaultSprite;
+        private Sprite mineLight, mineDark;
+        internal Sprite GetSprite(ArcTap tap)
+        {
+            if (!tap.IsMine) return DefaultSprite;
+            return ArcSkinManager.Instance.IsDarkSide
+                ? (mineDark ? mineDark : mineDark = Resources.Load<Sprite>("AffdataEdit/MineTapDark"))
+                : (mineLight ? mineLight : mineLight = Resources.Load<Sprite>("AffdataEdit/MineTapLight"));
+        }
         internal float WidthScale => DefaultSprite ? NoteMeshDefinitions.TapWidth / DefaultSprite.bounds.size.x : 1f;
 		public Transform NoteLayer;
 		public Material ShaderdMaterial;
@@ -142,7 +150,7 @@ namespace Arcade.Gameplay
 					t.Enable = false;
 					continue;
 				}
-                if (resident && t.TimingGroup == null)
+                if (resident && t.TimingGroup == null && !t.IsMine)
                 {
                     t.Enable = true; t.GpuPresentationFrame = Time.frameCount;
                     RenderingTaps.Add(t);
@@ -184,8 +192,16 @@ namespace Arcade.Gameplay
                 float pos = t.Position / 1000f;
                 Vector3 position = new Vector3(t.WorldX, pos, 0);
                 float lengthScale = framePosition.length;
-                // Only translation and length vary; reuse the rotated/scaled parent basis.
+                float noteWidth = t.Width;
+                if (t.IsMine)
+                {
+                    Sprite sprite = GetSprite(t);
+                    noteWidth *= DefaultSprite.bounds.size.x / sprite.bounds.size.x;
+                    lengthScale *= DefaultSprite.bounds.size.y / sprite.bounds.size.y;
+                }
+                // Apply each note's dimensions to the shared rotated/scaled parent basis.
                 Matrix4x4 matrix = basis;
+                matrix.SetColumn(0, matrix.GetColumn(0) * noteWidth);
                 matrix.m01 = lengthAxis.x * lengthScale; matrix.m11 = lengthAxis.y * lengthScale;
                 matrix.m21 = lengthAxis.z * lengthScale; matrix.m31 = lengthAxis.w * lengthScale;
                 Vector3 world = parentMatrix.MultiplyPoint3x4(position);
@@ -204,7 +220,7 @@ namespace Arcade.Gameplay
                 : NoteMeshDefinitions.TapLength(pos, timing.CalculateVelocityAtTiming(tap.Timing, tap.TimingGroup)) / DefaultSprite.bounds.size.y;
             tap.Alpha = pos < 90 ? 1 : (100 - pos) / 10f;
             tap.RenderMatrix = NoteLayer.localToWorldMatrix * Matrix4x4.TRS(new Vector3(tap.WorldX, pos, 0),
-                TapNotePrefab.transform.localRotation, new Vector3(-WidthScale, length, 1));
+                TapNotePrefab.transform.localRotation, new Vector3(-WidthScale * tap.Width, length, 1));
             return tap.RenderMatrix;
         }
 		private void JudgeTapNotes()
