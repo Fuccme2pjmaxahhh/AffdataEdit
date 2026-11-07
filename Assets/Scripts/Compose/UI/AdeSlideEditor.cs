@@ -82,8 +82,10 @@ namespace Arcade.Compose.UI
             var input = row.GetComponentInChildren<InputField>(true);
             input.onEndEdit = new InputField.SubmitEvent(); input.onValueChanged = new InputField.OnChangeEvent();
             input.contentType = InputField.ContentType.Standard;
+            AdeTextSelection.Configure(input);
             input.onEndEdit.AddListener(text =>
             {
+                text = AdeTextSelection.NormalizeForCommit(input);
                 var parts = text.Split(','); float center, width;
                 if (parts.Length != 2 || !float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out center)
                     || !float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out width))

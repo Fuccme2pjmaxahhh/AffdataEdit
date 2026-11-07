@@ -390,6 +390,38 @@ namespace Arcade.Compose
 			}
 		}
 
+		public async UniTask<Rect> SelectRectangle(int timing, CancellationToken cancellationToken)
+		{
+			Vector2 first = await SelectCoordinate(timing, Progress.Create<Vector2>(_ => { }), cancellationToken);
+			var outline = new GameObject("Selection rectangle");
+			outline.layer = WallX.gameObject.layer;
+			outline.transform.SetParent(WallX.transform.parent, false);
+			outline.transform.localPosition = WallX.transform.localPosition;
+			outline.transform.localRotation = WallX.transform.localRotation;
+			outline.transform.localScale = WallX.transform.localScale;
+			var line = outline.AddComponent<LineRenderer>();
+			line.useWorldSpace = false; line.loop = true; line.positionCount = 4;
+			line.sharedMaterial = WallX.sharedMaterial;
+			line.widthMultiplier = WallX.widthMultiplier;
+			line.startColor = line.endColor = Color.cyan;
+			line.sortingLayerID = WallX.sortingLayerID;
+			line.sortingOrder = WallX.sortingOrder + 1;
+			void Draw(Vector2 second)
+			{
+				float left = ArcAlgorithm.ArcXToWorld(first.x), right = ArcAlgorithm.ArcXToWorld(second.x);
+				float bottom = ArcAlgorithm.ArcYToWorld(first.y), top = ArcAlgorithm.ArcYToWorld(second.y);
+				line.SetPositions(new[] { new Vector3(left, bottom), new Vector3(left, top), new Vector3(right, top), new Vector3(right, bottom) });
+			}
+			try
+			{
+				Draw(first);
+				Vector2 second = await SelectCoordinate(timing, Progress.Create<Vector2>(Draw), cancellationToken);
+				return Rect.MinMaxRect(Mathf.Min(first.x, second.x), Mathf.Min(first.y, second.y),
+					Mathf.Max(first.x, second.x), Mathf.Max(first.y, second.y));
+			}
+			finally { Destroy(outline); }
+		}
+
 		public async UniTask<Vector2> SelectCoordinate(int overriddenCursorTiming, IProgress<Vector2> progress, CancellationToken cancellationToken)
 		{
 			if (currentSelectTaskType != null)

@@ -15,6 +15,8 @@ namespace Arcade.Compose
 
 		internal static bool ConsumesHotkey(InputAction action)
 		{
+			var hotkeys = AdeInputManager.Instance.Hotkeys;
+			if (action == hotkeys.PlayWhenHolding || action == hotkeys.PlayOrPause) return false;
 			if (FreeCameraPressing) return true;
 			if (!CanNavigate || HasModifier()) return false;
 			foreach (var control in action.controls)

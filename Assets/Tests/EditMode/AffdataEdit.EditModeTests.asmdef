@@ -1,7 +1,9 @@
 {
   "name": "AffdataEdit.EditModeTests",
   "references": [
-    "Arcade"
+    "Arcade",
+    "Unity.InputSystem",
+    "Unity.ugui"
   ],
   "includePlatforms": [
     "Editor"

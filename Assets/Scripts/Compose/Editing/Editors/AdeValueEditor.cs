@@ -60,6 +60,9 @@ namespace Arcade.Compose.Editing
 			colorDropdownHelper = new DropdownHelper<int?>(Color.GetComponentInChildren<Dropdown>());
 			timingGroupDropdownHelper = new DropdownHelper<ArcTimingGroupOption?>(TimingGroup.GetComponentInChildren<Dropdown>());
 			CreateArcExtensionRows();
+			// Native caret/word selection, plus triple-click selection of a whole field.
+			foreach (var input in Panel.GetComponentsInChildren<InputField>(true))
+				AdeTextSelection.Configure(input);
 			AdeUiTheme.Refresh();
             Track.GetComponentInChildren<InputField>(true).contentType = InputField.ContentType.Standard;
             Track.GetComponentInChildren<InputField>(true).characterLimit = 0;
@@ -77,7 +80,7 @@ namespace Arcade.Compose.Editing
             smoothnessInput.contentType = InputField.ContentType.DecimalNumber;
             smoothnessInput.onEndEdit = new InputField.SubmitEvent();
             smoothnessInput.onValueChanged = new InputField.OnChangeEvent();
-            smoothnessInput.onEndEdit.AddListener(text => HandleValueChange(text,
+            smoothnessInput.onEndEdit.AddListener(text => HandleValueChange(AdeTextSelection.NormalizeForCommit(smoothnessInput),
                 (string raw, ref float result) =>
                 {
                     if (!float.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out result)
@@ -435,7 +438,7 @@ namespace Arcade.Compose.Editing
 		public void OnTiming(InputField inputField)
 		{
 			HandleValueChange(
-				inputField.text,
+				AdeTextSelection.NormalizeForCommit(inputField),
 				(string raw, ref int result) =>
 				{
 					if (!int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out result))
@@ -497,7 +500,7 @@ namespace Arcade.Compose.Editing
 		}
         public void OnTrack(InputField inputField)
         {
-            HandleValueChange(inputField.text,
+            HandleValueChange(AdeTextSelection.NormalizeForCommit(inputField),
                 (string raw, ref string result) =>
                 {
                     int track; float? lane;
@@ -518,7 +521,7 @@ namespace Arcade.Compose.Editing
 		public void OnEndTiming(InputField inputField)
 		{
 			HandleValueChange(
-				inputField.text,
+				AdeTextSelection.NormalizeForCommit(inputField),
 				(string raw, ref int result) =>
 				{
 					if (!int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out result))
@@ -590,7 +593,7 @@ namespace Arcade.Compose.Editing
 		public void OnStartPos(InputField inputField)
 		{
 			HandleValueChange<string, Vector2>(
-				inputField.text,
+				AdeTextSelection.NormalizeForCommit(inputField),
 				ParseCoord,
 				(value, note) =>
 				{
@@ -606,7 +609,7 @@ namespace Arcade.Compose.Editing
 		public void OnEndPos(InputField inputField)
 		{
 			HandleValueChange<string, Vector2>(
-				inputField.text,
+				AdeTextSelection.NormalizeForCommit(inputField),
 				ParseCoord,
 				(value, note) =>
 				{

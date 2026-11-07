@@ -1,4 +1,8 @@
 using System.Collections.Generic;
+using System;
+using System.Threading;
+using Cysharp.Threading.Tasks;
+using Arcade.Util.UniTaskHelper;
 using Arcade.Compose.Editing;
 using Arcade.Gameplay;
 using Arcade.Gameplay.Chart;
@@ -24,6 +28,7 @@ namespace Arcade.Compose.Operation
 		private const float CyclePositionTolerance = 4;
 		private readonly List<ArcNote> hits = new List<ArcNote>();
 		private readonly List<ArcNote> cycleNotes = new List<ArcNote>();
+		private readonly List<ArcSlide> slideChain = new List<ArcSlide>();
 		private int cycleIndex;
 		private Vector2 cyclePosition;
 		private ArcChart cycleChart;
@@ -34,6 +39,19 @@ namespace Arcade.Compose.Operation
 
 		public override AdeOperationResult TryExecuteOperation()
 		{
+			var input = AdeInputManager.Instance;
+			bool spatial = input.CheckHotkeyActionPressed(input.Hotkeys.Get().FindAction("Select Spatial Range"));
+			if ((spatial || input.CheckHotkeyActionPressed(input.Hotkeys.Get().FindAction("Select Time Range")))
+				&& ArcadeComposeManager.Instance.IsEditorMode && ArcGameplayManager.Instance.IsLoaded
+				&& (!AdeDialogManager.Instance || AdeDialogManager.Instance.Opening.childCount == 0))
+			{
+				var cancellation = CancellationTokenSource.CreateLinkedTokenSource(destroyCancellationToken);
+				return AdeOperationResult.FromOngoingOperation(new AdeOngoingOperation
+				{
+					cancellation = cancellation, keepSelection = true,
+					task = SelectTimeRange(cancellation, spatial).WithExceptionLogger()
+				});
+			}
 			if (!AdeInputManager.Instance.Inputs.RangeSelection.IsPressed())
 			{
 				rangeSelectPosition = null;
@@ -109,6 +127,27 @@ namespace Arcade.Compose.Operation
 							}
 							return true;
 						}
+						if (n is ArcSlide slide && slide.GroupRoot != null && ArcSlideManager.Instance
+							&& selection.SelectedNotes.Contains(slide))
+						{
+							slideChain.Clear();
+							bool chainSelected = true;
+							foreach (var segment in ArcSlideManager.Instance.Slides)
+							{
+								if (segment.GroupRoot != slide.GroupRoot) continue;
+								slideChain.Add(segment);
+								chainSelected &= selection.SelectedNotes.Contains(segment);
+							}
+							if (slideChain.Count > 1)
+							{
+								foreach (var segment in slideChain)
+								{
+									if (chainSelected) selection.DeselectNote(segment);
+									else selection.SelectNote(segment);
+								}
+								return true;
+							}
+						}
 						if (AdeSelectionManager.Instance.SelectedNotes.Contains(n)) AdeSelectionManager.Instance.DeselectNote(n);
 						else AdeSelectionManager.Instance.SelectNote(n);
 						return true;
@@ -128,6 +167,47 @@ namespace Arcade.Compose.Operation
 		{
 			rangeSelectPosition = null;
 			ResetCycle();
+		}
+
+		private async UniTask SelectTimeRange(CancellationTokenSource cancellation, bool spatial)
+		{
+			var create = AdeClickToCreate.Instance;
+			var cursor = AdeCursorManager.Instance;
+			bool wasEnabled = create.Enable, wasVisible = cursor.VisibleWhenIdle;
+			var mode = create.Mode;
+			var arcTapMode = create.ArctapMode;
+			bool arcTapVisible = cursor.ArcTapCursorEnabled;
+			try
+			{
+				create.Enable = true;
+				create.Mode = ClickToCreateMode.Idle;
+				AdeToast.Instance.Show("段落选择：左键确定起点，Esc 取消");
+				int start = await cursor.SelectTiming(Progress.Create<int>(_ => { }), cancellation.Token, true);
+				rangeSelectPosition = start;
+				Rect region = default;
+				if (spatial)
+				{
+					AdeToast.Instance.Show("范围段落选择：依次点击矩形两个对角，Esc 取消");
+					region = await cursor.SelectRectangle(start, cancellation.Token);
+				}
+				AdeToast.Instance.Show("段落选择：左键确定终点，Esc 取消");
+				int end = await cursor.SelectTiming(Progress.Create<int>(_ => { }), cancellation.Token, true);
+				if (!AdeInputManager.Instance.Inputs.MultipleSelection.IsPressed())
+					AdeSelectionManager.Instance.DeselectAllNotes();
+				if (spatial) AdeSelectionManager.Instance.SelectIntersectingRange(start, end, region);
+				else AdeSelectionManager.Instance.RangeSelectNote(start, end);
+			}
+			finally
+			{
+				rangeSelectPosition = null;
+				create.Enable = wasEnabled;
+				create.Mode = mode;
+				create.ArctapMode = arcTapMode;
+				cursor.VisibleWhenIdle = wasVisible;
+				cursor.ArcTapCursorEnabled = arcTapVisible;
+				cursor.EndDragCursor();
+				cancellation.Dispose();
+			}
 		}
 
 		private bool CanContinueCycle(Camera camera, Vector2 position)

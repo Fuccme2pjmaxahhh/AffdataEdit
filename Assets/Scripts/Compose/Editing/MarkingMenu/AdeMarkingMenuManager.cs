@@ -136,7 +136,8 @@ namespace Arcade.Compose
 			if (items.Length == 0) return;
 			verticalStyle = ArcadeComposeManager.Instance.ArcadePreference.VerticalContextMenu;
 			if (verticalStyle) items = ArrangeVerticalItems(items);
-			keepOpen = ArcadeComposeManager.Instance.ArcadePreference.KeepContextMenuOpen;
+			keepOpen = ArcadeComposeManager.Instance.ArcadePreference.VerticalContextMenu
+				&& ArcadeComposeManager.Instance.ArcadePreference.KeepContextMenuOpen;
 			openedChart = ArcGameplayManager.Instance.Chart;
 			CreateInputBlocker();
 			inputBlocker.SetActive(true);

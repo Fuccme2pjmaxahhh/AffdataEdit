@@ -87,6 +87,7 @@ namespace Arcade.Compose
             BuildContextMenuSetting(settings.Find("Wraper"));
             BuildChartSortSetting(settings.Find("Wraper"));
             BuildDragEditingSettings(settings.Find("Wraper"));
+            BuildHotkeyPresetSettings();
             foreach (Transform row in settings.Find("Wraper"))
                 Register(row, row.name == "DarkUi" ? Page.Appearance : row.name == "Log" ? Page.About
                     : row.name == "KeepContextMenuOpen" || row.name == "VerticalContextMenu" ? Page.ContextMenu
@@ -138,6 +139,7 @@ namespace Arcade.Compose
             toggle.SetIsOnWithoutNotify(compose.ArcadePreference.KeepContextMenuOpen);
             toggle.onValueChanged.AddListener(value =>
             {
+                if (!compose.ArcadePreference.VerticalContextMenu) return;
                 compose.ArcadePreference.KeepContextMenuOpen = value;
                 compose.SavePreferences();
             });
@@ -146,9 +148,19 @@ namespace Arcade.Compose
             styleRow.GetComponentInChildren<TMP_Text>(true).text = "使用全新的右键菜单";
             var styleToggle = styleRow.GetComponentInChildren<Toggle>(true);
             styleToggle.SetIsOnWithoutNotify(compose.ArcadePreference.VerticalContextMenu);
+            row.transform.SetSiblingIndex(styleRow.transform.GetSiblingIndex());
+            var rowState = row.gameObject.AddComponent<CanvasGroup>();
+            void UpdateClickSelection(bool enabled)
+            {
+                toggle.interactable = enabled;
+                toggle.SetIsOnWithoutNotify(enabled && compose.ArcadePreference.KeepContextMenuOpen);
+                rowState.alpha = enabled ? 1f : 0.45f;
+            }
+            UpdateClickSelection(compose.ArcadePreference.VerticalContextMenu);
             styleToggle.onValueChanged.AddListener(value =>
             {
                 compose.ArcadePreference.VerticalContextMenu = value;
+                UpdateClickSelection(value);
                 compose.SavePreferences();
             });
         }
@@ -288,6 +300,7 @@ namespace Arcade.Compose
                 ArrangeRow(row.Row, row.Page);
             }
             darkToggle.transform.parent.SetAsFirstSibling();
+            hotkeyPresetRow.SetAsFirstSibling();
             accountAction.transform.parent.SetAsLastSibling();
             contextEditorRoot.SetAsLastSibling();
             mounted = true;
@@ -349,6 +362,7 @@ namespace Arcade.Compose
             StyleStorage();
             StyleAbout();
             StyleHotkeyGroups();
+            StyleHotkeyPreset();
             StyleContextMenu();
             sidebar.color = AdeUiTheme.Current.Chrome;
             sidebar.sprite = AdeUiTheme.RoundedSurface;

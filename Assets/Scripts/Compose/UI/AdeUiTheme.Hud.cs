@@ -13,23 +13,41 @@ namespace Arcade.Compose
         {
             var compose = ArcadeComposeManager.Instance;
             if (!compose) return;
-            // Reuse the original silhouettes, glyphs, and hit areas in both light and dark.
-            // The material only maps their grayscale surfaces into the current palette.
+            var hud = darkPreset;
+            Color surface = hud.Chrome, raised = hud.Panel;
+            Color border = Color.Lerp(hud.Border, hud.Text, .18f);
+            Color foreground = hud.Text, muted = hud.Muted;
+            if (!Dark)
+            {
+                // A charcoal surface with the light theme's warm/cool undertone.
+                // Keep luminance independent of its accent so white HUD text stays readable.
+                Color chrome = Current.Chrome, text = Current.Text;
+                float chromeMean = (chrome.r + chrome.g + chrome.b) / 3f;
+                float textMean = (text.r + text.g + text.b) / 3f;
+                surface = new Color(
+                    .27f + (chrome.r - chromeMean) * .55f + (text.r - textMean) * .25f,
+                    .28f + (chrome.g - chromeMean) * .55f + (text.g - textMean) * .25f,
+                    .29f + (chrome.b - chromeMean) * .55f + (text.b - textMean) * .25f);
+                raised = Color.Lerp(surface, chrome, .10f);
+                border = Color.Lerp(surface, chrome, .28f);
+                foreground = Color.white;
+                muted = Color.Lerp(surface, Color.white, .78f);
+            }
             if (!hudMaterial) hudMaterial = new Material(Resources.Load<Shader>("AffdataEdit/Theme/HudPalette"));
-            hudMaterial.SetColor("_SurfaceColor", Current.Chrome);
-            hudMaterial.SetColor("_RaisedColor", Current.Panel);
-            hudMaterial.SetColor("_BorderColor", Color.Lerp(Current.Border, Current.Text, .18f));
-            hudMaterial.SetColor("_TextColor", Current.Text);
+            hudMaterial.SetColor("_SurfaceColor", surface);
+            hudMaterial.SetColor("_RaisedColor", raised);
+            hudMaterial.SetColor("_BorderColor", border);
+            hudMaterial.SetColor("_TextColor", foreground);
             var panel = ArcSkinManager.Instance.SongInfo;
             panel.sprite = darkSprites[11];
             panel.material = hudMaterial;
             panel.color = Color.white;
             compose.PauseButtonImage.material = hudMaterial;
             compose.PauseButtonImage.color = Color.white;
-            compose.TimingSliderHandle.color = Current.Text;
+            compose.TimingSliderHandle.color = foreground;
             var timingSlider = compose.TimingSliderHandle.GetComponentInParent<Slider>();
             if (timingSlider && timingSlider.fillRect && timingSlider.fillRect.TryGetComponent<Image>(out var timingFill))
-                timingFill.color = Current.Text;
+                timingFill.color = foreground;
             compose.SetPlaySprite(darkSprites[12]);
             compose.SetPlayPressedSprite(darkSprites[13]);
             compose.SetPauseSprite(darkSprites[14]);
@@ -37,14 +55,26 @@ namespace Arcade.Compose
             AlignToolbarEdges(compose.LeftBarView, compose.PauseButtonImage.rectTransform, compose.BottomBarView);
             AlignToolbarEdges(compose.RightBarView, panel.rectTransform, compose.BottomBarView);
             var score = ArcScoreManager.Instance.ScoreText;
-            score.color = Current.Text;
-            score.fontSharedMaterial.SetColor("_OutlineColor", Current.Chrome);
+            score.color = foreground;
+            score.fontSharedMaterial.SetColor("_OutlineColor", surface);
             foreach (var label in panel.GetComponentsInChildren<TMP_Text>(true))
             {
                 if (label == score) continue;
-                label.color = label.transform.IsChildOf(panel.transform.Find("Cover")) ? Color.white
-                    : label.name == "Placeholder" ? Current.Muted : Current.Text;
+                Color color = label.transform.IsChildOf(panel.transform.Find("Cover")) ? Color.white
+                    : label.name == "Placeholder" ? muted : foreground;
+                color.a = label.color.a;
+                label.color = color;
             }
+        }
+
+        private static bool IsPlaybackHud(Graphic graphic)
+        {
+            var compose = ArcadeComposeManager.Instance;
+            var skin = ArcSkinManager.Instance;
+            var score = ArcScoreManager.Instance;
+            return (compose && graphic == compose.PauseButtonImage)
+                || (score && graphic == score.ScoreText)
+                || (skin && skin.SongInfo && graphic.transform.IsChildOf(skin.SongInfo.transform));
         }
 
         private static void AlignToolbarEdges(RectTransform bar, RectTransform header, RectTransform footer)

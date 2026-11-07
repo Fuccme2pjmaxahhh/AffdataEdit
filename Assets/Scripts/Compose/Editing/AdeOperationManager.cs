@@ -80,6 +80,16 @@ namespace Arcade.Compose
 				Operation.AdeSelectNoteOperation.Instance.TryExecuteOperation();
 				return;
 			}
+			if (AdeInputManager.Instance.CheckHotkeyActionPressed(AdeInputManager.Instance.Inputs.Cancel)
+				&& Operation.AdeClickToCreate.Instance.Enable
+				&& Operation.AdeClickToCreate.Instance.Mode != Operation.ClickToCreateMode.Idle)
+			{
+				// On-Arc ArcTap placement is instantaneous, so it has no ongoing task
+				// for CancelOngoingOperation to cancel. Escape must also exit that mode.
+				Operation.AdeClickToCreate.Instance.Mode = Operation.ClickToCreateMode.Idle;
+				foreach (var operation in operations) operation.Reset();
+				return;
+			}
 			var drag = dragEdit.TryExecuteOperation();
 			if (drag.operationExecuted)
 			{

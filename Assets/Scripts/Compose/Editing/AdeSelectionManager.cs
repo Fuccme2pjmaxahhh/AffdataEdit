@@ -83,6 +83,22 @@ namespace Arcade.Compose
 				}
 			}
 		}
+		public void SelectIntersectingRange(int from, int to, Rect region)
+		{
+			void SelectIfIntersecting(ArcNote note)
+			{
+				if (Editing.AdeSelectionVolume.Intersects(note, from, to, region)) SelectNote(note);
+			}
+			foreach (var note in ArcTapNoteManager.Instance.Taps) SelectIfIntersecting(note);
+			foreach (var note in ArcHoldNoteManager.Instance.Holds) SelectIfIntersecting(note);
+			foreach (var note in ArcSlideManager.Instance.Slides) SelectIfIntersecting(note);
+			foreach (var arc in ArcArcManager.Instance.Arcs)
+			{
+				SelectIfIntersecting(arc);
+				foreach (var tap in arc.ArcTaps) SelectIfIntersecting(tap);
+			}
+		}
+
 		public void SelectNote(ArcNote note)
 		{
 			note.Selected = true;

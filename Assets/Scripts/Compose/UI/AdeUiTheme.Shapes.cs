@@ -16,7 +16,7 @@ namespace Arcade.Compose
         internal static Sprite ReadOnlySurface => Instance.Shape("ThemeReadOnly", ControlRadius, Current.Chrome, Current.Border);
         internal static Sprite ContextMenuSurface(bool highlighted) => Instance.Shape(
             highlighted ? "ThemeContextMenuHover" : "ThemeContextMenu", ControlRadius,
-            highlighted ? Current.Selection : Current.Panel, highlighted ? Current.Accent : Current.Border);
+            highlighted ? ContextMenuSelection : Current.Panel, highlighted ? Current.Accent : Current.Border);
         internal static Sprite VerticalContextMenuSurface => Instance.Shape(
             "ThemeVerticalContextMenu", PanelRadius, Current.Panel, Current.Border);
 		internal static Sprite VerticalContextMenuHighlight(int corners) => Instance.Shape(

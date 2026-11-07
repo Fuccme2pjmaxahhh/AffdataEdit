@@ -24,10 +24,10 @@ namespace Arcade.Compose
 	public class ArcadePreference
 	{
 		public int AgreedUserAgreementVersion;
-		public string ScreenResolution = "1280x720";
+		public string ScreenResolution;
 		public bool Fullscreen = false;
 		public int TargetFrameRate = -1;
-		public int Velocity = 30;
+		public int Velocity = 165; // Displayed scroll speed 5.5, stored as speed * 30.
 		public uint UndoBufferSize = 200;
 		public bool PlaybackSync = false;
 		public bool ShowSpectrum = false;
@@ -296,7 +296,11 @@ namespace Arcade.Compose
 			if (AdeDragEdit.Instance && AdeDragEdit.Instance.IsDragging)
 			{
 				previewing = advancing = false;
-				return;
+				var input = AdeInputManager.Instance;
+				if (!input.CheckHotkeyActionPressed(input.Hotkeys.PlayWhenHolding)
+					&& !input.CheckHotkeyActionPressed(input.Hotkeys.PlayOrPause)) return;
+				// Confirm the current drag before playback can move the timeline under it.
+				AdeDragEdit.Instance.Finish(true);
 			}
 			if (IsEditorMode)
 			{
@@ -523,6 +527,9 @@ namespace Arcade.Compose
 			}
 			finally
 			{
+				if (string.IsNullOrEmpty(ArcadePreference.ScreenResolution))
+					ArcadePreference.ScreenResolution = AdeScreenResolution.GetDefaultResolution(
+						Screen.mainWindowDisplayInfo.workArea, AdeScreenResolution.ScaleFactor);
 				if (ArcadePreference.Velocity < 30)
 				{
 					ArcadePreference.Velocity = 30;

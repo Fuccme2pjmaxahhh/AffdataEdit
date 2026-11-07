@@ -19,6 +19,7 @@ namespace Arcade.Compose
 		public AdeInputControl.ArcadeInputActions Inputs { get => Controls.ArcadeInput; }
 		public EventSystem EventSystem;
 		public AdeHotkeyDialogContent Dialog;
+		public AdeHotkeyPresets Presets { get; private set; }
 
 		public static AdeInputManager Instance { get; private set; }
 
@@ -50,12 +51,12 @@ namespace Arcade.Compose
 								map.ChangeBinding(i).WithPath(PrimaryModifierPath);
 			}
 			Instance = this;
+			Presets = new AdeHotkeyPresets(Hotkeys.Get());
+			gameObject.AddComponent<AdeEditorHotkeyCommands>();
 		}
 		public void OnEnable()
 		{
-			var rebinds = AdeSettings.GetString("hotkeyRebinding");
-			Debug.Log($"hotkeyRebinding:{rebinds}");
-			Hotkeys.Get().LoadBindingOverridesFromJson(rebinds);
+			Presets.Load();
 			Controls.Enable();
 		}
 
@@ -77,8 +78,9 @@ namespace Arcade.Compose
 		private bool IsFocusingOnTextField()
 		{
 			GameObject selected = EventSystem.currentSelectedGameObject;
-			if (selected && (selected.GetComponentInParent<InputField>()
-				|| selected.GetComponentInParent<UnityEngine.UI.InputField>()))
+			var tmpInput = selected ? selected.GetComponentInParent<InputField>() : null;
+			var legacyInput = selected ? selected.GetComponentInParent<UnityEngine.UI.InputField>() : null;
+			if ((tmpInput && tmpInput.isFocused) || (legacyInput && legacyInput.isFocused))
 			{
 				textInputFrame = Time.frameCount;
 				return true;
@@ -89,20 +91,32 @@ namespace Arcade.Compose
 
 		public bool CheckHotkeyActionPressed(InputAction action)
 		{
-			if (AdeMarkingMenuManager.BlocksEditorInput || IsFocusingOnTextField() || rebindFinishedThisFrame || AdeCameraManager.ConsumesHotkey(action))
+			if (MenuBlocksHotkey(action) || IsFocusingOnTextField() || rebindFinishedThisFrame || AdeCameraManager.ConsumesHotkey(action))
 			{
 				return false;
 			}
-			return action.WasPerformedThisFrame();
+			// Fixed Escape cancellation must survive shortcut conflict resolution:
+			// the configurable Drag Edit Off composite also defaults to Escape.
+			return action.WasPerformedThisFrame() || (action == Inputs.Cancel
+				&& Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame);
 		}
 
 		public bool CheckHotkeyActionPressing(InputAction action)
 		{
-			if (AdeMarkingMenuManager.BlocksEditorInput || IsFocusingOnTextField() || rebindFinishedThisFrame || AdeCameraManager.ConsumesHotkey(action))
+			if (MenuBlocksHotkey(action) || IsFocusingOnTextField() || rebindFinishedThisFrame || AdeCameraManager.ConsumesHotkey(action))
 			{
 				return false;
 			}
-			return action.inProgress;
+			return action.inProgress || (action == Inputs.Cancel
+				&& Keyboard.current != null && Keyboard.current.escapeKey.isPressed);
+		}
+
+		private bool MenuBlocksHotkey(InputAction action)
+		{
+			// Keep editing commands blocked by the menu, but allow playback while
+			// holding right mouse. Compare actions so user-rebound keys work too.
+			return AdeMarkingMenuManager.BlocksEditorInput
+				&& action != Hotkeys.PlayWhenHolding && action != Hotkeys.PlayOrPause;
 		}
 
 		private AdeHotkeyRebindingButton rebindingButton = null;
@@ -257,7 +271,7 @@ namespace Arcade.Compose
 					.OnComplete((operation) =>
 					{
 						CleanupCurrentOperation();
-						AdeSettings.SetString("hotkeyRebinding", Hotkeys.Get().SaveBindingOverridesAsJson());
+						Presets.CaptureEdit();
 					})
 					.OnCancel((operation) =>
 					{
@@ -403,6 +417,7 @@ namespace Arcade.Compose
 				Debug.LogError("The action for the rebinding button is not hotkey: missing binding component");
 				return;
 			}
+			if (string.IsNullOrEmpty(key)) { button.Text.text = "未绑定"; return; }
 			string result = key;
 			if (hasShift == true)
 			{
@@ -422,8 +437,7 @@ namespace Arcade.Compose
 		public void ResetHotkey()
 		{
 			SetHotkeyRebindingButton(null);
-			Hotkeys.Get().RemoveAllBindingOverrides();
-			AdeSettings.SetString("hotkeyRebinding", Hotkeys.Get().SaveBindingOverridesAsJson());
+			Presets.Select("Legacy");
 			foreach (var button in Dialog.RebindingButtons)
 			{
 				AdeInputManager.Instance.UpdateTextForHotkeyButton(button);
