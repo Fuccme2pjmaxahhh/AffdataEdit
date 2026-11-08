@@ -3,12 +3,40 @@ using Arcade.Compose.MarkingMenu;
 using Arcade.Util.UnityExtension;
 using UnityEngine;
 using UnityEngine.UI;
+using Arcade.Compose.Operation;
 
 namespace Arcade.Compose
 {
 	public partial class AdeMarkingMenuManager
 	{
 		private readonly List<GameObject> menuPanels = new List<GameObject>();
+        private MarkingMenuItem[] ringArcTapItems;
+
+        private MarkingMenuItem[] ArrangeRingItems(MarkingMenuItem[] items)
+        {
+            var create = AdeClickToCreate.Instance;
+            if (!create) return items;
+            var list = new List<MarkingMenuItem>();
+            foreach (var item in items)
+            {
+                if (item == create.ClickToCreateItems[4])
+                {
+                    if (ringArcTapItems == null)
+                    {
+                        ringArcTapItems = new[] { CloneVerticalItem(item, "RingSingleArcTap", "单Arctap"), CloneVerticalItem(item, "RingArcTap", "Arctap") };
+                        for (int i = 0; i < 2; i++)
+                        {
+                            var mode = i == 0 ? ClickToCreateArctapMode.Single : ClickToCreateArctapMode.OnArc;
+                            ringArcTapItems[i].OnConfirmed.AddListener(() => { create.SetClickToCreateMode(ClickToCreateMode.ArcTap); create.SetClickToCreateArctapMode(mode); });
+                        }
+                    }
+                    list.AddRange(ringArcTapItems);
+                }
+                else if (item.name == "ArcType" && System.Array.Exists(items, n => n.name == "S")) list.AddRange(item.SubItems);
+                else list.Add(item);
+            }
+            return list.ToArray();
+        }
 
 		private static float GetRingRadius(MarkingMenuItem[] items, Vector2[] directions)
 		{
@@ -61,27 +89,51 @@ namespace Arcade.Compose
 				ShowVerticalPage(position, items, null);
 				return;
 			}
+            items = ArrangeRingItems(items);
 			int itemCount = items.Length;
 			if (itemCount == 0) return;
-			float degreeDelta = (to - from) / itemCount;
+            int slots = itemCount > 4 ? itemCount + itemCount % 2 : itemCount;
+			float degreeDelta = -(to - from) / slots;
 			var directions = new Vector2[itemCount];
+            var offsets = new Vector2[itemCount];
 			for (int i = 0; i < itemCount; ++i)
 			{
-				float degree = from + degreeDelta * i + (itemCount > 4 ? 180 : 0);
+				float degree = OptimizeRingDegree(from + degreeDelta * i + (itemCount > 4 ? 180 : 0));
 				directions[i] = new Vector2(Mathf.Cos(degree * Mathf.Deg2Rad), Mathf.Sin(degree * Mathf.Deg2Rad));
 				items[i].Show(verticalStyle);
 				items[i].Degree = degree;
+                offsets[i] = directions[i] * RingEllipseRadius(degree, slots);
 			}
-			float radius = GetRingRadius(items, directions);
-			if (itemCount > 2 && Mathf.Approximately(to - from, 360))
-			{
-				BalanceRingSpacing(items, directions, radius, degreeDelta);
-				radius = GetRingRadius(items, directions);
-			}
+            float fit = 1;
+            for (int i = 0; i < itemCount; i++) for (int j = 0; j < i; j++)
+            {
+                var delta = offsets[i] - offsets[j];
+                var size = (items[i].ItemRectTransform.rect.size + items[j].ItemRectTransform.rect.size) / 2;
+                float x = Mathf.Abs(delta.x) > .0001f ? (size.x + 12) / Mathf.Abs(delta.x) : float.PositiveInfinity;
+                float y = Mathf.Abs(delta.y) > .0001f ? (size.y + 12) / Mathf.Abs(delta.y) : float.PositiveInfinity;
+                fit = Mathf.Max(fit, Mathf.Min(x, y));
+            }
 			for (int i = 0; i < itemCount; ++i)
-				items[i].Position = position + radius * directions[i];
+				items[i].Position = position + fit * offsets[i];
 			shownItems.Push(new MenuPage(items, position));
 		}
+        internal static float OptimizeRingDegree(float degree)
+        {
+            float turns = Mathf.Floor(degree / 180);
+            float local = degree - turns * 180;
+            float x = local / 90 - 1;
+            float eased = Mathf.Sin(Mathf.Pow(Mathf.Abs(x), 1.2f) * Mathf.PI / 2);
+            return (Mathf.Sign(x) * eased + 1) * 90 + turns * 180;
+        }
+
+        internal static float RingEllipseRadius(float degree, int count)
+        {
+            if (count > 4) count += count % 2;
+            float a = Mathf.Max(6, count) * 10 + 60;
+            float b = Mathf.Max(3, count) * 12 + 50;
+            float sin = Mathf.Sin(degree * Mathf.Deg2Rad), cos = Mathf.Cos(degree * Mathf.Deg2Rad);
+            return a * b / Mathf.Sqrt(a * a * sin * sin + b * b * cos * cos);
+        }
 		public void ShowSubMenuAt(Vector2 position, MarkingMenuItem[] items, float from = 0, float to = 360)
 		{
 			if (verticalStyle)

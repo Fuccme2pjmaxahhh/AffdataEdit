@@ -32,7 +32,7 @@ namespace Arcade.Compose
                 else if (!modal && !AdeOperationManager.Instance.HasOngoingOperation) ShowSelectedCode();
                 return;
             }
-            if (modal || !ArcadeComposeManager.Instance.IsEditorMode || AdeOperationManager.Instance.HasOngoingOperation) return;
+            if (modal || AdeOperationManager.Instance.HasOngoingOperation) return;
             foreach (var action in AdeHotkeyPresets.ExtraActions)
             {
                 if (action.Action == "Select Spatial Range" || action.Action == "Preview Selected Code") continue;
@@ -72,7 +72,9 @@ namespace Arcade.Compose
         public static void ExecuteArcAction(string action)
         {
             var arcs = AdeSelectionManager.Instance.SelectedNotes.OfType<ArcArc>().ToArray();
-            if (arcs.Length == 0)
+            bool slideCurveAction = action == "Arc Toggle Curve Pair" || action == "Arc Cycle Curve";
+            var slides = slideCurveAction ? AdeSelectionManager.Instance.SelectedNotes.OfType<ArcSlide>().ToArray() : Array.Empty<ArcSlide>();
+            if (arcs.Length == 0 && slides.Length == 0)
             {
                 if (action == "Reverse Arc") { AdeToast.Instance.Show("请先选择 Arc"); return; }
                 var create = AdeClickToCreate.Instance;
@@ -87,6 +89,12 @@ namespace Arcade.Compose
                 return;
             }
             var commands = new List<ICommand>();
+            foreach (var slide in slides)
+            {
+                var changed = (ArcSlide)slide.Clone();
+                if (!TryEditValidSlideCurves(action, changed)) continue;
+                commands.Add(new EditArcEventCommand(slide, changed));
+            }
             foreach (var arc in arcs)
             {
                 var changed = (ArcArc)arc.Clone();
@@ -103,7 +111,38 @@ namespace Arcade.Compose
                     || changed.YEnd != arc.YEnd || changed.Color != arc.Color || changed.LineType != arc.LineType
                     || changed.CurveType != arc.CurveType) commands.Add(new EditArcEventCommand(arc, changed));
             }
-            if (commands.Count > 0) AdeCommandManager.Instance.Add(new BatchCommand(commands.ToArray(), action == "Reverse Arc" ? "Arc 反转" : "修改 Arc 属性"));
+            if (commands.Count > 0) AdeCommandManager.Instance.Add(new BatchCommand(commands.ToArray(), action == "Reverse Arc" ? "Arc 反转" : slides.Length > 0 ? "修改 Slide / Arc 属性" : "修改 Arc 属性"));
+        }
+
+        internal static bool TryEditValidSlideCurves(string action, ArcSlide slide)
+        {
+            int left = slide.LeftCurve, right = slide.RightCurve;
+            int attempts = action == "Arc Cycle Curve" ? 4 : 1;
+            for (int i = 0; i < attempts; i++)
+            {
+                if (!EditSlideCurves(action, slide)) break;
+                if (slide.IsValid && (slide.LeftCurve != left || slide.RightCurve != right)) return true;
+            }
+            slide.LeftCurve = left; slide.RightCurve = right;
+            return false;
+        }
+
+        internal static bool EditSlideCurves(string action, ArcSlide slide)
+        {
+            int left = slide.LeftCurve, right = slide.RightCurve;
+            if (action == "Arc Toggle Curve Pair")
+            {
+                slide.LeftCurve = left == 0 ? 3 : left == 3 ? 0 : left == 1 ? 2 : 1;
+                slide.RightCurve = right == 0 ? 3 : right == 3 ? 0 : right == 1 ? 2 : 1;
+                return true;
+            }
+            if (action != "Arc Cycle Curve") return false;
+            if (left == 0 && right == 0) { slide.LeftCurve = 1; slide.RightCurve = 1; }
+            else if (left == 1 && right == 1) { slide.LeftCurve = 2; slide.RightCurve = 2; }
+            else if (left == 2 && right == 2) { slide.LeftCurve = 3; slide.RightCurve = 3; }
+            else if (left == 3 && right == 3) { slide.LeftCurve = 0; slide.RightCurve = 0; }
+            else return false;
+            return true;
         }
 
         private void ShowSelectedCode()

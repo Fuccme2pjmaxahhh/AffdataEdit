@@ -1,6 +1,7 @@
 using System;
 using Arcade.Gameplay;
 using Arcade.Gameplay.Chart;
+using Arcade.Compose.UI;
 using UnityEngine;
 
 namespace Arcade.Compose.Editing
@@ -31,9 +32,7 @@ namespace Arcade.Compose.Editing
                     isEnd = Mathf.Abs(point.z - end.z) <= Mathf.Abs(point.z - start.z);
                 else
                 {
-                    Vector3 a = camera.WorldToScreenPoint(start), b = camera.WorldToScreenPoint(end);
-                    if (a.z <= 0 && b.z <= 0) return false;
-                    isEnd = a.z <= 0 || (b.z > 0 && ((Vector2)b - pointer).sqrMagnitude <= ((Vector2)a - pointer).sqrMagnitude);
+                    return TryChooseScreenEndpoint(camera, pointer, start, end, out isEnd);
                 }
                 return true;
             }
@@ -44,6 +43,69 @@ namespace Arcade.Compose.Editing
             if (!ArcTimingManager.Instance.TryCalculateChartTimingByPosition(-ray.GetPoint(enter).z * 1000, group, reference, out int timing)) return false;
             isEnd = (long)timing - target.Timing >= (long)longNote.EndTiming - timing;
             return true;
+        }
+
+        internal static bool TryChooseScreenEndpoint(Camera camera, Vector2 pointer, Vector3 first, Vector3 second, out bool chooseSecond)
+        {
+            Vector3 a = camera.WorldToScreenPoint(first), b = camera.WorldToScreenPoint(second);
+            chooseSecond = a.z <= 0 || (b.z > 0 && ((Vector2)b - pointer).sqrMagnitude <= ((Vector2)a - pointer).sqrMagnitude);
+            return a.z > 0 || b.z > 0;
+        }
+
+        internal static bool TryChooseSlideCorner(ArcSlide slide, Vector2 pointer, out bool isEnd, out bool isRight)
+        {
+            var camera = AdeCursorManager.Instance.GameplayCamera;
+            isEnd = isRight = false;
+            if (!camera) return false;
+            float best = float.PositiveInfinity;
+            for (int i = 0; i < 4; i++)
+            {
+                var point = EndpointPosition(slide, i >= 2);
+                point.x = slide.WorldX(AdeSlideEditor.EditingRange(slide, i >= 2)[i % 2]);
+                if (!IsVisibleSlideEndpoint(camera, point)) continue;
+                float distance = ((Vector2)camera.WorldToScreenPoint(point) - pointer).sqrMagnitude;
+                if (distance >= best) continue;
+                best = distance; isEnd = i >= 2; isRight = i % 2 == 1;
+            }
+            return !float.IsPositiveInfinity(best);
+        }
+
+        internal static bool IsVisibleSlideEndpoint(Camera camera, Vector3 point)
+        {
+            var screen = camera.WorldToViewportPoint(point);
+            return Mathf.Abs(point.z) <= ArcSlideVisual.RenderDistance && screen.z >= camera.nearClipPlane
+                && screen.z <= camera.farClipPlane && screen.x >= 0 && screen.x <= 1 && screen.y >= 0 && screen.y <= 1;
+        }
+
+        internal static bool TryChooseGroupAnchor(ArcNote[] targets, Camera camera, Vector2 pointer, out Vector3 anchor, out int timing)
+        {
+            anchor = default; timing = 0;
+            if (!camera) return false;
+            float best = float.PositiveInfinity;
+            foreach (var target in targets)
+            {
+                if (((IHasTimingGroup)target).GroupHide()) continue;
+                int count = target is ArcSlide ? 4 : 2;
+                for (int i = 0; i < count; i++)
+                {
+                    bool end = i >= count / 2;
+                    var point = EndpointPosition(target, end);
+                    if (target is ArcSlide slide) point.x = slide.WorldX(AdeSlideEditor.EditingRange(slide, end)[i % 2]);
+                    if (!IsVisibleSlideEndpoint(camera, point)) continue;
+                    float distance = ((Vector2)camera.WorldToScreenPoint(point) - pointer).sqrMagnitude;
+                    if (distance >= best) continue;
+                    best = distance; anchor = point; timing = end ? ((ArcLongNote)target).EndTiming : target.Timing;
+                }
+            }
+            return !float.IsPositiveInfinity(best);
+        }
+
+        private Vector3 DragEndpointPosition()
+        {
+            var point = EndpointPosition(note, end);
+            if (activeMode == DragMode.Position && note is ArcSlide slide)
+                point.x = slide.WorldX(AdeSlideEditor.EditingRange(slide, end)[right ? 1 : 0]);
+            return point;
         }
 
         internal static Vector3 EndpointPosition(ArcNote target, bool isEnd)
@@ -69,7 +131,8 @@ namespace Arcade.Compose.Editing
                 return arc.XStart != other.XStart || arc.XEnd != other.XEnd || arc.YStart != other.YStart || arc.YEnd != other.YEnd;
             if (a is ArcTap tap && b is ArcTap otherTap) return tap.Track != otherTap.Track || tap.FloatLane != otherTap.FloatLane;
             if (a is ArcHold hold && b is ArcHold otherHold) return hold.Track != otherHold.Track || hold.FloatLane != otherHold.FloatLane;
-            return a is ArcSlide slide && b is ArcSlide otherSlide && (slide.StartCenter != otherSlide.StartCenter || slide.EndCenter != otherSlide.EndCenter);
+            return a is ArcSlide slide && b is ArcSlide otherSlide && (slide.StartCenter != otherSlide.StartCenter || slide.EndCenter != otherSlide.EndCenter
+                || slide.StartWidth != otherSlide.StartWidth || slide.EndWidth != otherSlide.EndWidth);
         }
     }
 }

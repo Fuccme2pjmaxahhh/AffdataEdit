@@ -218,10 +218,11 @@ namespace Arcade.Gameplay
                 return false;
             return previous < start && now >= start || !wasPlaying && previous == start && now >= start;
         }
-        public void RebuildGroups()
+        public void RebuildGroups(bool resetFeedback = true)
         {
             ArcScoreManager.Invalidate();
             UpdateConnections(Slides);
+            if (!resetFeedback) return;
             ResetFeedback();
             foreach (var hit in feedback.Values) if (hit.Object) Destroy(hit.Object);
             feedback.Clear();
@@ -244,27 +245,31 @@ namespace Arcade.Gameplay
             }
             ordered.Sort((a, b) => a.note.Timing != b.note.Timing
                 ? a.note.Timing.CompareTo(b.note.Timing) : a.index.CompareTo(b.index));
-            var previous = new Dictionary<(ArcTimingGroup, SlideHeight), ArcSlide>();
-            foreach (var item in ordered)
+            for (int i = 0; i < ordered.Count; i++)
             {
-                var current = item.note;
-                var key = (current.TimingGroup, current.Height);
-                if (previous.TryGetValue(key, out var before))
+                var current = ordered[i].note;
+                ArcSlide best = null;
+                float bestLeft = 0, bestRight = 0;
+                double bestOverlap = MinimumContinuityOverlap;
+                for (int j = 0; j < i; j++)
                 {
+                    var before = ordered[j].note;
+                    if (!before.IsGroupTail || before.TimingGroup != current.TimingGroup || before.Height != current.Height
+                        || System.Math.Abs((long)current.Timing - before.EndTiming) > ContinuityToleranceMilliseconds) continue;
                     var a = before.Range(1); var b = current.Range(0);
                     float left = Mathf.Max(a.x, b.x), right = Mathf.Min(a.y, b.y);
                     // Coordinates have three decimals; remove float noise at the strict threshold.
                     double overlapWidth = System.Math.Round((double)right - left, 6);
-                    if (System.Math.Abs((long)current.Timing - before.EndTiming) <= ContinuityToleranceMilliseconds
-                        && overlapWidth > MinimumContinuityOverlap)
+                    if (overlapWidth > bestOverlap)
                     {
-                        current.GroupRoot = before.GroupRoot;
-                        before.IsGroupTail = current.IsGroupHead = false;
-                        before.Overlap.z = current.Overlap.x = left;
-                        before.Overlap.w = current.Overlap.y = right;
+                        best = before; bestOverlap = overlapWidth; bestLeft = left; bestRight = right;
                     }
                 }
-                previous[key] = current;
+                if (best == null) continue;
+                current.GroupRoot = best.GroupRoot;
+                best.IsGroupTail = current.IsGroupHead = false;
+                best.Overlap.z = current.Overlap.x = bestLeft;
+                best.Overlap.w = current.Overlap.y = bestRight;
             }
         }
         private void OnDestroy()

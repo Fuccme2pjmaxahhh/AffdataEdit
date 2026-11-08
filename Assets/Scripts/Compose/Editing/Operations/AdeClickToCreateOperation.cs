@@ -483,8 +483,8 @@ namespace Arcade.Compose.Operation
 						note.EndTiming = timing;
 						note.Rebuild();
 						note.CalculateJudgeTimings();
-						ArcGameplayManager.Instance.ResetJudge();
 						ArcArcManager.Instance.CalculateArcRelationship(note);
+						note.Judged = ArcGameplayManager.Instance.ChartTiming > note.EndTiming;
 					}
 				};
 				while (true)

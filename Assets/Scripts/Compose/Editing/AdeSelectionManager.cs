@@ -144,7 +144,7 @@ namespace Arcade.Compose
 					notes.Add(arcTap.Arc);
 			return notes.ToArray();
 		}
-		private static bool IsSingleArcTapHost(ArcArc arc)
+		internal static bool IsSingleArcTapHost(ArcArc arc)
 		{
 			return arc != null && arc.IsVoid && arc.EndTiming - arc.Timing == 1
 				&& arc.XStart == arc.XEnd && arc.YStart == arc.YEnd;

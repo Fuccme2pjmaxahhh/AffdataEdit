@@ -85,6 +85,8 @@ namespace Arcade.Compose
             if (Arcade.Audio.BassOutputSettings.IsWindows) AdeAudioOutputSettings.AddTo(compose);
             BuildSpectrumSetting(settings.Find("Wraper"));
             BuildHitTypeSetting(settings.Find("Wraper"));
+            BuildPasteTimingSetting(settings.Find("Wraper"));
+            BuildTapWidthSetting(settings.Find("Wraper"));
             BuildContextMenuSetting(settings.Find("Wraper"));
             BuildChartSortSetting(settings.Find("Wraper"));
             BuildDragEditingSettings(settings.Find("Wraper"));
@@ -111,8 +113,47 @@ namespace Arcade.Compose
             BindEntries();
         }
 
-        private void Register(Transform row, Page page) => rows.Add(new BorrowedRow
-        { Row = row, Parent = row.parent, Index = row.GetSiblingIndex(), Page = page });
+        private void Register(Transform row, Page page)
+        {
+            foreach (var input in row.GetComponentsInChildren<TMP_InputField>(true))
+                AdeTextSelection.ConfigureSettings(input, page == Page.Grid
+                    || input.contentType == TMP_InputField.ContentType.IntegerNumber
+                    || input.contentType == TMP_InputField.ContentType.DecimalNumber
+                    || input.characterValidation == TMP_InputField.CharacterValidation.Integer
+                    || input.characterValidation == TMP_InputField.CharacterValidation.Decimal);
+            rows.Add(new BorrowedRow { Row = row, Parent = row.parent, Index = row.GetSiblingIndex(), Page = page });
+        }
+
+        private void BuildTapWidthSetting(Transform parent)
+        {
+            var compose = ArcadeComposeManager.Instance;
+            var template = compose.PlaybackSyncToggle.GetComponentInParent<HorizontalLayoutGroup>(true).transform;
+            var row = AdeUiKit.CloneRow(template, parent, "EnableTapWidthEditing");
+            row.GetComponentInChildren<TMP_Text>(true).text = "允许编辑地键宽度";
+            var toggle = row.GetComponentInChildren<Toggle>(true);
+            toggle.SetIsOnWithoutNotify(compose.ArcadePreference.EnableTapWidthEditing);
+            toggle.onValueChanged.AddListener(value =>
+            {
+                compose.ArcadePreference.EnableTapWidthEditing = value;
+                compose.SavePreferences();
+                Editing.AdeValueEditor.Instance.UpdateFields();
+            });
+        }
+
+        private void BuildPasteTimingSetting(Transform parent)
+        {
+            var compose = ArcadeComposeManager.Instance;
+            var template = compose.PlaybackSyncToggle.GetComponentInParent<HorizontalLayoutGroup>(true).transform;
+            var row = AdeUiKit.CloneRow(template, parent, "FixNotesTimeOnPaste");
+            row.GetComponentInChildren<TMP_Text>(true).text = "在粘贴时修正时间";
+            var toggle = row.GetComponentInChildren<Toggle>(true);
+            toggle.SetIsOnWithoutNotify(compose.ArcadePreference.FixNotesTimeOnPaste);
+            toggle.onValueChanged.AddListener(value =>
+            {
+                compose.ArcadePreference.FixNotesTimeOnPaste = value;
+                compose.SavePreferences();
+            });
+        }
 
         private void BuildHitTypeSetting(Transform parent)
         {

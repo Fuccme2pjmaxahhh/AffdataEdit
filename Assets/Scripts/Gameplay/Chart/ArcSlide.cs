@@ -7,7 +7,7 @@ namespace Arcade.Gameplay.Chart
     {
         // Default preview span; authored coordinates are unrestricted.
         public const float MinX = -0.5f, MaxX = 1.5f;
-        private float startCenter = 0.5f, startWidth = 0.333f, endCenter = 0.5f, endWidth = 0.333f;
+        private float startCenter = 0.5f, startWidth = 0.5f, endCenter = 0.5f, endWidth = 0.5f;
         public float StartCenter { get => startCenter; set => startCenter = RawAffSlide.RoundCoordinate(value); }
         public float StartWidth { get => startWidth; set => startWidth = RawAffSlide.RoundCoordinate(value); }
         public float EndCenter { get => endCenter; set => endCenter = RawAffSlide.RoundCoordinate(value); }
@@ -151,7 +151,7 @@ namespace Arcade.Gameplay.Chart
         {
             ArcScoreManager.Invalidate();
             Visual?.Invalidate();
-            if (ArcSlideManager.Instance) ArcSlideManager.Instance.RebuildGroups();
+            if (ArcSlideManager.Instance) ArcSlideManager.Instance.RebuildGroups(false);
         }
     }
 }

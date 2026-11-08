@@ -51,6 +51,13 @@ namespace Arcade.Compose
             "create-tap", "create-hold", "create-arc", "create-arctap", "create-slide",
             "create-none", "create-exit", "create-toggle", "grid", "delete"
         };
+        private static readonly string[] CircularDefaultOrder =
+        {
+            // AA's supported creation entries, read clockwise from its left-hand origin.
+            "create-none", "grid", "create-single-arctap", "create-arctap", "create-exit",
+            "create-arc", "create-hold", "create-tap", "create-slide",
+            "create-toggle", "delete", "snap-time", "mirror-x", "mirror-y", "copy", "cut", "horizontal-cut", "convert-slide"
+        };
 
         public ContextMenuCustomization Customization
         {
@@ -84,7 +91,16 @@ namespace Arcade.Compose
                 string[] ids = { "create-none", "create-tap", "create-hold", "create-arc", "create-arctap", "create-exit", "grid", "create-slide" };
                 string[] titles = { "不创建", "Tap", "Hold", "Arc", "ArcTap", "退出点立得", "网格线", "Slide" };
                 for (int i = 0; i < ids.Length && i < create.ClickToCreateItems.Length; i++)
+                {
+                    if (i == 4 && !vertical)
+                    {
+                        var ring = ArrangeRingItems(new[] { create.ClickToCreateItems[i] });
+                        choices.Add(new MenuChoice("create-single-arctap", "单Arctap", ring[0]));
+                        choices.Add(new MenuChoice(ids[i], "Arctap", ring[1]));
+                        continue;
+                    }
                     choices.Add(new MenuChoice(ids[i], titles[i], create.ClickToCreateItems[i]));
+                }
                 if (selected) choices.Add(new MenuChoice("delete", "删除", create.Delete));
             }
             else
@@ -119,7 +135,12 @@ namespace Arcade.Compose
             var options = Customization.For(state);
             var order = vertical ? options.VerticalOrder : options.CircularOrder;
             if (order == null || order.Count == 0)
-                order = vertical ? new List<string>(VerticalDefaultOrder) : new List<string>();
+                order = new List<string>(vertical ? VerticalDefaultOrder : CircularDefaultOrder);
+            if (!vertical && order.Contains("create-arctap") && !order.Contains("create-single-arctap"))
+            {
+                order = new List<string>(order);
+                order.Insert(order.IndexOf("create-arctap"), "create-single-arctap");
+            }
             // Unknown/stale IDs are ignored; new entries retain their default relative order.
             return choices.OrderBy(c =>
             {
@@ -146,6 +167,7 @@ namespace Arcade.Compose
                 available.AddRange(items);
             }
             bool vertical = ArcadeComposeManager.Instance.ArcadePreference.VerticalContextMenu;
+            if (!vertical) available = new List<MarkingMenuItem>(ArrangeRingItems(available.ToArray()));
             var choices = GetMenuChoices(CurrentState, vertical);
             var hidden = Customization.For(CurrentState).Hidden;
             var result = choices.Where(c => available.Contains(c.Item) && (hidden == null || !hidden.Contains(c.Id)))

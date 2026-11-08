@@ -36,7 +36,7 @@ namespace Arcade.Compose.Operation
 				var items = new List<MarkingMenuItem> { Entry };
                 var selected = AdeSelectionManager.Instance.SelectedNotes;
                 if (verticalEntry && selected.Exists(note => note is ArcArc || note is ArcSlide)) items.Add(verticalEntry);
-                if (convertToSlideEntry && selected.Exists(note => note is ArcArc)) items.Add(convertToSlideEntry);
+                if (convertToSlideEntry && selected.Exists(note => note is ArcArc || note is ArcHold)) items.Add(convertToSlideEntry);
                 return items.ToArray();
 			}
 		}
@@ -116,14 +116,14 @@ namespace Arcade.Compose.Operation
                 int skipped = 0;
                 foreach (var note in AdeSelectionManager.Instance.SelectedNotes.ToArray())
                 {
-                    if (!(note is ArcArc arc)) continue;
-                    if (ConvertArcToSlideCommand.TryCreate(arc, out var command)) commands.Add(command);
+                    if (!(note is ArcArc || note is ArcHold)) continue;
+                    if (ConvertArcToSlideCommand.TryCreate(note, out var command)) commands.Add(command);
                     else skipped++;
                 }
                 if (commands.Count > 0)
-                    AdeCommandManager.Instance.Add(new BatchCommand(commands.ToArray(), "Arc 转换为 Slide"));
+                    AdeCommandManager.Instance.Add(new BatchCommand(commands.ToArray(), "转换为 Slide"));
                 if (skipped > 0)
-                    AdeToast.Instance.Show($"已跳过 {skipped} 条无法转换的 Arc（时长或坐标无效）");
+                    AdeToast.Instance.Show($"已跳过 {skipped} 条无法转换的物件（时长或坐标无效）");
                 return null;
             });
         }

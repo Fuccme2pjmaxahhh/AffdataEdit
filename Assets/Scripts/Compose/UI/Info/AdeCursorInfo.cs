@@ -62,7 +62,8 @@ namespace Arcade.Compose
 			if (cursor.WallEnabled)
 			{
 				Vector3 pos = cursor.AttachedWallPoint;
-				content += $"\n坐标: ({ArcAlgorithm.WorldXToArc(pos.x).ToString("f3", CultureInfo.InvariantCulture)},{ArcAlgorithm.WorldYToArc(pos.y).ToString("f3", CultureInfo.InvariantCulture)})";
+                float x = AdeDragEdit.Instance && AdeDragEdit.Instance.IsDraggingSlide ? .5f - pos.x / 8.5f : ArcAlgorithm.WorldXToArc(pos.x);
+				content += $"\n坐标: ({x.ToString("f3", CultureInfo.InvariantCulture)},{ArcAlgorithm.WorldYToArc(pos.y).ToString("f3", CultureInfo.InvariantCulture)})";
 			}
 			if (AdeClickToCreate.Instance.Enable && AdeClickToCreate.Instance.Mode != ClickToCreateMode.Idle)
 			{

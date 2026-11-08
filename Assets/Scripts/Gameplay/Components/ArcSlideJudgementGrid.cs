@@ -65,6 +65,7 @@ namespace Arcade.Gameplay
         private float[] columnX;            // Nb: normalised x within the row
         private float[] rowWeight;          // ob: normalised distance from the grid's vertical centre
         private float[] litAt;              // Ob: when each triangle was last lit
+        private bool[] previouslyInside;
 
         private IReadOnlyList<Vector2> ranges;
         private readonly List<Vector2> previousRanges = new List<Vector2>();
@@ -159,6 +160,7 @@ namespace Arcade.Gameplay
         {
             rangeDirty |= ranges != null || rangeLeft != left || rangeRight != right;
             ranges = null;
+            Array.Clear(previouslyInside, 0, previouslyInside.Length);
             rangeLeft = left;
             rangeRight = right;
         }
@@ -300,9 +302,24 @@ namespace Arcade.Gameplay
             for (int i = 0; i < opacity.Length; i++)
             {
                 float value;
-                if (ContainsColumn(columnX[i]))
+                bool inside = ContainsColumn(columnX[i]);
+                if (inside)
                 {
                     float o = rowWeight[i];
+                    // Seed the noise history immediately when a moving Slide reaches a new
+                    // column; a narrow fast range may leave before the next random emission.
+                    if (!previouslyInside[i])
+                    {
+                        for (int step = 0; step <= 12; step++)
+                        {
+                            float sample = t - step / 60f;
+                            float noise = Mathf.PerlinNoise(i + sample * NoiseTimeX, sample * NoiseTimeY) - o * .5f;
+                            if (noise <= LightThreshold || noise - o <= LightMargin) continue;
+                            litAt[i] = Mathf.Max(litAt[i], sample);
+                            hasHistory = true;
+                            break;
+                        }
+                    }
                     float n = Mathf.PerlinNoise(i + t * NoiseTimeX, t * NoiseTimeY) - o * 0.5f;
                     if (n > LightThreshold && n - o > LightMargin)
                     {
@@ -319,6 +336,7 @@ namespace Arcade.Gameplay
                 {
                     value = Decay(t - litAt[i], DecayOutside);
                 }
+                previouslyInside[i] = inside;
                 if (opacity[i] != value)
                 {
                     opacity[i] = value;
@@ -389,6 +407,7 @@ namespace Arcade.Gameplay
             columnX = new float[TriangleCount];
             rowWeight = new float[TriangleCount];
             litAt = new float[TriangleCount];
+            previouslyInside = new bool[TriangleCount];
             // Original _Ob starts at zero while _WE._b is an absolute Stopwatch clock,
             // so never-lit triangles are already older than the fade duration. Our local
             // replay clock starts at zero; preserve that initial state instead of flashing
@@ -397,10 +416,14 @@ namespace Arcade.Gameplay
 
             const float rowCentre = (Rows - 1) * 0.5f;
             const float rowSpan = Rows - 1;
+            var vertices = mesh.vertices;
             for (int i = 0; i < TriangleCount; i++)
             {
-                float u = (i % TrianglesPerRow) / (float)TrianglesPerRow;
-                columnX[i] = (u * 2f - 0.6f) / 0.8f;
+                float meshX = (vertices[i * 3].x + vertices[i * 3 + 1].x + vertices[i * 3 + 2].x) / 3;
+                // Grid vertex shader: clipX=meshX*1.7-.85; glow samples at .4*skyX+.3.
+                // Derive coverage from the drawn triangle, not its ordinal in the row.
+                float textureX = (meshX * 1.7f - .85f + 1) * .5f;
+                columnX[i] = (textureX - .3f) / .4f;
                 rowWeight[i] = Mathf.Abs(rowCentre - i / TrianglesPerRow) / rowSpan;
             }
         }

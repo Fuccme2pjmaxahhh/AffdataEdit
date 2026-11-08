@@ -30,6 +30,8 @@ namespace Arcade.Compose
 		public int Velocity = 165; // Displayed scroll speed 5.5, stored as speed * 30.
 		public uint UndoBufferSize = 200;
 		public bool PlaybackSync = false;
+		public bool FixNotesTimeOnPaste = true;
+        public bool EnableTapWidthEditing = false;
 		public bool ShowSpectrum = false;
 		public bool ShowJudgementDetails = false;
 		public float SpectrumOpacity = 0.5f;
@@ -281,8 +283,7 @@ namespace Arcade.Compose
 				var input = AdeInputManager.Instance;
 				if (!input.CheckHotkeyActionPressed(input.Hotkeys.PlayWhenHolding)
 					&& !input.CheckHotkeyActionPressed(input.Hotkeys.PlayOrPause)) return;
-				// Confirm the current drag before playback can move the timeline under it.
-				AdeDragEdit.Instance.Finish(true);
+				// Q changes playback independently; the held middle-button edit stays active.
 			}
 			if (IsEditorMode)
 			{

@@ -33,6 +33,8 @@ namespace Arcade.Compose.Editing
         private RectTransform smoothnessRow, designantRow;
         private InputField smoothnessInput;
         private Toggle designantToggle;
+        private RectTransform tapWidthRow;
+        private InputField tapWidthInput;
 		public void OnNoteSelect(ArcNote note)
 		{
 			UpdateFields();
@@ -72,6 +74,29 @@ namespace Arcade.Compose.Editing
 
         private void CreateArcExtensionRows()
         {
+            tapWidthRow = Instantiate(Timing, Timing.parent);
+            tapWidthRow.name = "Tap Width";
+            tapWidthRow.GetComponentsInChildren<Text>(true)[0].text = "宽度";
+            foreach (var button in tapWidthRow.GetComponentsInChildren<Button>(true)) button.gameObject.SetActive(false);
+            tapWidthInput = tapWidthRow.GetComponentInChildren<InputField>(true);
+            tapWidthInput.contentType = InputField.ContentType.Standard;
+            tapWidthInput.onEndEdit = new InputField.SubmitEvent();
+            tapWidthInput.onValueChanged = new InputField.OnChangeEvent();
+            tapWidthInput.onEndEdit.AddListener(_ =>
+            {
+                if (!ArcadeComposeManager.Instance.ArcadePreference.EnableTapWidthEditing) return;
+                HandleValueChange(AdeTextSelection.NormalizeForCommit(tapWidthInput),
+                    (string raw, ref float result) =>
+                    {
+                        if (!float.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out result)
+                            || float.IsNaN(result) || float.IsInfinity(result) || result <= 0)
+                            return new ValueChangeErrorMessage { message = "宽度必须为大于 0 的有限数值（1 为普通大小）" };
+                        return null;
+                    }, (value, note) => note is ArcTap ? (ValueChangeErrorMessage?)null : new ValueChangeErrorMessage { message = "请选择地键" },
+                    (value, note) => ((ArcTap)note).Width = value);
+            });
+            tapWidthRow.SetSiblingIndex(TimingGroup.GetSiblingIndex());
+            tapWidthRow.gameObject.SetActive(false);
             smoothnessRow = Instantiate(EndTiming, EndTiming.parent);
             smoothnessRow.name = "Arc Smoothness";
             smoothnessRow.GetComponentsInChildren<Text>(true)[0].text = "平滑度";
@@ -123,6 +148,10 @@ namespace Arcade.Compose.Editing
 		public void UpdateFields()
 		{
 			List<ArcNote> selected = AdeSelectionManager.Instance.SelectedNotes;
+            if (tapWidthRow)
+                UpdateField(note => note is ArcTap && ArcadeComposeManager.Instance.ArcadePreference.EnableTapWidthEditing,
+                    note => ((ArcTap)note).Width.ToString("f3", CultureInfo.InvariantCulture), "-",
+                    active => tapWidthRow.gameObject.SetActive(active), text => tapWidthInput.SetTextWithoutNotify(text));
             if (smoothnessRow)
             {
                 UpdateField(note => note is ArcArc, note => ((ArcArc)note).EffectiveSmoothness.ToString(CultureInfo.InvariantCulture), "-",
@@ -1005,6 +1034,11 @@ namespace Arcade.Compose.Editing
 		private async UniTask ReselectStartCoordinate(CancellationToken cancellationToken)
 		{
 			var selected = AdeSelectionManager.Instance.SelectedNotes;
+			if (selected.Count == 1 && selected[0] is ArcSlide slide)
+			{
+				await ReselectSlideCenter(slide, false, cancellationToken);
+				return;
+			}
 			if (selected.Count != 1)
 			{
 				return;
@@ -1048,6 +1082,11 @@ namespace Arcade.Compose.Editing
 		private async UniTask ReselectEndCoordinate(CancellationToken cancellationToken)
 		{
 			var selected = AdeSelectionManager.Instance.SelectedNotes;
+			if (selected.Count == 1 && selected[0] is ArcSlide slide)
+			{
+				await ReselectSlideCenter(slide, true, cancellationToken);
+				return;
+			}
 			if (selected.Count != 1)
 			{
 				return;
@@ -1086,6 +1125,45 @@ namespace Arcade.Compose.Editing
 			}
 			AdeCommandManager.Instance.Commit();
 			AdeSelectionManager.Instance.SelectNote(note);
+		}
+
+		private async UniTask ReselectSlideCenter(ArcSlide note, bool end, CancellationToken cancellationToken)
+		{
+			var value = (ArcSlide)note.Clone();
+			var previousGroup = AdeTimingEditor.Instance.currentTimingGroup;
+			AdeSelectionManager.Instance.DeselectAllNotes();
+			AdeTimingEditor.Instance.SetCurrentTimingGroup(note.TimingGroup);
+			var command = new EditArcEventCommand(note, value);
+			AdeCommandManager.Instance.Prepare(command);
+			try
+			{
+				void UpdateCenter(Vector2 coordinate)
+				{
+					float center = .5f - ArcAlgorithm.ArcXToWorld(coordinate.x) / note.WorldWidth;
+					float previous = end ? value.EndCenter : value.StartCenter;
+					if (end) value.EndCenter = center; else value.StartCenter = center;
+					if (!value.IsValid)
+					{
+						if (end) value.EndCenter = previous; else value.StartCenter = previous;
+						return;
+					}
+					command.Do();
+				}
+				var coordinate = await AdeCursorManager.Instance.SelectCoordinate(end ? note.EndTiming : note.Timing,
+					Progress.Create<Vector2>(UpdateCenter), cancellationToken);
+				UpdateCenter(coordinate);
+				AdeCommandManager.Instance.Commit();
+			}
+			catch (OperationCanceledException)
+			{
+				AdeCommandManager.Instance.Cancel();
+				throw;
+			}
+			finally
+			{
+				AdeTimingEditor.Instance.SetCurrentTimingGroup(previousGroup);
+				AdeSelectionManager.Instance.SelectNote(note);
+			}
 		}
 
 		private async UniTask ReselectTrack(CancellationToken cancellationToken)

@@ -48,15 +48,9 @@ namespace Arcade.Compose
                 buttons.Add(binding);
             }
             content.RebindingButtons = buttons.ToArray();
-            var unsupported = AdeUiKit.CloneRow(template, wrapper, "UnimplementedNewHotkeys");
-            var unsupportedButton = unsupported.GetComponentInChildren<Button>(true);
-            unsupportedButton.interactable = true;
-            unsupportedButton.GetComponentInChildren<TMP_Text>(true).text = "查看清单";
-            AdeUiKit.SetOnClick(unsupportedButton, () => Dialog.AdeBasicSingleDialogContent.Instance.Show(
-                AdeHotkeyPresets.Unsupported, "截图中尚未支持的热键"));
-            foreach (var label in unsupported.GetComponentsInChildren<TMP_Text>(true))
-                if (!label.transform.IsChildOf(unsupportedButton.transform))
-                { label.text = "截图中尚未支持的热键"; break; }
+            var gestures = AdeUiKit.CreateLabelRow(wrapper, template.GetComponentInChildren<TMP_Text>(true).transform,
+                "鼠标组合操作（固定）\n中键拖动：按当前拖动模式编辑时间／位置\n位置模式 Alt＋中键：整体移动 Arc、Slide、单 ArcTap；按下时选择最近可见端点为原点，Slide 只移动 X\nCtrl＋左键：多选／切换选择；再次点已选 Arc 可选整链\nShift＋左键：时间范围选择\n时间拖动按下即吸附最近网格线；松开中键提交，Esc 取消；Q 播放／暂停时继续拖动\n自由相机：中键转向，中键＋滚轮调速，Shift＋WASD 加速");
+            gestures.transform.parent.name = "MouseGestureHelp";
         }
 
         private void StyleHotkeyPreset()

@@ -46,8 +46,8 @@ namespace Arcade.Compose
 			var trans = ArcCameraManager.Instance.GameplayCamera.transform;
 			if (FreeCameraPressing)
 			{
-				// AA's Mouse X/Y axes use 0.1 sensitivity and an 8x rotation multiplier.
-				Rotate(trans, Mouse.current.delta.ReadValue() * .8f);
+				// User sensitivity: half the previous 0.8 mouse rotation multiplier.
+				Rotate(trans, Mouse.current.delta.ReadValue() * .4f);
 				float scroll = Mouse.current.scroll.ReadValue().y;
 				if (InputSystem.settings.scrollDeltaBehavior == InputSettings.ScrollDeltaBehavior.KeepPlatformSpecificInputRange
 					&& (Application.platform == RuntimePlatform.WindowsEditor || Application.platform == RuntimePlatform.WindowsPlayer))

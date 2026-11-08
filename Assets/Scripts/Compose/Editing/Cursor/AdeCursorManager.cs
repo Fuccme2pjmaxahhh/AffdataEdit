@@ -234,6 +234,7 @@ namespace Arcade.Compose
 		{
 			get
 			{
+				if (dragCursorPoint.HasValue) return new Vector2(ArcAlgorithm.WorldXToArc(dragCursorPoint.Value.x), ArcAlgorithm.WorldYToArc(dragCursorPoint.Value.y));
 				return new Vector2(AdeGridManager.Instance.AttachVerticalX(ArcAlgorithm.WorldXToArc(WallPoint.x)),
 				   AdeGridManager.Instance.AttachVerticalY(ArcAlgorithm.WorldYToArc(WallPoint.y)));
 			}
@@ -242,6 +243,7 @@ namespace Arcade.Compose
 		{
 			get
 			{
+				if (dragCursorPoint.HasValue) return dragCursorPoint.Value;
 				Vector2 coordinate = AttachedCoordinate;
 				return new Vector3(ArcAlgorithm.ArcXToWorld(coordinate.x), ArcAlgorithm.ArcYToWorld(coordinate.y));
 			}
@@ -374,7 +376,7 @@ namespace Arcade.Compose
 				while (true)
 				{
 					await UniTask.NextFrame(cancellationToken);
-					if (ArcadeComposeManager.Instance.IsEditorMode && AdeGameplayContentInputHandler.InputActive && IsTrackHit)
+					if (AdeGameplayContentInputHandler.InputActive && IsTrackHit)
 					{
 						progress.Report(AttachedTiming);
 						if (Mouse.current.leftButton.wasPressedThisFrame)
@@ -436,7 +438,7 @@ namespace Arcade.Compose
 				while (true)
 				{
 					await UniTask.NextFrame(cancellationToken);
-					if (ArcadeComposeManager.Instance.IsEditorMode && AdeGameplayContentInputHandler.InputActive && IsWallHit)
+					if (AdeGameplayContentInputHandler.InputActive && IsWallHit)
 					{
 						progress.Report(AttachedCoordinate);
 						if (Mouse.current.leftButton.wasPressedThisFrame)
@@ -466,7 +468,7 @@ namespace Arcade.Compose
 				while (true)
 				{
 					await UniTask.NextFrame(cancellationToken);
-					if (ArcadeComposeManager.Instance.IsEditorMode && AdeGameplayContentInputHandler.InputActive && IsTrackHit)
+					if (AdeGameplayContentInputHandler.InputActive && IsTrackHit)
 					{
 						progress.Report((8.5f - trackHit.point.x) / 17f);
 						if (Mouse.current.leftButton.wasPressedThisFrame)
@@ -494,7 +496,7 @@ namespace Arcade.Compose
 				while (true)
 				{
 					await UniTask.NextFrame(cancellationToken);
-					if (ArcadeComposeManager.Instance.IsEditorMode && AdeGameplayContentInputHandler.InputActive && IsTrackHit)
+					if (AdeGameplayContentInputHandler.InputActive && IsTrackHit)
 					{
 						progress.Report(AttachedTrack);
 						if (Mouse.current.leftButton.wasPressedThisFrame)

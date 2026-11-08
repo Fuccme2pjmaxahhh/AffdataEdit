@@ -21,6 +21,7 @@ namespace Arcade.Compose
 	public struct BeatlineProperty
 	{
 		public int Timing;
+        public double? ExactTiming;
 		public int Importance;
 		public int TimingIndex;
 		public bool IsMeasure;
@@ -156,7 +157,7 @@ namespace Arcade.Compose
 							continue;
 						}
 					}
-					beatlineTimings.Add(new BeatlineProperty() { Timing = Mathf.RoundToInt(j), Importance = importance,
+					beatlineTimings.Add(new BeatlineProperty() { Timing = Mathf.RoundToInt(j), ExactTiming = j, Importance = importance,
 						TimingIndex = i, IsMeasure = isMeasure });
 				}
 			}
@@ -188,7 +189,7 @@ namespace Arcade.Compose
 							continue;
 						}
 					}
-					beatlineTimings.Insert(0, new BeatlineProperty() { Timing = Mathf.RoundToInt(j), Importance = importance,
+					beatlineTimings.Insert(0, new BeatlineProperty() { Timing = Mathf.RoundToInt(j), ExactTiming = j, Importance = importance,
 						TimingIndex = 0, IsMeasure = isMeasure });
 				}
 			}
@@ -442,6 +443,20 @@ namespace Arcade.Compose
 			}
 			return index < 0 ? defaultTiming : visibleBeatlines[index].Timing;
 		}
+        internal int AttachDragTimingFromPos(float z, int fallback)
+        {
+            if (!EnableBeatline || visibleBeatlines.Count == 0) return fallback;
+            float distance = float.PositiveInfinity;
+            int timing = fallback;
+            foreach (var line in visibleBeatlines)
+            {
+                float delta = Mathf.Abs(line.Position - z);
+                if (delta >= distance) continue;
+                distance = delta; timing = line.Timing;
+            }
+            return timing;
+        }
+
 		internal Vector2 AttachDragCoordinate(Vector2 coordinate)
 		{
 			if (EnableVertical)
@@ -576,6 +591,14 @@ namespace Arcade.Compose
 			int index = deltas.IndexOf(deltas.Min());
 			return beatlineTimings[index].Timing;
 		}
+
+        internal int FixPasteTiming(int timing)
+        {
+            // AA checks the complete grid in order, independently of visibility or grid enablement.
+            foreach (var line in beatlineTimings)
+                if (Math.Abs((line.ExactTiming ?? line.Timing) - timing) < 2) return line.Timing;
+            return timing;
+        }
 
 		public void ReBuildBeatline()
 		{

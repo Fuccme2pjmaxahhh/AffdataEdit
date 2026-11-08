@@ -75,11 +75,6 @@ namespace Arcade.Compose
 				}
 				return;
 			}
-			if (!ArcadeComposeManager.Instance.IsEditorMode)
-			{
-				Operation.AdeSelectNoteOperation.Instance.TryExecuteOperation();
-				return;
-			}
 			if (AdeInputManager.Instance.CheckHotkeyActionPressed(AdeInputManager.Instance.Inputs.Cancel)
 				&& Operation.AdeClickToCreate.Instance.Enable
 				&& Operation.AdeClickToCreate.Instance.Mode != Operation.ClickToCreateMode.Idle)
