@@ -27,7 +27,9 @@ namespace Arcade.Gameplay
 
         private static bool CanShow => ArcadeComposeManager.Instance
             && ArcadeComposeManager.Instance.ArcadePreference.ShowJudgementDetails
-            && ArcGameplayManager.Instance.Auto && ArcGameplayManager.Instance.IsPlaying;
+            && ArcGameplayManager.Instance.Auto;
+
+        private static bool CanSpawn => CanShow && ArcGameplayManager.Instance.IsPlaying;
 
         private bool Continuous => previousChart == ArcGameplayManager.Instance.Chart
             && previousSeekVersion == ArcGameplayManager.Instance.SeekVersion
@@ -35,7 +37,7 @@ namespace Arcade.Gameplay
 
         internal void ShowLongNote(ArcLongNote note, Vector3 position)
         {
-            if (!CanShow || !Continuous) return;
+            if (!CanSpawn || !Continuous) return;
             int index = note.JudgeTimings.BinarySearch(previousTiming);
             if (index < 0) index = ~index;
             else while (index < note.JudgeTimings.Count && note.JudgeTimings[index] <= previousTiming) index++;
@@ -45,19 +47,20 @@ namespace Arcade.Gameplay
 
         internal void ShowSlide(ArcSlide slide)
         {
-            if (!CanShow || !Continuous) return;
+            if (!CanSpawn || !Continuous) return;
             var game = ArcGameplayManager.Instance;
             double bpm = ArcTimingManager.Instance.CalculateBpmByTiming(slide.Timing, slide.TimingGroup);
             if (slide.CountJudgements(game.ChartTiming, bpm, game.TimingPointDensityFactor)
                 <= slide.CountJudgements(previousTiming, bpm, game.TimingPointDensityFactor)) return;
             float progress = Mathf.Clamp01((game.ChartTiming - (float)slide.Timing) / (slide.EndTiming - (float)slide.Timing));
             Vector2 range = slide.Range(progress);
-            ShowPure(new Vector3(slide.WorldX((range.x + range.y) * .5f), 0, 0), true);
+            float height = slide.IsFloor ? 0 : slide.WorldHeight;
+            ShowPure(new Vector3(slide.WorldX((range.x + range.y) * .5f), height, 0), true);
         }
 
         internal void ShowPure(Vector3 position, bool longNote = false)
         {
-            if (!CanShow) return;
+            if (!CanSpawn) return;
             var camera = ArcCameraManager.Instance.GameplayCamera;
             Vector3 viewport = camera.WorldToViewportPoint(position);
             if (viewport.z <= 0 || viewport.x < 0 || viewport.x > 1 || viewport.y < 0 || viewport.y > 1) return;
@@ -76,7 +79,7 @@ namespace Arcade.Gameplay
                 canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera, out Vector2 point);
             // AA's 1.5x at 1920x1080 equals 1x at our 1280x720 design resolution.
             // Convert the gameplay viewport's pixels to canvas units, excluding editor bars.
-            float scale = camera.pixelHeight / (canvas.scaleFactor * ArcCameraManager.Instance.DesignResolution.y);
+            float scale = camera.pixelHeight * ArcadeComposeManager.Instance.GameplayViewRect.height / (canvas.scaleFactor * ArcCameraManager.Instance.DesignResolution.y);
             point.y += (longNote ? 110 : 80) * scale;
             Image image = idle.Count > 0 ? idle.Pop() : CreateImage();
             image.rectTransform.sizeDelta = pure.rect.size * scale;

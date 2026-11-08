@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Arcade.Compose;
 using UnityEngine;
 using Arcade.Gameplay.Chart;
 
@@ -39,11 +40,12 @@ namespace Arcade.Gameplay
 		{
 			get
 			{
-				return new Vector3(Aspect(26.565f, 27.378f), 180, 0);
+				Vector3 position = new Vector3(0, 9, Aspect(9, 8));
+				return Matrix4x4.LookAt(position, new Vector3(0, -5.5f, -20), Vector3.up).rotation.eulerAngles;
 			}
 		}
 
-		// Arcade Alpha scales a 1280x720 design resolution into the gameplay view: views wider
+		// AA derives design size from the whole output, not the toolbar-cropped viewport: views wider
 		// than 16:9 widen it, narrower ones raise it toward 960 (4:3). Camera values blend
 		// between the 16:9 and 4:3 setups by that height instead of switching at one ratio.
 		private const float DesignWidth = 1280, DesignHeight = 720, DesignHeight4By3 = 960;
@@ -52,7 +54,9 @@ namespace Arcade.Gameplay
 		{
 			get
 			{
-				float w = Mathf.Max(1, GameplayCamera.pixelWidth), h = Mathf.Max(1, GameplayCamera.pixelHeight);
+				RenderTexture output = GameplayCamera.targetTexture;
+				float w = Mathf.Max(1, output ? output.width : Screen.width);
+				float h = Mathf.Max(1, output ? output.height : Screen.height);
 				float scale = Mathf.Min(w / DesignWidth, h / DesignHeight);
 				return new Vector2(w / scale, h / scale);
 			}
@@ -166,22 +170,10 @@ namespace Arcade.Gameplay
 				CurrentTilt = 0;
 				return;
 			}
-			float currentArcPos = ArcGameplayManager.Instance.Auto && ArcGameplayManager.Instance.IsPlaying ? -ArcArcManager.Instance.ArcJudgePos : 0;
-			float pos = Mathf.Clamp(currentArcPos / 4.25f, -1, 1) * 0.05f;
-			float delta = pos - CurrentTilt;
-			if (Mathf.Abs(delta) >= 0.001f)
-			{
-				float speed = 4.8f;
-				if (Mathf.Abs(pos) <= 0.001f)
-				{
-					speed /= 2f;
-				}
-				CurrentTilt = CurrentTilt + speed * delta * Time.deltaTime;
-			}
-			else
-			{
-				CurrentTilt = pos;
-			}
+			var arcs = ArcArcManager.Instance;
+			float target = ArcGameplayManager.Instance.Auto && ArcGameplayManager.Instance.IsPlaying
+				? ArcadeAlphaAppearance.TiltTarget(arcs.ArcJudgePosLeft, arcs.ArcJudgePosRight, 1 + EnwidenRatio * .5f) : 0;
+			CurrentTilt = ArcadeAlphaAppearance.StepTilt(CurrentTilt, target, Time.deltaTime);
 			GameplayCamera.transform.LookAt(new Vector3(0, -5.5f + 4.5f * EnwidenRatio, -20f + Aspect(4.5f, 4f) * EnwidenRatio), new Vector3(CurrentTilt, 1 - CurrentTilt, 0));
 		}
 	}

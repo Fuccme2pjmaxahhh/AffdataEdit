@@ -242,9 +242,13 @@ namespace Arcade.Gameplay
 		}
 		public void Pause()
 		{
+            Pause(true);
+		}
+        public void Pause(bool resetJudge)
+		{
 			ArcAudioManager.Instance.Pause();
 			IsPlaying = false;
-			ResetJudge();
+			if (resetJudge) ResetJudge();
 		}
 		public void Stop()
 		{

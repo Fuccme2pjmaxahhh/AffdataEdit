@@ -72,7 +72,13 @@ namespace Arcade.Gameplay
 		public readonly float[] Lanes = { 10.625f, 6.375f, 2.125f, -2.125f, -6.375f, -10.625f };
 
 		[HideInInspector]
-		public float ArcJudgePos;
+		public float ArcJudgePosLeft, ArcJudgePosRight;
+
+        internal void RecordJudgePosition(float worldX)
+        {
+            ArcJudgePosLeft = Mathf.Max(ArcJudgePosLeft, -worldX);
+            ArcJudgePosRight = Mathf.Max(ArcJudgePosRight, worldX);
+        }
 
 		public void Clean()
 		{
@@ -254,7 +260,7 @@ namespace Arcade.Gameplay
 		{
 			if (Arcs == null) return;
 			if (ArcGameplayManager.Instance.Auto) JudgeArcs();
-			ArcJudgePos = 0;
+			ArcJudgePosLeft = ArcJudgePosRight = 0;
 			RenderArcs();
 		}
 
@@ -374,16 +380,16 @@ namespace Arcade.Gameplay
 				return;
 			}
 			float pos = timingManager.CalculatePositionByTiming(t.Timing, t.TimingGroup) / 1000f;
-			if (pos > -100 && pos <= 90)
+			if (pos > -80 && pos <= 80)
 			{
 				t.Enable = true;
-                t.Alpha = 1;
+                t.Alpha = 240f / 255f;
 				t.UpdatePosition();
 			}
-			else if (pos > 90 && pos <= 100)
+			else if (pos > 80 && pos <= 90)
 			{
 				t.Enable = true;
-				t.Alpha = (100 - pos) / 10f;
+				t.Alpha = ArcadeAlphaAppearance.TapAlpha(pos) * (240f / 255f);
 				t.UpdatePosition();
 			}
 			else

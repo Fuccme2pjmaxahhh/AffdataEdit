@@ -10,34 +10,48 @@ namespace Arcade.Compose
 	{
 		private readonly List<GameObject> menuPanels = new List<GameObject>();
 
-		private float GetOptimizedDegree(float degree)
+		private static float GetRingRadius(MarkingMenuItem[] items, Vector2[] directions)
 		{
-			float remain = 0;
-			float normalized = degree;
-			while (normalized >= 180)
+			float radius = 50 + 12 * Mathf.Max(6, items.Length);
+			const float gap = 12;
+			// Enlarge the whole ring to fit the actual button bounds.
+			for (int i = 0; i < items.Length; i++)
 			{
-				normalized -= 180;
-				remain += 180;
+				for (int j = 0; j < i; j++)
+				{
+					Vector2 delta = directions[i] - directions[j];
+					Vector2 size = (items[i].ItemRectTransform.rect.size + items[j].ItemRectTransform.rect.size) / 2;
+					float horizontal = Mathf.Abs(delta.x) > .0001f ? (size.x + gap) / Mathf.Abs(delta.x) : float.PositiveInfinity;
+					float vertical = Mathf.Abs(delta.y) > .0001f ? (size.y + gap) / Mathf.Abs(delta.y) : float.PositiveInfinity;
+					radius = Mathf.Max(radius, Mathf.Min(horizontal, vertical));
+				}
 			}
-			while (normalized < 0)
-			{
-				normalized += 180;
-				remain -= 180;
-			}
-
-			float d = normalized / 90f - 1;
-			bool neg = d < 0;
-			d = Mathf.Abs(d);
-			d = Mathf.Abs(Mathf.Sin(Mathf.PI * Mathf.Pow(d, 1.2f) / 2));
-			d = (d * (neg ? -1 : 1) + 1) * 90f;
-			d += remain;
-
-			return d;
+			return radius;
 		}
-		private float GetEllipseLength(float degree, float itemCount)
+
+		private static void BalanceRingSpacing(MarkingMenuItem[] items, Vector2[] directions, float radius, float degreeDelta)
 		{
-			if (itemCount > 4) itemCount += itemCount % 2;
-			return MathfExtension.EvaluateEllipse(degree, 60 + 10 * Mathf.Max(6, itemCount), 50 + 12 * Mathf.Max(3, itemCount));
+			var extents = new float[items.Length];
+			float average = 0;
+			for (int i = 0; i < items.Length; i++)
+			{
+				int next = (i + 1) % items.Length;
+				float middle = (items[i].Degree + degreeDelta / 2) * Mathf.Deg2Rad;
+				Vector2 size = (items[i].ItemRectTransform.rect.size + items[next].ItemRectTransform.rect.size) / 2;
+				// Project both button bounds onto the line joining their centers.
+				extents[i] = size.x * Mathf.Abs(Mathf.Sin(middle)) + size.y * Mathf.Abs(Mathf.Cos(middle));
+				average += extents[i] / items.Length;
+			}
+			float correction = 0;
+			float limit = Mathf.Min(3, degreeDelta * .1f);
+			for (int i = 0; i < items.Length; i++)
+			{
+				// Apply only a little of the edge-spacing correction; retain the familiar ring.
+				float degree = items[i].Degree + Mathf.Clamp(correction * .3f, -limit, limit);
+				items[i].Degree = degree;
+				directions[i] = new Vector2(Mathf.Cos(degree * Mathf.Deg2Rad), Mathf.Sin(degree * Mathf.Deg2Rad));
+				correction += (extents[i] - average) / radius * Mathf.Rad2Deg;
+			}
 		}
 
 		public void ShowAt(Vector2 position, MarkingMenuItem[] items, float from = 0, float to = 360)
@@ -48,16 +62,24 @@ namespace Arcade.Compose
 				return;
 			}
 			int itemCount = items.Length;
-			float degreeDelta = (to - from) / (itemCount > 4 ? itemCount % 2 + itemCount : itemCount);
+			if (itemCount == 0) return;
+			float degreeDelta = (to - from) / itemCount;
+			var directions = new Vector2[itemCount];
 			for (int i = 0; i < itemCount; ++i)
 			{
 				float degree = from + degreeDelta * i + (itemCount > 4 ? 180 : 0);
-				degree = GetOptimizedDegree(degree);
-				float length = GetEllipseLength(degree, itemCount);
+				directions[i] = new Vector2(Mathf.Cos(degree * Mathf.Deg2Rad), Mathf.Sin(degree * Mathf.Deg2Rad));
 				items[i].Show(verticalStyle);
-				items[i].Position = position + new Vector2(length * Mathf.Cos(degree * Mathf.Deg2Rad), length * Mathf.Sin(degree * Mathf.Deg2Rad));
 				items[i].Degree = degree;
 			}
+			float radius = GetRingRadius(items, directions);
+			if (itemCount > 2 && Mathf.Approximately(to - from, 360))
+			{
+				BalanceRingSpacing(items, directions, radius, degreeDelta);
+				radius = GetRingRadius(items, directions);
+			}
+			for (int i = 0; i < itemCount; ++i)
+				items[i].Position = position + radius * directions[i];
 			shownItems.Push(new MenuPage(items, position));
 		}
 		public void ShowSubMenuAt(Vector2 position, MarkingMenuItem[] items, float from = 0, float to = 360)

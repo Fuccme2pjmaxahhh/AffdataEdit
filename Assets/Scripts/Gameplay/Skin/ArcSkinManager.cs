@@ -56,7 +56,34 @@ namespace Arcade.Gameplay
 		private void Awake()
 		{
 			Instance = this;
+			if (Background)
+			{
+				// Alpha's background has its own width-matched 1280 canvas and 4:3 image.
+				var scaler = Background.GetComponentInParent<CanvasScaler>();
+				if (scaler)
+				{
+					scaler.referenceResolution = new Vector2(1280, 720);
+					scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
+					scaler.matchWidthOrHeight = 0;
+				}
+				Background.rectTransform.sizeDelta = new Vector2(1280, 960);
+				gameObject.AddComponent<ArcBackgroundEdgeFill>().Source = Background;
+			}
 		}
+
+        private Vector2 backgroundDesignSize = new Vector2(-1, -1);
+        private Rect backgroundView;
+        private void LateUpdate()
+        {
+            if (!Background || !ArcCameraManager.Instance || !ArcCameraManager.Instance.GameplayCamera) return;
+            Vector2 size = ArcCameraManager.Instance.DesignResolution;
+            Rect view = ArcadeComposeManager.Instance ? ArcadeComposeManager.Instance.GameplayViewRect : new Rect(0, 0, 1, 1);
+            if (size == backgroundDesignSize && view == backgroundView) return;
+            backgroundView = view;
+            backgroundDesignSize = size;
+            Background.rectTransform.sizeDelta = new Vector2(1280 * view.width, 960 * view.height);
+            Background.rectTransform.anchoredPosition = new Vector2(0, ArcadeAlphaAppearance.BackgroundOffset(size) * view.height);
+        }
 
 		public void SetSimpleSkin(AdeSkinHost.SkinDatas skinData)
 		{
