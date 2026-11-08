@@ -52,6 +52,8 @@ namespace Arcade.Compose
         private const string DarkPresetKey = "AffdataEdit.EditorTheme.Dark", LightPresetKey = "AffdataEdit.EditorTheme.Light";
         private static Preset darkPreset = Presets[0], lightPreset = Presets[6];
         public static Preset Current => Dark ? darkPreset : lightPreset;
+        internal static Color ContextMenuSelection => Dark
+            ? Current.Selection : Color.Lerp(Current.Selection, Current.Text, .20f);
         public static int Revision { get; private set; }
         public static Color IconColor => Dark ? C(0xC5C5C5) : C(0x7F7F7F);
 

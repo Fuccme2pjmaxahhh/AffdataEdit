@@ -6,6 +6,7 @@ Shader "Arcade/Spectrum"
         _MinColor ("Min Color", Color) = (1, 0.423529, 0.423529, 1)
         _MiddleColor ("Middle Color", Color) = (1, 0, 0.2, 1)
         _MaxColor ("Max Color", Color) = (1, 0.419608, 0, 1)
+        _Opacity ("Opacity", Range(0,1)) = 0.5
         [Enum(UnityEngine.Rendering.BlendMode)] _DstFactor ("Destination Blend", Int) = 10
     }
     SubShader
@@ -29,6 +30,7 @@ Shader "Arcade/Spectrum"
                 float4 _MinColor;
                 float4 _MiddleColor;
                 float4 _MaxColor;
+                float _Opacity;
             CBUFFER_END
 
             Varyings vert(Attributes input)
@@ -44,7 +46,8 @@ Shader "Arcade/Spectrum"
                 float value = magnitude * 1.5;
                 float3 color = value < 0.5 ? lerp(_MinColor.rgb, _MiddleColor.rgb, value * 2)
                     : lerp(_MiddleColor.rgb, _MaxColor.rgb, (value - 0.5) * 2);
-                return half4(color * magnitude, magnitude);
+                float opacity = magnitude * _Opacity;
+                return half4(color * opacity, opacity);
             }
             ENDHLSL
         }

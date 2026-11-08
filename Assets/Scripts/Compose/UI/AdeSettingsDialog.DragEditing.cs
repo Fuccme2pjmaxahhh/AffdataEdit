@@ -43,6 +43,28 @@ namespace Arcade.Compose
                 AdeUiKit.SetOnClick(button, binding.StartRebinding);
                 buttons.Add(binding);
             }
+            // Place the two-click shortcut with the existing selection shortcuts.
+            Transform rangeParent = keyTemplate.parent;
+            int rangeIndex = rangeParent.childCount;
+            foreach (var label in content.GetComponentsInChildren<TMP_Text>(true))
+            {
+                if (label.text != "段落选择") continue;
+                var rangeRow = label.GetComponentInParent<HorizontalLayoutGroup>(true);
+                if (!rangeRow) continue;
+                rangeParent = rangeRow.transform.parent;
+                rangeIndex = rangeRow.transform.GetSiblingIndex() + 1;
+                break;
+            }
+            var timeRangeRow = AdeUiKit.CloneRow(keyTemplate, rangeParent, "Select Time Range");
+            timeRangeRow.transform.SetSiblingIndex(rangeIndex);
+            var timeRangeButton = timeRangeRow.GetComponentInChildren<Button>(true);
+            var timeRangeBinding = timeRangeButton.gameObject.AddComponent<AdeHotkeyRebindingButton>();
+            timeRangeBinding.Text = timeRangeButton.GetComponentInChildren<TMP_Text>(true);
+            timeRangeBinding.HotkeyName = "Select Time Range";
+            foreach (var label in timeRangeRow.GetComponentsInChildren<TMP_Text>(true))
+                if (label != timeRangeBinding.Text) { label.text = "段落选择（两次点击）"; break; }
+            AdeUiKit.SetOnClick(timeRangeButton, timeRangeBinding.StartRebinding);
+            buttons.Add(timeRangeBinding);
             content.RebindingButtons = buttons.ToArray();
         }
     }

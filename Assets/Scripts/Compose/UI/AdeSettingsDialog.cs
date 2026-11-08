@@ -84,9 +84,11 @@ namespace Arcade.Compose
             checkmark = Resources.Load<Sprite>("AffdataEdit/Icons/Checkmark");
             if (Arcade.Audio.BassOutputSettings.IsWindows) AdeAudioOutputSettings.AddTo(compose);
             BuildSpectrumSetting(settings.Find("Wraper"));
+            BuildHitTypeSetting(settings.Find("Wraper"));
             BuildContextMenuSetting(settings.Find("Wraper"));
             BuildChartSortSetting(settings.Find("Wraper"));
             BuildDragEditingSettings(settings.Find("Wraper"));
+            BuildHotkeyPresetSettings();
             foreach (Transform row in settings.Find("Wraper"))
                 Register(row, row.name == "DarkUi" ? Page.Appearance : row.name == "Log" ? Page.About
                     : row.name == "KeepContextMenuOpen" || row.name == "VerticalContextMenu" ? Page.ContextMenu
@@ -112,6 +114,21 @@ namespace Arcade.Compose
         private void Register(Transform row, Page page) => rows.Add(new BorrowedRow
         { Row = row, Parent = row.parent, Index = row.GetSiblingIndex(), Page = page });
 
+        private void BuildHitTypeSetting(Transform parent)
+        {
+            var compose = ArcadeComposeManager.Instance;
+            var template = compose.PlaybackSyncToggle.GetComponentInParent<HorizontalLayoutGroup>(true).transform;
+            var row = AdeUiKit.CloneRow(template, parent, "ShowJudgementDetails");
+            row.GetComponentInChildren<TMP_Text>(true).text = "显示判定详情";
+            var toggle = row.GetComponentInChildren<Toggle>(true);
+            toggle.SetIsOnWithoutNotify(compose.ArcadePreference.ShowJudgementDetails);
+            toggle.onValueChanged.AddListener(value =>
+            {
+                compose.ArcadePreference.ShowJudgementDetails = value;
+                compose.SavePreferences();
+            });
+        }
+
         private void BuildSpectrumSetting(Transform parent)
         {
             var compose = ArcadeComposeManager.Instance;
@@ -125,6 +142,27 @@ namespace Arcade.Compose
                 compose.ArcadePreference.ShowSpectrum = value;
                 compose.SavePreferences();
             });
+            var brightness = Instantiate(Dialog.AdeSoundDialogContent.Instance.ChartAudioInput, parent);
+            brightness.name = "SpectrumBrightness";
+            brightness.transform.Find("Text").GetComponent<TMP_Text>().text = "频谱亮度 (%)";
+            brightness.SliderValueScale = 1;
+            brightness.NumberFormat = "0";
+            brightness.slider.Slider.minValue = 0;
+            brightness.slider.Slider.maxValue = 100;
+            brightness.slider.Slider.wholeNumbers = true;
+            brightness.SetValueWithoutNotify(compose.ArcadePreference.SpectrumOpacity * 100);
+            brightness.onValueEdited = value =>
+            {
+                if (float.IsNaN(value) || float.IsInfinity(value))
+                {
+                    brightness.SetValueWithoutNotify(compose.ArcadePreference.SpectrumOpacity * 100);
+                    return;
+                }
+                value = Mathf.Round(Mathf.Clamp(value, 0, 100));
+                compose.ArcadePreference.SpectrumOpacity = value / 100;
+                brightness.SetValueWithoutNotify(value);
+                compose.SavePreferences();
+            };
             gameObject.AddComponent<AdeAudioSpectrum>();
         }
 
@@ -138,6 +176,7 @@ namespace Arcade.Compose
             toggle.SetIsOnWithoutNotify(compose.ArcadePreference.KeepContextMenuOpen);
             toggle.onValueChanged.AddListener(value =>
             {
+                if (!compose.ArcadePreference.VerticalContextMenu) return;
                 compose.ArcadePreference.KeepContextMenuOpen = value;
                 compose.SavePreferences();
             });
@@ -146,9 +185,19 @@ namespace Arcade.Compose
             styleRow.GetComponentInChildren<TMP_Text>(true).text = "使用全新的右键菜单";
             var styleToggle = styleRow.GetComponentInChildren<Toggle>(true);
             styleToggle.SetIsOnWithoutNotify(compose.ArcadePreference.VerticalContextMenu);
+            row.transform.SetSiblingIndex(styleRow.transform.GetSiblingIndex());
+            var rowState = row.gameObject.AddComponent<CanvasGroup>();
+            void UpdateClickSelection(bool enabled)
+            {
+                toggle.interactable = enabled;
+                toggle.SetIsOnWithoutNotify(enabled && compose.ArcadePreference.KeepContextMenuOpen);
+                rowState.alpha = enabled ? 1f : 0.45f;
+            }
+            UpdateClickSelection(compose.ArcadePreference.VerticalContextMenu);
             styleToggle.onValueChanged.AddListener(value =>
             {
                 compose.ArcadePreference.VerticalContextMenu = value;
+                UpdateClickSelection(value);
                 compose.SavePreferences();
             });
         }
@@ -288,6 +337,7 @@ namespace Arcade.Compose
                 ArrangeRow(row.Row, row.Page);
             }
             darkToggle.transform.parent.SetAsFirstSibling();
+            hotkeyPresetRow.SetAsFirstSibling();
             accountAction.transform.parent.SetAsLastSibling();
             contextEditorRoot.SetAsLastSibling();
             mounted = true;
@@ -349,6 +399,7 @@ namespace Arcade.Compose
             StyleStorage();
             StyleAbout();
             StyleHotkeyGroups();
+            StyleHotkeyPreset();
             StyleContextMenu();
             sidebar.color = AdeUiTheme.Current.Chrome;
             sidebar.sprite = AdeUiTheme.RoundedSurface;

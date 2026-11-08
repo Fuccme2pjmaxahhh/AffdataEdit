@@ -252,6 +252,13 @@ namespace Arcade.Compose
 
         private void Apply(Graphic graphic)
         {
+            // Playback HUD uses its own surface palette.
+            if (IsPlaybackHud(graphic)) return;
+            if (AdeToast.Instance && (graphic == AdeToast.Instance.Content || graphic == AdeToast.Instance.Background))
+            {
+                AdeToast.Instance.RefreshAppearance();
+                return;
+            }
             if (graphic.GetComponentInParent<ArcBitmapText>()) return;
             var button = graphic is Text ? graphic.GetComponentInParent<Button>(true) : null;
             if (button && button.image && button.image.sprite && button.image.sprite.name == "ThemeCloseButton")
@@ -357,6 +364,19 @@ namespace Arcade.Compose
 			{
 				if (!dialog) continue;
 				dialog.SetDialogSkin(Get(0), Get(1), Get(5), Get(6), Get(7), Get(8), Get(9), Get(10));
+				if (dialog.name == "OpenChartDialog")
+				{
+					// Keep the chooser's press distinct even when Input and Chrome are close.
+					var leftState = dialog.LeftButton.spriteState;
+					leftState.pressedSprite = Shape("ThemeOpenLocalPressed", ControlRadius,
+						Color.Lerp(Current.Input, Color.black, Dark ? .55f : .25f), Current.Border);
+					dialog.LeftButton.spriteState = leftState;
+					var rightState = dialog.RightButton.spriteState;
+					// Neutral gray preserves contrast with either light or dark accent labels.
+					rightState.pressedSprite = Shape("ThemeOpenCloudPressed", ControlRadius,
+						Current.AccentText.grayscale > .5f ? C(0x626262) : C(0xABABAB), Current.Border);
+					dialog.RightButton.spriteState = rightState;
+				}
 				Apply(dialog.LeftButtonText);
 				Apply(dialog.RightButtonText);
 			}

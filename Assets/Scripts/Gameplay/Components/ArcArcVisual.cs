@@ -336,6 +336,9 @@ namespace Arcade.Gameplay
 				}
 				float pos = -(z + s.FromPos.z);
 				float endPos = -(z + s.ToPos.z);
+				float distanceAlpha = arc.IsVoid ? 1
+                    : ArcadeAlphaAppearance.ArcDistanceAlpha(endPos, arc.Timing == arc.EndTiming);
+				s.Alpha = currentHighColor.a * distanceAlpha;
 				s.To = endPos > 100 && pos < 100 ? (100 - pos) / (endPos - pos) : 1;
 
 				if ((s.ToTiming < currentTiming && s.ToTiming != s.FromTiming) || (Mathf.Max(pos, endPos) < 0 && s.ToTiming == s.FromTiming))
@@ -346,14 +349,12 @@ namespace Arcade.Gameplay
 				if (s.FromTiming < currentTiming && s.ToTiming >= currentTiming)
 				{
 					s.Enable = true;
-					s.Alpha = currentHighColor.a;
 					s.From = arc.Judging || arc.IsVoid || arc.NoInput() ? (z + s.FromPos.z) / (-s.ToPos.z + s.FromPos.z) : 0;
 					continue;
 				}
 				if (pos > 90 && pos < 100 && !arc.IsVoid)
 				{
 					s.Enable = true;
-					s.Alpha = currentHighColor.a * (100 - pos) / 10f;
 					s.From = 0;
 				}
 				else if (Mathf.Min(pos, endPos) > 100 || Mathf.Max(pos, endPos) < -100)
@@ -363,7 +364,6 @@ namespace Arcade.Gameplay
 				else
 				{
 					s.Enable = true;
-					s.Alpha = currentHighColor.a;
 					s.From = 0;
 				}
 			}
@@ -431,6 +431,13 @@ namespace Arcade.Gameplay
 				HeadLowColor = currentLowColor;
 				HeadOffset = Vector3.zero;
 			}
+			if (!arc.IsVoid)
+			{
+				float distanceAlpha = ArcadeAlphaAppearance.ArcDistanceAlpha(-(RootZ + HeadOffset.z), arc.Timing == arc.EndTiming);
+				Color high = currentHighColor, low = currentLowColor;
+				high.a *= distanceAlpha; low.a *= distanceAlpha;
+				HeadHighColor = high; HeadLowColor = low;
+			}
 		}
 		private void UpdateHeightIndicator()
 		{
@@ -463,7 +470,9 @@ namespace Arcade.Gameplay
 			position.z -= z;
 			SetHeightIndicatorPosition(position);
 			heightIndicatorEnable = true;
-			heightIndicatorColor = HeightIndicatorStyle.GetColor(GetColor(true), Alpha, firstEndZ, arc.Timing == arc.EndTiming);
+			heightIndicatorColor = GetColor(true);
+			heightIndicatorColor.a = Alpha * ArcadeAlphaAppearance.ArcOpacity
+                * ArcadeAlphaAppearance.ArcDistanceAlpha(-firstEndZ, arc.Timing == arc.EndTiming);
 		}
 		private void UpdateArcCap()
 		{
@@ -489,7 +498,7 @@ namespace Arcade.Gameplay
 						if (float.IsNaN(t)) t = ((float)(currentTiming - s.FromTiming)) / ((float)(s.ToTiming - s.FromTiming));
 						arcCapPosition = new Vector3(s.FromPos.x + (s.ToPos.x - s.FromPos.x) * t, s.FromPos.y + (s.ToPos.y - s.FromPos.y) * t);
 						JudgePosition = ArcEffectManager.Instance.EffectPlane.GetPositionOnPlane(arcCapPosition);
-						if (!arc.IsVoid) ArcArcManager.Instance.ArcJudgePos += arcCapPosition.x;
+						if (!arc.IsVoid) ArcArcManager.Instance.RecordJudgePosition(arcCapPosition.x);
 						break;
 					}
 				}

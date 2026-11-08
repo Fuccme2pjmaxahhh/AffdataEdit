@@ -207,16 +207,50 @@ public class ArcSlideTests
     [TestCase(0, true)]
     [TestCase(2, true)]
     [TestCase(3, false)]
-    public void GroupContinuityUsesTimeToleranceWithoutRequiringRangeOverlap(int offset, bool connected)
+    public void GroupContinuityUsesTimeToleranceWithRangeOverlap(int offset, bool connected)
     {
         var a = new ArcSlide { Timing = 0, EndTiming = 500, StartCenter = .15f, EndCenter = .15f, StartWidth = .1f, EndWidth = .1f };
-        var b = new ArcSlide { Timing = 500 + offset, EndTiming = 1000, StartCenter = .85f, EndCenter = .85f, StartWidth = .1f, EndWidth = .1f };
+        var b = new ArcSlide { Timing = 500 + offset, EndTiming = 1000, StartCenter = .15f, EndCenter = .15f, StartWidth = .1f, EndWidth = .1f };
         Arcade.Gameplay.ArcSlideManager.UpdateConnections(new[] { b, a });
         Assert.That(ReferenceEquals(a.GroupRoot, b.GroupRoot), Is.EqualTo(connected));
         Assert.That(a.IsGroupTail, Is.EqualTo(!connected));
         Assert.That(b.IsGroupHead, Is.EqualTo(!connected));
-        if (offset == 0) Assert.That(a.Overlap.z == 0 && a.Overlap.w == 0, Is.True);
+        if (connected) Assert.That(a.Overlap.z, Is.EqualTo(b.Range(0).x));
         else Assert.That(a.Overlap.z == 0 && a.Overlap.w == 1, Is.True);
+    }
+
+    [TestCase(.03f, false)] // Disjoint.
+    [TestCase(.02f, false)] // Touching.
+    [TestCase(.011f, false)] // 0.009 overlap.
+    [TestCase(.01f, false)] // Exactly 0.01 overlap.
+    [TestCase(.009f, true)] // 0.011 overlap.
+    public void SlideContinuityRequiresOverlapStrictlyGreaterThanPointZeroOne(float center, bool connected)
+    {
+        var a = new ArcSlide { Timing = 0, EndTiming = 500,
+            StartCenter = 0, EndCenter = 0, StartWidth = .02f, EndWidth = .02f };
+        var b = new ArcSlide { Timing = 502, EndTiming = 1000,
+            StartCenter = center, EndCenter = center, StartWidth = .02f, EndWidth = .02f };
+        Arcade.Gameplay.ArcSlideManager.UpdateConnections(new[] { a, b });
+        Assert.That(ReferenceEquals(a.GroupRoot, b.GroupRoot), Is.EqualTo(connected));
+        Assert.That(a.IsGroupTail, Is.EqualTo(!connected));
+        Assert.That(b.IsGroupHead, Is.EqualTo(!connected));
+    }
+
+    [TestCase(-2)]
+    [TestCase(0)]
+    [TestCase(2)]
+    public void ToleratedSlideSeamsUseActualOverlapOutsideDefaultRange(int offset)
+    {
+        var a = new ArcSlide { Timing = 0, EndTiming = 500,
+            StartCenter = -.5f, EndCenter = -.5f, StartWidth = 1, EndWidth = 1 };
+        var b = new ArcSlide { Timing = 500 + offset, EndTiming = 1000,
+            StartCenter = -.25f, EndCenter = -.25f, StartWidth = 1, EndWidth = 1 };
+        Arcade.Gameplay.ArcSlideManager.UpdateConnections(new[] { a, b });
+        Assert.That(b.GroupRoot, Is.SameAs(a));
+        Assert.That(a.Overlap.z, Is.EqualTo(-.75f));
+        Assert.That(a.Overlap.w, Is.EqualTo(0));
+        Assert.That(b.Overlap.x, Is.EqualTo(a.Overlap.z));
+        Assert.That(b.Overlap.y, Is.EqualTo(a.Overlap.w));
     }
 
     [Test]

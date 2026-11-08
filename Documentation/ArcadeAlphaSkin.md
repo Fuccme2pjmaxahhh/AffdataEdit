@@ -63,6 +63,10 @@ Full chart playback and a standalone rebuild were not performed for this asset c
 
 ## Hit sounds and playback controls
 
+- Ground Tap width is applied to both resident GPU geometry and CPU geometry used for rendering/picking. Mine Taps use Alpha's `Textures/Gameplay/Note/ColorNote/note_mine_light.png` / `note_mine_dark.png` and do not connect to ArcTaps. Non-default Tap/Hold/ArcTap widths are saved with two decimal places.
+
+- The optional AUTO judgement details use Alpha's `Textures/Gameplay/Judge/hit_pure.png`, with its short/long-note offsets, 0.5/0.3 s fade and 0.4 s upward motion. Alpha's 1.5x size at 1920x1080 is converted through the actual gameplay viewport to editor canvas units; Slide uses the same ground anchor and vertical offset as Hold. The setting is saved in `settings.json`; Tap, ArcTap, Hold, Arc and Slide judgement points share the pooled display.
+
 - Default Tap/Arc WAV files in StreamingAssets/Audio match Alpha's Resources/Audio/tap.wav.bytes and arc.wav.bytes. They load by path at runtime; custom skin overrides are preserved.
 - The four Play/Pause normal and pressed sprites come from Alpha's Textures/Gameplay/UI/Pause/Default.
 - The difficulty rating input is restricted to the area to the right of all five difficulty buttons; it no longer intercepts BYD/ETR pointer events.
@@ -74,6 +78,7 @@ Full chart playback and a standalone rebuild were not performed for this asset c
 - Matches `SrcAlpha One` blending with RGB premultiplication. Converts both size and velocity from Alpha's UI camera world units (orthographic size 20), including 1.1 emitter scale and aspect correction. Uses local simulation on the camera-facing effect plane so moving hit points do not leave a trail (intentional behavior requested for AffdataEdit).
 - Arc, integer Hold and FloatLane Hold share one adapter: preview/subsequent-start prewarming, fresh-playback cold start, cancellable 200 ms stop delay, and clear/reset on seek/pause. Removed the former extra one-second simulation on start/stop.
 - Existing VFX components remain serialized as skin and position anchors but are disabled for long-note rendering. Custom skin color/texture changes also refresh the ParticleSystem.
+- A non-prewarmed playback start emits one particle immediately, avoiding the first emission interval's dark gap. Continuous emission, pooled reuse and local no-trail simulation keep their existing behavior.
 
 ### Particle adapter corrections
 

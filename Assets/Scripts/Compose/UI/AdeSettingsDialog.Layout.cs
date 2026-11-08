@@ -18,7 +18,7 @@ namespace Arcade.Compose
             Transform section = null;
             foreach (var row in rows)
             {
-                if (row.Page != Page.Hotkeys || row.Row.name == "Reset") continue;
+                if (row.Page != Page.Hotkeys || row.Row.name == "Reset" || row.Row == hotkeyPresetRow) continue;
                 if (!row.Row.GetComponentInChildren<Selectable>(true)
                     && row.Row.GetComponentsInChildren<TMP_Text>(true).Length == 1)
                 {

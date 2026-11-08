@@ -512,8 +512,12 @@ namespace Arcade.Gameplay.Chart
         public int Track { get => track; set { track = value; FloatLane = null; ArcNoteRenderer.UpdateResidentTap(this); } }
         private float? floatLane;
         public float? FloatLane { get => floatLane; set { if (floatLane == value) return; floatLane = value; ArcNoteRenderer.UpdateResidentTap(this); } }
-        // Kept so the chart saves unchanged; drawing still uses the default size.
-        public float Width = 1;
+        private float width = 1;
+        public float Width
+        {
+            get => width;
+            set { if (width == value) return; width = value; ArcNoteRenderer.UpdateResidentTap(this); }
+        }
         public bool IsMine;
         public float WorldX => LanePosition.WorldX(Track, FloatLane);
 		private ArcTimingGroup timingGroup;
@@ -594,7 +598,7 @@ namespace Arcade.Gameplay.Chart
 			ArcScoreManager.Invalidate();
             foreach (var arcTap in ConnectedArcTaps) arcTap.ForgetConnection(this);
             ConnectedArcTaps.Clear();
-			if (this.NoInput()) return;
+			if (this.NoInput() || IsMine) return;
 			foreach (var arc in ArcArcManager.Instance.Arcs)
 			{
 				if (arc.NoInput()) continue;
@@ -899,7 +903,7 @@ namespace Arcade.Gameplay.Chart
             if (Arc == null || Arc.NoInput() || Arc.Designant || ((Arc.EndTiming - Arc.Timing) == 0 && !IsConvertedVariousSizedArctap)) return;
             foreach (var tap in ArcTapNoteManager.Instance.GetConnectionCandidates(Timing))
             {
-                if (Mathf.Abs(tap.Timing - Timing) > 1 || tap.NoInput()) continue;
+                if (Mathf.Abs(tap.Timing - Timing) > 1 || tap.NoInput() || tap.IsMine) continue;
                 connectedTaps.Add(tap);
                 tap.ConnectedArcTaps.Add(this);
             }

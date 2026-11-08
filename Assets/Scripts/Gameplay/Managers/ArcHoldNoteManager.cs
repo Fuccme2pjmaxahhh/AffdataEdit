@@ -172,6 +172,7 @@ namespace Arcade.Gameplay
 						t.AudioPlayed = true;
 					}
 					ArcEffectManager.Instance.SetHoldNoteEffect(t);
+					ArcEffectManager.Instance.ShowLongNoteHitType(t, new Vector3(t.WorldX, 0, 0));
 				}
 				else if (currentTiming > t.EndTiming)
 				{

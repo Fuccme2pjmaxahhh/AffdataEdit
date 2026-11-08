@@ -7,6 +7,15 @@ namespace Arcade.Compose
 {
 	public static class AdeScreenResolution
 	{
+		public static string GetDefaultResolution(RectInt workArea, float scaleFactor = 1)
+		{
+			// Match the window-fitting rules, including space for OS chrome.
+			int width = Mathf.RoundToInt(1920 * Mathf.Max(1, scaleFactor));
+			int height = Mathf.RoundToInt(1080 * Mathf.Max(1, scaleFactor));
+			return workArea.width >= width + 32 && workArea.height >= height + 64
+				? "1920x1080" : "1280x720";
+		}
+
 		// The resolution setting is in points; on a 2x Retina display a window takes twice the
 		// pixels, which is what Screen.SetResolution and the work area use on macOS.
 		public static Vector2Int GetWindowedSize(string resolution, RectInt workArea, float scaleFactor = 1)

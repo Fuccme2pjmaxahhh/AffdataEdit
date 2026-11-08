@@ -22,6 +22,7 @@ namespace Arcade.Gameplay
 		}
 		private void Start()
 		{
+			hitTypes = gameObject.AddComponent<ArcHitTypeEffects>();
 			tapNoteEffectPool = new GameObjectPool<ArcTapNoteEffectComponent>(TapNoteJudgeEffect, EffectPlane.transform, 1);
 			sfxTapNoteEffectPool = new GameObjectPool<ArcTapNoteEffectComponent>(SfxTapNoteJudgeEffect, EffectPlane.transform, 1);
 			for (int i = 0; i < 6; ++i)
@@ -162,6 +163,10 @@ namespace Arcade.Gameplay
 		private GameObjectPool<ArcTapNoteEffectComponent> tapNoteEffectPool;
 		private GameObjectPool<ArcTapNoteEffectComponent> sfxTapNoteEffectPool;
         private ArcTapNoteEffectComponent tapEmitter, sfxEmitter;
+        private ArcHitTypeEffects hitTypes;
+
+        public void ShowLongNoteHitType(ArcLongNote note, Vector3 position) => hitTypes.ShowLongNote(note, position);
+        public void ShowSlideHitType(ArcSlide slide) => hitTypes.ShowSlide(slide);
 
 		void Update()
 		{
@@ -196,6 +201,7 @@ namespace Arcade.Gameplay
 
 		public void PlayTapNoteEffectAt(Vector2 pos, bool isArc = false, string arcTapEffect = "none")
 		{
+            hitTypes.ShowPure(pos);
             Vector3 world = EffectPlane.GetPositionOnPlane(pos);
             if (arcTapEffect.EndsWith("_wav"))
             {
