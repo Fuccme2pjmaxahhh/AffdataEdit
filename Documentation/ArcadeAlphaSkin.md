@@ -65,7 +65,7 @@ Full chart playback and a standalone rebuild were not performed for this asset c
 
 - Ground Tap width is applied to both resident GPU geometry and CPU geometry used for rendering/picking. Mine Taps use Alpha's `Textures/Gameplay/Note/ColorNote/note_mine_light.png` / `note_mine_dark.png` and do not connect to ArcTaps. Non-default Tap/Hold/ArcTap widths are saved with two decimal places.
 
-- The optional AUTO judgement details use Alpha's `Textures/Gameplay/Judge/hit_pure.png`, with its short/long-note offsets, 0.5/0.3 s fade and 0.4 s upward motion. The setting is saved in `settings.json`; Tap, ArcTap, Hold, Arc and Slide judgement points share the pooled display.
+- The optional AUTO judgement details use Alpha's `Textures/Gameplay/Judge/hit_pure.png`, with its short/long-note offsets, 0.5/0.3 s fade and 0.4 s upward motion. Alpha's 1.5x size at 1920x1080 is converted through the actual gameplay viewport to editor canvas units; Slide uses the same ground anchor and vertical offset as Hold. The setting is saved in `settings.json`; Tap, ArcTap, Hold, Arc and Slide judgement points share the pooled display.
 
 - Default Tap/Arc WAV files in StreamingAssets/Audio match Alpha's Resources/Audio/tap.wav.bytes and arc.wav.bytes. They load by path at runtime; custom skin overrides are preserved.
 - The four Play/Pause normal and pressed sprites come from Alpha's Textures/Gameplay/UI/Pause/Default.

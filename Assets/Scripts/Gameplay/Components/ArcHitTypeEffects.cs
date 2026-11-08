@@ -52,7 +52,7 @@ namespace Arcade.Gameplay
                 <= slide.CountJudgements(previousTiming, bpm, game.TimingPointDensityFactor)) return;
             float progress = Mathf.Clamp01((game.ChartTiming - (float)slide.Timing) / (slide.EndTiming - (float)slide.Timing));
             Vector2 range = slide.Range(progress);
-            ShowPure(new Vector3(slide.WorldX((range.x + range.y) * .5f), slide.WorldHeight, 0), true);
+            ShowPure(new Vector3(slide.WorldX((range.x + range.y) * .5f), 0, 0), true);
         }
 
         internal void ShowPure(Vector3 position, bool longNote = false)
@@ -74,7 +74,9 @@ namespace Arcade.Gameplay
             var canvas = root.GetComponentInParent<Canvas>();
             RectTransformUtility.ScreenPointToLocalPointInRectangle(root, camera.WorldToScreenPoint(position),
                 canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera, out Vector2 point);
-            float scale = 1.5f * root.rect.height / ArcCameraManager.Instance.DesignResolution.y;
+            // AA's 1.5x at 1920x1080 equals 1x at our 1280x720 design resolution.
+            // Convert the gameplay viewport's pixels to canvas units, excluding editor bars.
+            float scale = camera.pixelHeight / (canvas.scaleFactor * ArcCameraManager.Instance.DesignResolution.y);
             point.y += (longNote ? 110 : 80) * scale;
             Image image = idle.Count > 0 ? idle.Pop() : CreateImage();
             image.rectTransform.sizeDelta = pure.rect.size * scale;
