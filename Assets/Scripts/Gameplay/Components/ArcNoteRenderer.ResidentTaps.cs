@@ -36,13 +36,13 @@ namespace Arcade.Gameplay
                 position += unchecked(end - start) * Bpm / BaseBpm * Velocity;
                 if (reversed) position = -position;
                 float pos = position / 1000f;
-                length = EditorCamera ? 2 : NoteMeshDefinitions.TapLength(pos, Bpm / BaseBpm * Velocity) / SpriteHeight;
+                length = EditorCamera ? 2 : ArcadeAlphaAppearance.TapLength(pos, Bpm / BaseBpm * Velocity) / SpriteHeight;
                 Matrix4x4 matrix = Basis;
                 matrix.SetColumn(0, matrix.GetColumn(0) * model.Width);
                 matrix.m01 *= length; matrix.m11 *= length; matrix.m21 *= length; matrix.m31 *= length;
                 Vector3 world = Layer.MultiplyPoint3x4(new Vector3(model.X, pos, 0));
                 matrix.m03 = world.x; matrix.m13 = world.y; matrix.m23 = world.z; matrix.m33 = 1;
-                alpha = pos < 90 ? 1 : (100 - pos) / 10f;
+                alpha = ArcadeAlphaAppearance.TapAlpha(pos);
                 return matrix;
             }
         }

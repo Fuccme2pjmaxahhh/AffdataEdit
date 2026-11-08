@@ -78,7 +78,7 @@ Shader "Arcade/NoteIndirect"
                 float pos = frame.position;
                 float3 local = input.position; local.x *= tap.width; local.y *= frame.length;
                 float3 world = mul(_TapBasis, float4(local, 0)).xyz + mul(_TapLayer, float4(tap.x, pos, 0, 1)).xyz;
-                output.tapState = float2(pos < 90 ? 1 : (100-pos)/10, tap.selected);
+                output.tapState = float2(saturate((90-pos)/10), tap.selected);
                 #else
                 NoteInstance note = _Notes[id];
                 float3 world = mul(note.transform, float4(input.position, 1)).xyz;
@@ -104,6 +104,9 @@ Shader "Arcade/NoteIndirect"
                 NoteInstance n = _Notes[input.instanceID];
                 if (_NoteSelection > .5) clip(n.options.w - .5);
                 int mode = (int)n.options.x;
+                // AA's Arc and Shadow fragments reject abs(world Z)>90, independently
+                // of the wider CPU candidate range. Include heads and both Arc halves.
+                if (mode == 2 || mode == 4) clip(90 - abs(input.worldZ));
                 float2 uv = input.uv * n.uvTransform.xy + n.uvTransform.zw;
                 if (mode == 1 || mode == 2 || mode == 4)
                     if (input.uv.y < n.clipHeight.x || input.uv.y > n.clipHeight.y) return 0;

@@ -17,7 +17,7 @@ namespace Arcade.Gameplay
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStaticState() => Instance = null;
         // AffdataPlay's Arc shader applies this after the skin and note alpha.
-        internal const float ArcOpacityMultiplier = 0.9f;
+        internal const float ArcOpacityMultiplier = ArcadeAlphaAppearance.ArcOpacity;
         [StructLayout(LayoutKind.Sequential)]
         internal struct NoteInstance
         {
@@ -171,7 +171,8 @@ namespace Arcade.Gameplay
             Vector3 normal = Vector3.Cross(parent.MultiplyVector(Vector3.right), parent.MultiplyVector(Vector3.forward));
             if (normal.sqrMagnitude <= 0.000000000001f) return;
             Color color = connectionColor;
-            color.a = Mathf.Clamp01(tap.Alpha) * ConnectionLineStyle.Opacity;
+            color.a = Mathf.Clamp01(tap.Alpha) * ConnectionLineStyle.Opacity
+                * (1 - .333335f * ArcCameraManager.Instance.EnwidenRatio);
             foreach (var arcTap in tap.ConnectedArcTaps)
             {
                 if (!connectionPositions.TryGetValue(arcTap, out Vector2 position))
@@ -237,7 +238,7 @@ namespace Arcade.Gameplay
             data.HighColor = arc.HeadHighColor;
             data.LowColor = arc.HeadLowColor;
             data.ClipHeight.z = data.ClipHeight.w = arc.Arc.YStart;
-            data.Options.y = arc.Arc.IsVoid ? 1 : ArcOpacityMultiplier;
+            data.Options.y = arc.Arc.IsVoid ? 1 : ArcOpacityMultiplier * ArcOpacityMultiplier;
             Submit(ArcNoteMeshes.Head, texture, data, "ArcTap", 1, note: arc.Arc);
         }
 

@@ -11,6 +11,7 @@ namespace Arcade.Compose.UI
 {
 	public class AdeTimingInputField : MonoBehaviour
 	{
+		private const string UseChartTimingKey = "AffdataEdit.UseChartTiming";
 		public static AdeTimingInputField Instance { get; private set; }
 
 		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
@@ -18,6 +19,7 @@ namespace Arcade.Compose.UI
 		private void Start()
 		{
 			Instance = this;
+			useChartTiming = AdeSettings.GetInt(UseChartTimingKey, 0) == 1;
 			TimingInput.onValueChanged.AddListener(OnValueChange);
 			SwitchModeButton.onClick.AddListener(OnSwitchMode);
 			UpdateLabel();
@@ -67,6 +69,7 @@ namespace Arcade.Compose.UI
 		private void OnSwitchMode()
 		{
 			useChartTiming = !useChartTiming;
+			AdeSettings.SetInt(UseChartTimingKey, useChartTiming ? 1 : 0);
 			UpdateLabel();
 		}
 	}

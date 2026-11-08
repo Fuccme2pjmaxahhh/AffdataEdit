@@ -166,7 +166,7 @@ namespace Arcade.Gameplay
                     float constantPosition = 0;
                     constantPosition += unchecked(end - start) * defaultBpm / baseBpm * velocity;
                     if (reversed) constantPosition = -constantPosition;
-                    framePosition = (constantPosition, editorCamera ? 2f : NoteMeshDefinitions.TapLength(constantPosition / 1000f, defaultVelocity) / spriteHeight);
+                    framePosition = (constantPosition, editorCamera ? 2f : ArcadeAlphaAppearance.TapLength(constantPosition / 1000f, defaultVelocity) / spriteHeight);
                 }
                 else
                 {
@@ -175,7 +175,7 @@ namespace Arcade.Gameplay
                     {
                         float notePosition = timing.CalculatePositionByTiming(t.Timing, t.TimingGroup);
                         float noteLength = editorCamera ? 2f
-                            : NoteMeshDefinitions.TapLength(notePosition / 1000f,
+                            : ArcadeAlphaAppearance.TapLength(notePosition / 1000f,
                                 timing.CalculateVelocityAtTiming(t.Timing, t.TimingGroup)) / spriteHeight;
                         framePosition = (notePosition, noteLength);
                         framePositions.Add(key, framePosition);
@@ -207,7 +207,7 @@ namespace Arcade.Gameplay
                 Vector3 world = parentMatrix.MultiplyPoint3x4(position);
                 matrix.m03 = world.x; matrix.m13 = world.y; matrix.m23 = world.z; matrix.m33 = 1;
                 t.RenderMatrix = matrix;
-				t.Alpha = pos < 90 ? 1 : (100 - pos) / 10f;
+				t.Alpha = ArcadeAlphaAppearance.TapAlpha(pos);
 			}
 		}
         internal Matrix4x4 GetRenderMatrix(ArcTap tap)
@@ -217,8 +217,8 @@ namespace Arcade.Gameplay
             tap.Position = timing.CalculatePositionByTiming(tap.Timing, tap.TimingGroup);
             float pos = tap.Position / 1000f;
             float length = ArcCameraManager.Instance.EditorCamera ? 2f
-                : NoteMeshDefinitions.TapLength(pos, timing.CalculateVelocityAtTiming(tap.Timing, tap.TimingGroup)) / DefaultSprite.bounds.size.y;
-            tap.Alpha = pos < 90 ? 1 : (100 - pos) / 10f;
+                : ArcadeAlphaAppearance.TapLength(pos, timing.CalculateVelocityAtTiming(tap.Timing, tap.TimingGroup)) / DefaultSprite.bounds.size.y;
+            tap.Alpha = ArcadeAlphaAppearance.TapAlpha(pos);
             tap.RenderMatrix = NoteLayer.localToWorldMatrix * Matrix4x4.TRS(new Vector3(tap.WorldX, pos, 0),
                 TapNotePrefab.transform.localRotation, new Vector3(-WidthScale * tap.Width, length, 1));
             return tap.RenderMatrix;

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 using UnityEngine.UI;
 using Text = TMPro.TMP_Text;
@@ -52,30 +52,10 @@ namespace Arcade.Compose
 		public const Ease ToPlayerModeEase = Ease.InCubic;
 
 		public bool IsEditorMode { get; set; } = true;
+        public bool IsPlaybackPaused => !IsEditorMode && GameplayManager && !GameplayManager.IsPlaying;
 
-		public Rect EditorModeGameplayCameraRect
-		{
-			get
-			{
-				float left = LeftBarView.rect.width;
-				float right = RightBarView.rect.width;
-				float top = TopBarView.rect.height;
-				float bottom = BottomBarView.rect.height;
-				float width = Bars.rect.width;
-				float height = Bars.rect.height;
-				float rectLeft = left / width;
-				float rectTop = top / height;
-				float rectWidth = 1 - (left + right) / width;
-				float rectHeight = 1 - (top + bottom) / height;
-				if (width * rectWidth < height * rectHeight / 0.75f)
-				{
-					float targetWidth = height * rectHeight / 0.75f / width;
-					rectLeft -= (targetWidth - rectWidth) / 2f;
-					rectWidth = targetWidth;
-				}
-				return new Rect(rectLeft, rectTop, rectWidth, rectHeight);
-			}
-		}
+		// AA keeps the projection aspect while reserving a uniform 5% editor border.
+		public Rect EditorModeGameplayCameraRect => new Rect(.05f, .05f, .9f, .9f);
 		public Camera GameplayCamera, EditorCamera;
 		public ArcGameplayManager GameplayManager;
 		[Header("Bar")]
@@ -312,8 +292,7 @@ namespace Arcade.Compose
 				{
 					previewing = false;
 					advancing = false;
-					if (GameplayManager.IsPlaying) GameplayManager.Pause();
-					else GameplayManager.Play();
+					TogglePlayback();
 				}
 				else if (AdeInputManager.Instance.CheckHotkeyActionPressed(hotkeys.AdvanceWhenHolding))
 				{
@@ -346,12 +325,12 @@ namespace Arcade.Compose
 				previewing = false;
 				advancing = false;
 			}
+			if (!IsEditorMode && AdeInputManager.Instance.CheckHotkeyActionPressed(AdeInputManager.Instance.Hotkeys.PlayWhenHolding))
+				TogglePlayback();
 			if (AdeInputManager.Instance.CheckHotkeyActionPressed(AdeInputManager.Instance.Hotkeys.PlayOrPause)
-				|| (!IsEditorMode && (AdeInputManager.Instance.CheckHotkeyActionPressed(AdeInputManager.Instance.Hotkeys.PlayWhenHolding)
-					|| AdeInputManager.Instance.CheckHotkeyActionPressed(AdeInputManager.Instance.Hotkeys.PreviewWhenHolding))))
+				|| (!IsEditorMode && AdeInputManager.Instance.CheckHotkeyActionPressed(AdeInputManager.Instance.Hotkeys.PreviewWhenHolding)))
 			{
-				if (IsEditorMode) Play();
-				else Pause();
+				OnPauseClicked();
 			}
 		}
 		private void OnEnable()
@@ -465,17 +444,84 @@ namespace Arcade.Compose
 				.WithEase(ease).WithScheduler(MotionScheduler.Update)
 				.WithOnComplete(() => { switchingMode = false; })
 				.BindToAnchoredPositionX(RightBar).AddTo(modeSwitchMotions);
-			LMotion.Create(GameplayCamera.rect, editorMode ? EditorModeGameplayCameraRect : new Rect(0, 0, 1, 1), ModeSwitchDuration)
+			LMotion.Create(GameplayViewRect, editorMode ? EditorModeGameplayCameraRect : new Rect(0, 0, 1, 1), ModeSwitchDuration)
 				.WithEase(ease).WithScheduler(MotionScheduler.Update)
-				.Bind(GameplayCamera, (rect, camera) => { camera.rect = rect; }).AddTo(modeSwitchMotions);
+				.Bind(this, (rect, compose) => { compose.GameplayViewRect = rect; }).AddTo(modeSwitchMotions);
+            LMotion.Create(hudPlayerBlend, editorMode ? 0f : 1f, .25f)
+                .WithEase(Ease.OutCubic).WithScheduler(MotionScheduler.Update)
+                .Bind(this, (value, compose) => { compose.hudPlayerBlend = value; }).AddTo(modeSwitchMotions);
 		}
 
 		public void OnPauseClicked()
 		{
-			ArcGameplayManager.Instance.ResetJudge();
-			if (IsEditorMode) Play();
-			else Pause();
+            if (switchingMode) return;
+            if (IsEditorMode)
+            {
+                GameplayManager.ResetJudge();
+                Play();
+            }
+            else Pause();
 		}
+
+        // AA keeps switching play state independent from switching editor/player mode.
+        public void TogglePlayback()
+        {
+            if (!GameplayManager.IsLoaded) return;
+            if (GameplayManager.IsPlaying) GameplayManager.Pause(false);
+            else GameplayManager.Play();
+        }
+
+        private float hudPlayerBlend;
+
+        private void LateUpdate()
+        {
+            UpdateGameplayProjection();
+            // Keep the editor tool layout intact; the player HUD uses AA's 1.5x
+            // groups on a 1920x1080 Expand canvas, including ultrawide outputs.
+            float playerScale = 1;
+            if (EditorCanvas && GameplayCamera)
+            {
+                var canvas = EditorCanvas.GetComponent<Canvas>();
+                var output = GameplayCamera.targetTexture;
+                float width = output ? output.width : Screen.width;
+                float height = output ? output.height : Screen.height;
+                playerScale = 1.5f * Mathf.Min(width / 1920f, height / 1080f) / canvas.scaleFactor;
+            }
+            float scale = Mathf.Lerp(1, playerScale, hudPlayerBlend);
+            if (PauseButtonImage)
+            {
+                var rect = PauseButtonImage.rectTransform;
+                rect.localScale = new Vector3(scale, scale, 1);
+                rect.sizeDelta = Vector2.Lerp(new Vector2(254, 100), new Vector2(237, 99), hudPlayerBlend);
+                // AA's legacy pause: 170-237, then -50 when the HP sidebar is hidden.
+                rect.anchoredPosition = new Vector2(Mathf.Lerp(-65, -117, hudPlayerBlend), -20) * scale;
+            }
+            if (InfoCanvasGroup)
+            {
+                var rect = (RectTransform)InfoCanvasGroup.transform;
+                rect.localScale = new Vector3(scale, scale, 1);
+                // AA places the legacy information artwork 30 units beyond the right edge.
+                rect.anchoredPosition = new Vector2(Mathf.Lerp(0, 30, hudPlayerBlend), -20) * scale;
+            }
+        }
+        public Rect GameplayViewRect { get; private set; } = new Rect(.05f, .05f, .9f, .9f);
+
+        private void UpdateGameplayProjection()
+        {
+            if (!GameplayCamera) return;
+            // Preserve AA's framing, while rendering the continuation behind AE's
+            // narrow toolbars instead of physically cutting geometry at the 5% border.
+            GameplayCamera.rect = new Rect(0, 0, 1, 1);
+            GameplayCamera.ResetProjectionMatrix();
+            var projection = GameplayCamera.projectionMatrix;
+            Rect view = GameplayViewRect;
+            projection.m00 *= view.width;
+            projection.m11 *= view.height;
+            projection.m02 = projection.m02 * view.width - (view.center.x * 2 - 1);
+            projection.m12 = projection.m12 * view.height - (view.center.y * 2 - 1);
+            GameplayCamera.projectionMatrix = projection;
+        }
+
 		public void OnAutoClicked()
 		{
 			ArcGameplayManager.Instance.Auto = !ArcGameplayManager.Instance.Auto;
@@ -660,7 +706,7 @@ namespace Arcade.Compose
 			if (GameplayCamera && cameraManager)
 			{
 				modeSwitchMotions.Complete();
-				GameplayCamera.rect = IsEditorMode ? EditorModeGameplayCameraRect : new Rect(0, 0, 1, 1);
+				GameplayViewRect = IsEditorMode ? EditorModeGameplayCameraRect : new Rect(0, 0, 1, 1);
 				cameraManager.ResetCamera();
 			}
 		}
