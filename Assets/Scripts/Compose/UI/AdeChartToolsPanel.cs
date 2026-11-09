@@ -59,6 +59,7 @@ namespace Arcade.Compose
         private MotionHandle panelMotion;
         private bool expanded;
         private bool timingLayoutDirty = true;
+        private bool revealCurrentGroup;
         private float timingViewportHeight;
 
         [Serializable]
@@ -77,6 +78,7 @@ namespace Arcade.Compose
             [NonSerialized] public RectTransform TopSpacer, BottomSpacer;
             [NonSerialized] public ArcEvent Selected;
             public TMP_Dropdown Scope, Group, Type;
+            public TMP_InputField GroupInput;
             public TMP_InputField Time, Duration, CustomType, Parameters, Statement;
             public TMP_InputField[] Vectors;
             public TMP_Text Hint, Summary;
@@ -126,10 +128,22 @@ namespace Arcade.Compose
             if (!ready) return;
             if (lastChart != ArcGameplayManager.Instance.Chart || lastGroup != AdeTimingEditor.Instance.currentTimingGroup) dirty = true;
             if (dirty) Refresh();
+            if (revealCurrentGroup && expanded && activePage == Page.Groups)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(groupList);
+                int index = Mathf.Max(0, groups.IndexOf(lastGroup));
+                float viewport = groupScroll.viewport.rect.height;
+                float y = Mathf.Clamp(index * (ControlHeight + 4) - viewport / 2 + ControlHeight / 2,
+                    0, Mathf.Max(0, groupList.rect.height - viewport));
+                groupList.anchoredPosition = new Vector2(groupList.anchoredPosition.x, y);
+                groupFirst = -1; ScrollGroups(); revealCurrentGroup = false;
+            }
             ResizeTimingList();
             if (themeRevision != AdeUiTheme.Revision) ApplyTheme();
             if (!ArcadeComposeManager.Instance.IsEditorMode && expanded) Collapse();
         }
+
+        internal void RevealCurrentGroup() { revealCurrentGroup = true; dirty = true; }
 
         public void Toggle(Page page)
         {

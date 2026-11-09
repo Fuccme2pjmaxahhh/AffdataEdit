@@ -54,6 +54,7 @@ namespace Arcade.Compose
 		public Sprite DefaultCover;
 		public Image CoverImage;
 		public Image[] DifficultyImages;
+        private Material difficultyNormal, difficultySelected, difficultyBeyondNormal;
 		public InputField Name, Composer, Diff, BaseBpm, AudioOffset;
 		public Button CurrentTimingGroup;
 		public Text OpenLabel;
@@ -107,8 +108,36 @@ namespace Arcade.Compose
 		{
 			Instance = this;
 		}
+        private void RefreshDifficultyAppearance(int selected)
+        {
+            if (!difficultyNormal)
+            {
+                var shader = Resources.Load<Shader>("AffdataEdit/Theme/DifficultyPalette");
+                difficultyNormal = new Material(shader); difficultyNormal.SetFloat("_Brightness", .29f);
+                difficultySelected = new Material(shader); difficultySelected.SetFloat("_Brightness", .32f);
+                difficultyBeyondNormal = new Material(shader); difficultyBeyondNormal.SetFloat("_Brightness", .18f);
+            }
+            // Keep the approved Past/Present/Beyond levels; lift Future and Eternal independently.
+            float selectedBrightness = selected == 0 ? .53f : selected == 1 ? .78f : selected == 2 ? .42f : selected == 4 ? .53f : .32f;
+            difficultySelected.SetFloat("_Brightness", selectedBrightness);
+            for (int i = 0; i < DifficultyImages.Length; i++)
+            {
+                var image = DifficultyImages[i];
+                image.material = i == selected ? difficultySelected : i == 3 ? difficultyBeyondNormal : difficultyNormal;
+                image.color = new Color(1, 1, 1, i == selected ? 1 : .65f);
+            }
+        }
+
+        private void OnDestroy()
+        {
+            if (difficultyNormal) Destroy(difficultyNormal);
+            if (difficultySelected) Destroy(difficultySelected);
+            if (difficultyBeyondNormal) Destroy(difficultyBeyondNormal);
+        }
+
 		private void Start()
 		{
+            RefreshDifficultyAppearance(-1);
 			watcher.NotifyFilter = NotifyFilters.LastWrite;
 			watcher.Changed += OnWatcherChanged;
 			watcher.EnableRaisingEvents = false;
@@ -156,7 +185,7 @@ namespace Arcade.Compose
 				Destroy(CoverSprite);
 				CoverSprite = null;
 			}
-			foreach (Image i in DifficultyImages) i.color = new Color(1f, 1f, 1f, 0.6f);
+			RefreshDifficultyAppearance(-1);
 			CoverImage.sprite = DefaultCover;
 			Name.text = "";
 			Composer.text = "";
@@ -516,8 +545,7 @@ namespace Arcade.Compose
 			CurrentDifficulty = difficulty;
 
 			Diff.text = CurrentProjectMetadata.Difficulties[CurrentDifficulty] == null ? "" : CurrentProjectMetadata.Difficulties[CurrentDifficulty].Rating;
-			foreach (Image i in DifficultyImages) i.color = new Color(1f, 1f, 1f, 0.6f);
-			DifficultyImages[difficulty].color = new Color(1, 1, 1, 1);
+			RefreshDifficultyAppearance(difficulty);
 
 			AudioOffset.interactable = true;
 			CurrentTimingGroup.interactable = true;

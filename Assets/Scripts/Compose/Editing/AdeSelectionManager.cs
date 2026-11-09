@@ -99,12 +99,21 @@ namespace Arcade.Compose
 			}
 		}
 
+        internal static ArcNote TimingGroupOwner(ArcNote note) => note is ArcArcTap tap ? tap.Arc : note;
+
 		public void SelectNote(ArcNote note)
 		{
 			note.Selected = true;
 			if (!SelectedNotes.Contains(note))
 			{
 				SelectedNotes.Add(note);
+                var timing = Editing.AdeTimingEditor.Instance;
+                var owner = TimingGroupOwner(note);
+                if (timing && owner is IHasTimingGroup grouped)
+                {
+                    if (timing.currentTimingGroup != grouped.TimingGroup) timing.SetCurrentTimingGroup(grouped.TimingGroup);
+                    if (AdeChartToolsPanel.Instance) AdeChartToolsPanel.Instance.RevealCurrentGroup();
+                }
 				foreach (var l in NoteEventListeners) l.OnNoteSelect(note);
 			}
 		}

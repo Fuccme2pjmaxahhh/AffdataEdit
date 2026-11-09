@@ -16,6 +16,75 @@ using UnityEngine.EventSystems;
 public class ArcSlideTests
 {
     [Test]
+    public void SlideReversalMirrorsBothEdgesAndIsAnInvolution()
+    {
+        var reverse = typeof(AdeEditorHotkeyCommands).GetMethod("ReverseSlide", BindingFlags.Static | BindingFlags.NonPublic);
+        for (int left = 0; left < 4; left++) for (int right = 0; right < 4; right++)
+        {
+            var slide = new ArcSlide { Timing = 100, EndTiming = 900, StartCenter = .2f, StartWidth = 1.2f,
+                EndCenter = .6f, EndWidth = 1.4f, LeftCurve = left, RightCurve = right };
+            var original = (ArcSlide)slide.Clone();
+            reverse.Invoke(null, new object[] { slide });
+            Assert.That(slide.IsValid, Is.True);
+            Assert.That(slide.Timing, Is.EqualTo(100)); Assert.That(slide.EndTiming, Is.EqualTo(900));
+            for (int i = 0; i <= 20; i++)
+                Assert.That(Vector2.Distance(slide.Range(i / 20f), original.Range(1 - i / 20f)), Is.LessThan(.00001f));
+            reverse.Invoke(null, new object[] { slide });
+            Assert.That(slide.StartCenter, Is.EqualTo(original.StartCenter));
+            Assert.That(slide.StartWidth, Is.EqualTo(original.StartWidth));
+            Assert.That(slide.EndCenter, Is.EqualTo(original.EndCenter));
+            Assert.That(slide.EndWidth, Is.EqualTo(original.EndWidth));
+            Assert.That(slide.LeftCurve, Is.EqualTo(left)); Assert.That(slide.RightCurve, Is.EqualTo(right));
+        }
+    }
+
+    [Test]
+    public void LegacyRingCompactsUnequalButtonsWithoutOverlapOrReordering()
+    {
+        float[] widths = { 84, 60, 104, 104, 104, 60, 60, 90, 90 };
+        var items = new Arcade.Compose.MarkingMenu.MarkingMenuItem[widths.Length];
+        var directions = new Vector2[items.Length];
+        var type = typeof(AdeMarkingMenuManager);
+        var radiusMethod = type.GetMethod("GetRingRadius", BindingFlags.Static | BindingFlags.NonPublic);
+        try
+        {
+            for (int i = 0; i < items.Length; i++)
+            {
+                var go = new GameObject("Ring geometry", typeof(RectTransform));
+                items[i] = go.AddComponent<Arcade.Compose.MarkingMenu.MarkingMenuItem>();
+                items[i].ItemRectTransform = go.GetComponent<RectTransform>();
+                items[i].ItemRectTransform.sizeDelta = new Vector2(widths[i], 52);
+                items[i].Degree = 180 - i * 40;
+                directions[i] = new Vector2(Mathf.Cos(items[i].Degree * Mathf.Deg2Rad), Mathf.Sin(items[i].Degree * Mathf.Deg2Rad));
+            }
+            float before = (float)radiusMethod.Invoke(null, new object[] { items, directions });
+            type.GetMethod("BalanceRingSpacing", BindingFlags.Static | BindingFlags.NonPublic).Invoke(null, new object[] { items, directions, -40f });
+            float radius = (float)radiusMethod.Invoke(null, new object[] { items, directions });
+            Assert.That(radius, Is.LessThanOrEqualTo(before));
+            for (int i = 2; i < 5; i++)
+            {
+                Assert.That(directions[i].x, Is.EqualTo(directions[9 - i].x).Within(.00001));
+                Assert.That(directions[i].y, Is.EqualTo(-directions[9 - i].y).Within(.00001));
+            }
+            for (int i = 0; i < items.Length; i++)
+            {
+                Assert.That(Mathf.Abs(items[i].Degree - (180 - i * 40)), Is.LessThanOrEqualTo(11.201f));
+                if (i > 0) Assert.That(items[i].Degree, Is.LessThan(items[i - 1].Degree));
+                for (int j = 0; j < i; j++)
+                {
+                    Vector2 distance = radius * (directions[i] - directions[j]);
+                    Assert.That(Mathf.Abs(distance.x) + .001f >= (widths[i] + widths[j]) / 2 + 8
+                        || Mathf.Abs(distance.y) + .001f >= 60, Is.True);
+                }
+            }
+        }
+        finally
+        {
+            foreach (var item in items) if (item) Object.DestroyImmediate(item.gameObject);
+        }
+    }
+
+    [Test]
     public void TapWidthDefaultsToOneAndSurvivesCloneAndAffRoundTrip()
     {
         Assert.That(new ArcadePreference().EnableTapWidthEditing, Is.False);
@@ -35,17 +104,6 @@ public class ArcSlideTests
             Assert.That(again.error, Is.Empty);
             Assert.That(new ArcChart(again).Taps[1].Width, Is.EqualTo(1.75f));
         }
-    }
-
-    [TestCase(0, 0)]
-    [TestCase(45, 33.14807f)]
-    [TestCase(90, 90)]
-    [TestCase(180, 180)]
-    [TestCase(-45, -33.14807f)]
-    public void LegacyRingUsesAlphaOptimizedAngles(float degree, float expected)
-    {
-        var method = typeof(AdeMarkingMenuManager).GetMethod("OptimizeRingDegree", BindingFlags.Static | BindingFlags.NonPublic);
-        Assert.That((float)method.Invoke(null, new object[] { degree }), Is.EqualTo(expected).Within(.001));
     }
 
     [TestCase(0, "-0")]
@@ -784,5 +842,173 @@ public class ArcSlideTests
         Assert.That(note.TimingGroup, Is.SameAs(group));
         Assert.That(note.LeftCurve, Is.EqualTo(1));
         Assert.That(note.EndTiming, Is.EqualTo(600));
+    }
+}
+
+public class ScriptPanelLayoutTests
+{
+    [TestCase(220f, 0f)]
+    [TestCase(220f, 1f)]
+    [TestCase(432f, 0f)]
+    [TestCase(432f, 1f)]
+    [TestCase(540f, 0f)]
+    [TestCase(540f, 1f)]
+    public void CategoryHighlightMatchesActionButtonBounds(float width, float position)
+    {
+        var actions = new GameObject("Actions", typeof(RectTransform), typeof(UnityEngine.UI.HorizontalLayoutGroup));
+        var category = new GameObject("Category", typeof(RectTransform));
+        try
+        {
+            ((RectTransform)actions.transform).sizeDelta = new Vector2(width, 40);
+            ((RectTransform)category.transform).sizeDelta = new Vector2(width, 40);
+            var layout = actions.GetComponent<UnityEngine.UI.HorizontalLayoutGroup>();
+            layout.spacing = 8; layout.childControlWidth = layout.childControlHeight = true;
+            layout.childForceExpandWidth = layout.childForceExpandHeight = true;
+            var buttons = new RectTransform[2];
+            for (int i = 0; i < 2; i++)
+            {
+                var button = new GameObject("Action", typeof(RectTransform), typeof(UnityEngine.UI.LayoutElement));
+                button.transform.SetParent(actions.transform, false);
+                var size = button.GetComponent<UnityEngine.UI.LayoutElement>();
+                size.minWidth = size.preferredWidth = 0; size.flexibleWidth = 1;
+                buttons[i] = (RectTransform)button.transform;
+            }
+            UnityEngine.UI.LayoutRebuilder.ForceRebuildLayoutImmediate((RectTransform)actions.transform);
+            var highlight = new GameObject("Highlight", typeof(RectTransform)).GetComponent<RectTransform>();
+            highlight.SetParent(category.transform, false);
+            var method = typeof(Arcade.Compose.Scripting.AdeScriptPanel).GetMethod("SetCategoryBounds", BindingFlags.Static | BindingFlags.NonPublic);
+            method.Invoke(null, new object[] { highlight, position });
+            var expected = buttons[(int)position];
+            Assert.That(highlight.rect.width, Is.EqualTo(expected.rect.width).Within(.001));
+            Assert.That(highlight.rect.height, Is.EqualTo(expected.rect.height).Within(.001));
+            Assert.That(Vector3.Distance(highlight.TransformPoint(highlight.rect.center), expected.TransformPoint(expected.rect.center)), Is.LessThan(.001));
+        }
+        finally { Object.DestroyImmediate(actions); Object.DestroyImmediate(category); }
+    }
+}
+
+public class ArcCreationHotkeyTests
+{
+    [TestCase("Arc Toggle Void", true, 0, ArcCurveType.S)]
+    [TestCase("Arc Toggle Color", false, 1, ArcCurveType.S)]
+    [TestCase("Arc Toggle Curve Pair", false, 0, ArcCurveType.B)]
+    [TestCase("Arc Cycle Curve", false, 0, ArcCurveType.B)]
+    public void CreationKeysUpdateTheCreationParameters(string action, bool isVoid, int color, ArcCurveType curve)
+    {
+        var go = new GameObject("Arc creation hotkeys"); go.SetActive(false);
+        try
+        {
+            var create = go.AddComponent<Arcade.Compose.Operation.AdeClickToCreate>();
+            var type = create.GetType();
+            type.GetField("enable", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(create, true);
+            type.GetField("mode", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(create, Arcade.Compose.Operation.ClickToCreateMode.Arc);
+            var apply = type.GetMethod("TryApplyArcCreationAction", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(apply.Invoke(create, new object[] { action }), Is.True);
+            Assert.That(create.ArcIsVoid, Is.EqualTo(isVoid));
+            Assert.That(create.ArcColor, Is.EqualTo(color));
+            Assert.That(create.ArcCurveType, Is.EqualTo(curve));
+            Assert.That(apply.Invoke(create, new object[] { "Reverse Arc" }), Is.False);
+            type.GetField("mode", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(create, Arcade.Compose.Operation.ClickToCreateMode.Hold);
+            Assert.That(apply.Invoke(create, new object[] { action }), Is.False);
+        }
+        finally { Object.DestroyImmediate(go); }
+    }
+}
+
+public class CreationPriorityAndPlaneTests
+{
+    [TestCase(false, "Arc Toggle Void")]
+    [TestCase(false, "Arc Toggle Color")]
+    [TestCase(false, "Arc Toggle Curve Pair")]
+    [TestCase(false, "Arc Cycle Curve")]
+    [TestCase(true, "Arc Toggle Void")]
+    [TestCase(true, "Arc Toggle Color")]
+    [TestCase(true, "Arc Toggle Curve Pair")]
+    [TestCase(true, "Arc Cycle Curve")]
+    public void SelectedShapesPreventCreationParameterChanges(bool slide, string action)
+    {
+        var go = new GameObject("Selected editing wins"); go.SetActive(false);
+        var selectionProperty = typeof(AdeSelectionManager).GetProperty("Instance");
+        var gameProperty = typeof(Arcade.Gameplay.ArcGameplayManager).GetProperty("Instance");
+        var oldSelection = selectionProperty.GetValue(null); var oldGame = gameProperty.GetValue(null);
+        try
+        {
+            var game = go.AddComponent<Arcade.Gameplay.ArcGameplayManager>();
+            gameProperty.SetValue(null, game);
+            var selection = go.AddComponent<AdeSelectionManager>(); selectionProperty.SetValue(null, selection);
+            selection.SelectedNotes.Add(slide ? (ArcNote)new ArcSlide() : new ArcArc());
+            var create = go.AddComponent<Arcade.Compose.Operation.AdeClickToCreate>();
+            var type = create.GetType();
+            type.GetField("enable", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(create, true);
+            type.GetField("mode", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(create, Arcade.Compose.Operation.ClickToCreateMode.Arc);
+            var apply = type.GetMethod("TryApplyArcCreationAction", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(apply.Invoke(create, new object[] { action }), Is.False);
+            Assert.That(create.ArcColor, Is.EqualTo(0)); Assert.That(create.ArcIsVoid, Is.False);
+            Assert.That(create.ArcCurveType, Is.EqualTo(ArcCurveType.S));
+            selection.SelectedNotes.Clear();
+            Assert.That(apply.Invoke(create, new object[] { action }), Is.True);
+        }
+        finally
+        {
+            Object.DestroyImmediate(go);
+            selectionProperty.SetValue(null, oldSelection); gameProperty.SetValue(null, oldGame);
+        }
+    }
+
+    [Test]
+    public void FixedCoordinateDepthIgnoresMovingTimeAndCancellationReleasesIt()
+    {
+        var go = new GameObject("Fixed creation plane"); go.SetActive(false);
+        try
+        {
+            var cursor = go.AddComponent<AdeCursorManager>(); var type = cursor.GetType();
+            var depth = type.GetField("fixedCoordinatePlaneZ", BindingFlags.Instance | BindingFlags.NonPublic);
+            var timing = type.GetField("overriddenCursorTiming", BindingFlags.Instance | BindingFlags.NonPublic);
+            depth.SetValue(cursor, -12f);
+            timing.SetValue(cursor, 100);
+            Assert.That(cursor.AttachedTrackPoint.z, Is.EqualTo(-12));
+            timing.SetValue(cursor, 5000);
+            Assert.That(cursor.AttachedTrackPoint.z, Is.EqualTo(-12));
+            var token = new System.Threading.CancellationToken(true);
+            var task = cursor.SelectCoordinate(5000, new System.Progress<Vector2>(), token);
+            Assert.Throws<System.OperationCanceledException>(() => task.GetAwaiter().GetResult());
+            Assert.That(depth.GetValue(cursor), Is.Null); Assert.That(timing.GetValue(cursor), Is.Null);
+            var begin = type.GetMethod("BeginDragCursor", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(begin.Invoke(cursor, new object[] { true, true }), Is.True);
+        }
+        finally { Object.DestroyImmediate(go); }
+    }
+}
+
+public class TimingGroupInputTests
+{
+    [TestCase("0", true, 0)]
+    [TestCase("1", true, 1)]
+    [TestCase("7", true, 7)]
+    [TestCase(" 7 ", true, 7)]
+    [TestCase("2", false, 0)]
+    [TestCase("-1", false, 0)]
+    [TestCase("1.5", false, 0)]
+    [TestCase("2147483648", false, 0)]
+    [TestCase("", false, 0)]
+    public void OnlyDefaultAndExistingGroupIdsAreAccepted(string text, bool valid, int expected)
+    {
+        var groups = new[] { new ArcTimingGroup { Id = 1 }, new ArcTimingGroup { Id = 7 } };
+        var method = typeof(AdeTimingEditor).GetMethod("TryResolveGroupId", BindingFlags.Static | BindingFlags.NonPublic);
+        var args = new object[] { text, groups, null };
+        Assert.That(method.Invoke(null, args), Is.EqualTo(valid));
+        if (valid) Assert.That(((ArcTimingGroup)args[2])?.Id ?? 0, Is.EqualTo(expected));
+    }
+
+    [Test]
+    public void ArcTapResolvesToItsHostAndOtherNotesKeepTheirOwnGroup()
+    {
+        var group = new ArcTimingGroup { Id = 7 };
+        var host = new ArcArc { Timing = 100, EndTiming = 101, TimingGroup = group };
+        var tap = new ArcArcTap { Timing = 100, Arc = host };
+        var owner = typeof(AdeSelectionManager).GetMethod("TimingGroupOwner", BindingFlags.Static | BindingFlags.NonPublic);
+        Assert.That(owner.Invoke(null, new object[] { tap }), Is.SameAs(host));
+        foreach (ArcNote note in new ArcNote[] { host, new ArcSlide(), new ArcTap(), new ArcHold() })
+            Assert.That(owner.Invoke(null, new object[] { note }), Is.SameAs(note));
     }
 }

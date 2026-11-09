@@ -13,7 +13,7 @@ namespace Arcade.Compose
         public static readonly string[] Names = { "Legacy", "New", "Custom" };
         public static readonly (string Action, string Label)[] ExtraActions =
         {
-            ("Reverse Arc", "Arc 反转"), ("Preview Selected Code", "选中物件代码预览"),
+            ("Reverse Arc", "Arc / Slide 反转"), ("Preview Selected Code", "选中物件代码预览"),
             ("Select Spatial Range", "范围段落选择"), ("Arc Toggle Void", "Arc 音轨／黑线切换"),
             ("Arc Toggle Color", "Arc 蓝／红切换"), ("Arc Toggle Curve Pair", "Arc 缓动成对切换"),
             ("Arc Cycle Curve", "Arc 缓动轮换"), ("Arc Curve S", "Arc 缓动 S"),

@@ -141,6 +141,7 @@ namespace Arcade.Compose
 
 		private int? overriddenCursorTiming = null;
 		private Vector3? dragCursorPoint;
+        private float? fixedCoordinatePlaneZ;
 
 		internal bool BeginDragCursor(bool coordinate, bool sky)
 		{
@@ -213,7 +214,8 @@ namespace Arcade.Compose
 			get
 			{
 				float z;
-				if (overriddenCursorTiming != null)
+				if (fixedCoordinatePlaneZ.HasValue) z = fixedCoordinatePlaneZ.Value;
+                else if (overriddenCursorTiming != null)
 				{
 					z = ArcTimingManager.Instance.CalculatePositionByTiming(
 						overriddenCursorTiming.Value,
@@ -311,7 +313,8 @@ namespace Arcade.Compose
 			if (IsTrackHit || overriddenCursorTiming != null)
 			{
 				float z;
-				if (overriddenCursorTiming != null)
+				if (fixedCoordinatePlaneZ.HasValue) z = fixedCoordinatePlaneZ.Value;
+                else if (overriddenCursorTiming != null)
 				{
 					z = ArcTimingManager.Instance.CalculatePositionByTiming(
 						overriddenCursorTiming.Value,
@@ -424,7 +427,7 @@ namespace Arcade.Compose
 			finally { Destroy(outline); }
 		}
 
-		public async UniTask<Vector2> SelectCoordinate(int overriddenCursorTiming, IProgress<Vector2> progress, CancellationToken cancellationToken)
+		public async UniTask<Vector2> SelectCoordinate(int overriddenCursorTiming, IProgress<Vector2> progress, CancellationToken cancellationToken, bool fixedWorldPlane = false)
 		{
 			if (currentSelectTaskType != null)
 			{
@@ -435,9 +438,13 @@ namespace Arcade.Compose
 			this.overriddenCursorTiming = overriddenCursorTiming;
 			try
 			{
+                if (fixedWorldPlane)
+                    fixedCoordinatePlaneZ = ArcTimingManager.Instance.CalculatePositionByTiming(overriddenCursorTiming,
+                        AdeTimingEditor.Instance.currentTimingGroup) / -1000f;
 				while (true)
 				{
 					await UniTask.NextFrame(cancellationToken);
+                    if (fixedWorldPlane) { UpdateTrackCursor(); UpdateWallCursor(); }
 					if (AdeGameplayContentInputHandler.InputActive && IsWallHit)
 					{
 						progress.Report(AttachedCoordinate);
@@ -450,6 +457,7 @@ namespace Arcade.Compose
 			}
 			finally
 			{
+                fixedCoordinatePlaneZ = null;
 				currentSelectTaskType = null;
 				this.overriddenCursorTiming = null;
 			}

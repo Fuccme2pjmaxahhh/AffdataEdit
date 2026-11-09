@@ -37,7 +37,7 @@ namespace Arcade.Compose
             var hint = Rect("Hint", contextEditorRoot, typeof(TextMeshProUGUI));
             var text = hint.GetComponent<TMP_Text>();
             AdeEditorText.Configure(text, AdeEditorText.CaptionSize);
-            text.text = "勾选显示项目，用上移／下移调整顺序。Legacy 列表按顺时针排列（超过四项从左侧开始，四项及以下从右侧开始）；NEW 从上到下排列。两种样式分别保存顺序。";
+            text.text = "勾选显示项目，用上移／下移调整顺序。Legacy 列表按顺时针排列（超过四项从左侧开始，四项及以下从右侧开始）；NEW 从上到下排列。两种样式分别保存顺序。无点立得选中时，主菜单按 AA 的相对顺序排列，原“更多”位置直接展开上下翻转、水平剪切、转Slide等可用操作。奇数菜单不留空槽。";
             text.textWrappingMode = TextWrappingModes.Normal;
             text.raycastTarget = false;
             contextItemRows = Rect("Items", contextEditorRoot, typeof(VerticalLayoutGroup));

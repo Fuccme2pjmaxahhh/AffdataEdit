@@ -35,6 +35,8 @@ namespace Arcade.Compose.Editing
         private Toggle designantToggle;
         private RectTransform tapWidthRow;
         private InputField tapWidthInput;
+        private InputField timingGroupInput;
+        private bool timingGroupMixed;
 		public void OnNoteSelect(ArcNote note)
 		{
 			UpdateFields();
@@ -61,6 +63,16 @@ namespace Arcade.Compose.Editing
 			curveTypeDropdownHelper = new DropdownHelper<ArcCurveType?>(CurveType.GetComponentInChildren<Dropdown>());
 			colorDropdownHelper = new DropdownHelper<int?>(Color.GetComponentInChildren<Dropdown>());
 			timingGroupDropdownHelper = new DropdownHelper<ArcTimingGroupOption?>(TimingGroup.GetComponentInChildren<Dropdown>());
+            var oldGroupDropdown = TimingGroup.GetComponentInChildren<Dropdown>(true);
+            oldGroupDropdown.gameObject.SetActive(false);
+            timingGroupInput = Instantiate(Timing.GetComponentInChildren<InputField>(true), TimingGroup, false);
+            timingGroupInput.name = "TimingGroupId";
+            timingGroupInput.onValueChanged = new InputField.OnChangeEvent();
+            timingGroupInput.onEndEdit = new InputField.SubmitEvent();
+            timingGroupInput.contentType = InputField.ContentType.Standard;
+            timingGroupInput.characterLimit = 0;
+            timingGroupInput.onEndEdit.AddListener(OnTimingGroupInput);
+            if (timingGroupInput.placeholder is Text groupHint) groupHint.text = "组号，0 为默认组";
 			CreateArcExtensionRows();
 			// Native caret/word selection, plus triple-click selection of a whole field.
 			foreach (var input in Panel.GetComponentsInChildren<InputField>(true))
@@ -240,8 +252,8 @@ namespace Arcade.Compose.Editing
 				);
 				IsVoid.GetComponentInChildren<Toggle>().interactable = GetEditIsVoidAvailable();
 				UpdateField<ArcTimingGroupOption?>(
-					(note) => note is ISetableTimingGroup,
-					(note) => new ArcTimingGroupOption { timingGroup = (note as IHasTimingGroup).TimingGroup },
+					(note) => AdeSelectionManager.TimingGroupOwner(note) is ISetableTimingGroup,
+					(note) => new ArcTimingGroupOption { timingGroup = (AdeSelectionManager.TimingGroupOwner(note) as IHasTimingGroup).TimingGroup },
 					null,
 					(active) => TimingGroup.gameObject.SetActive(active),
 					(data) => ApplyTimingGroupDropdown(data)
@@ -403,21 +415,42 @@ namespace Arcade.Compose.Editing
 				return color.Value.timingGroup.Id.ToString(CultureInfo.InvariantCulture);
 			}
 		}
-		private void ApplyTimingGroupDropdown(ArcTimingGroupOption? data)
-		{
-			List<ArcTimingGroupOption?> options = new List<ArcTimingGroupOption?>();
-			if (data == null)
-			{
-				options.Add(null);
-			}
-			options.Add(new ArcTimingGroupOption { timingGroup = null });
-			foreach (var tg in ArcTimingManager.Instance.timingGroups)
-			{
-				options.Add(new ArcTimingGroupOption { timingGroup = tg });
-			}
-			timingGroupDropdownHelper.UpdateOptions(options, (option, _) => GetArcTimingGroupOptionString(option));
-			timingGroupDropdownHelper.SetValueWithoutNotify(data);
-		}
+        private void ApplyTimingGroupDropdown(ArcTimingGroupOption? data)
+        {
+            timingGroupMixed = !data.HasValue;
+            timingGroupInput.SetTextWithoutNotify(data.HasValue ? (data.Value.timingGroup?.Id ?? 0).ToString(CultureInfo.InvariantCulture) : "-");
+        }
+
+        private void OnTimingGroupInput(string text)
+        {
+            if (AdeSelectionManager.Instance.SelectedNotes.Count == 0) return;
+            text = AdeTextSelection.NormalizeForCommit(timingGroupInput);
+            if (timingGroupMixed && text == "-") return;
+            if (!AdeTimingEditor.TryResolveGroupId(text, ArcTimingManager.Instance.timingGroups, out var group))
+            {
+                AdeToast.Instance.Show("请输入已存在的时间组编号，0 为默认组");
+                timingGroupInput.SetTextWithoutNotify(timingGroupMixed ? "-" :
+                    ((AdeSelectionManager.TimingGroupOwner(AdeSelectionManager.Instance.SelectedNotes[0]) as IHasTimingGroup)?.TimingGroup?.Id ?? 0).ToString(CultureInfo.InvariantCulture));
+                return;
+            }
+            var targets = new HashSet<ArcNote>();
+            foreach (var note in AdeSelectionManager.Instance.SelectedNotes)
+            {
+                var owner = AdeSelectionManager.TimingGroupOwner(note);
+                if (owner is ISetableTimingGroup) targets.Add(owner);
+            }
+            var commands = new List<ICommand>();
+            foreach (var owner in targets)
+            {
+                if (((IHasTimingGroup)owner).TimingGroup == group) continue;
+                var next = (ArcNote)owner.Clone(); ((ISetableTimingGroup)next).TimingGroup = group;
+                commands.Add(new EditArcEventCommand(owner, next));
+            }
+            if (commands.Count > 0) AdeCommandManager.Instance.Add(new BatchCommand(commands.ToArray(), "修改时间组"));
+            if (targets.Count > 0) AdeTimingEditor.Instance.SetCurrentTimingGroup(group);
+            timingGroupInput.SetTextWithoutNotify((group?.Id ?? 0).ToString(CultureInfo.InvariantCulture));
+            UpdateFields();
+        }
 
 		private struct ValueChangeErrorMessage
 		{

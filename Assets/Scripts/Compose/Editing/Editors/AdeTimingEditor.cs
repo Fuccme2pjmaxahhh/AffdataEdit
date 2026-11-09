@@ -135,6 +135,16 @@ namespace Arcade.Compose.Editing
 			AdeUiTheme.Refresh();
 		}
 
+        internal static bool TryResolveGroupId(string text, IEnumerable<ArcTimingGroup> groups, out ArcTimingGroup group)
+        {
+            group = null;
+            if (!int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out int id) || id < 0) return false;
+            if (id == 0) return true;
+            foreach (var candidate in groups)
+                if (candidate != null && candidate.Id == id) { group = candidate; return true; }
+            return false;
+        }
+
 		public void SetCurrentTimingGroup(ArcTimingGroup arcTimingGroup)
 		{
 			currentTimingGroup = arcTimingGroup;

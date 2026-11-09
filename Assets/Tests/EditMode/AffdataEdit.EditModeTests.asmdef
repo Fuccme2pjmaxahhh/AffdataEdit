@@ -4,7 +4,8 @@
     "Arcade",
     "Unity.InputSystem",
     "Unity.ugui",
-    "Unity.TextMeshPro"
+    "Unity.TextMeshPro",
+    "UniTask"
   ],
   "includePlatforms": [
     "Editor"

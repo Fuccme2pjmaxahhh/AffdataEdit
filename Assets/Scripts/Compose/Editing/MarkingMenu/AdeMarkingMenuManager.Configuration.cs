@@ -59,6 +59,15 @@ namespace Arcade.Compose
             "create-toggle", "delete", "snap-time", "mirror-x", "mirror-y", "copy", "cut", "horizontal-cut", "convert-slide"
         };
 
+        // AA 1.13.1 normal selection: retain the common clockwise order, then AE additions.
+        internal static readonly string[] NormalSelectedDefaultOrder =
+        {
+            "grid", "create-toggle", "mirror-y", "horizontal-cut", "convert-slide",
+            "mirror-x", "cut", "copy", "snap-time", "delete"
+        };
+
+        private static readonly string[] NormalSelectedExtraIds = { "mirror-y", "horizontal-cut", "convert-slide" };
+
         public ContextMenuCustomization Customization
         {
             get
@@ -92,6 +101,7 @@ namespace Arcade.Compose
                 string[] titles = { "不创建", "Tap", "Hold", "Arc", "ArcTap", "退出点立得", "网格线", "Slide" };
                 for (int i = 0; i < ids.Length && i < create.ClickToCreateItems.Length; i++)
                 {
+                    if (i == 7 && !vertical) continue;
                     if (i == 4 && !vertical)
                     {
                         var ring = ArrangeRingItems(new[] { create.ClickToCreateItems[i] });
@@ -101,7 +111,13 @@ namespace Arcade.Compose
                     }
                     choices.Add(new MenuChoice(ids[i], titles[i], create.ClickToCreateItems[i]));
                 }
-                if (selected) choices.Add(new MenuChoice("delete", "删除", create.Delete));
+                if (selected)
+                {
+                    choices.Add(new MenuChoice("delete", "删除", create.Delete));
+                    var mirror = AdeMirrorOperation.Instance;
+                    if (mirror && mirror.ConvertToSlideItem)
+                        choices.Add(new MenuChoice("convert-slide", "转Slide", mirror.ConvertToSlideItem));
+                }
             }
             else
             {
@@ -130,16 +146,39 @@ namespace Arcade.Compose
                         choices.Add(new MenuChoice("create-toggle", "点立得", create.Entry[0]));
                 }
             }
+            if (state == ContextMenuState.NormalSelected)
+            {
+                foreach (var choice in choices.Where(c => c.Id == "mirror-x"))
+                {
+                    choice.Item.StartupText = "镜像";
+                    choice.Item.Text = "镜像";
+                }
+                for (int i = 0; i < choices.Count; i++)
+                {
+                    var choice = choices[i];
+                    if (choice.Id == "mirror-x") choices[i] = new MenuChoice(choice.Id, "镜像", choice.Item);
+                }
+            }
             foreach (var choice in choices)
                 if (choice.Item) choice.Item.SetIcon(choice.Id);
             var options = Customization.For(state);
             var order = vertical ? options.VerticalOrder : options.CircularOrder;
             if (order == null || order.Count == 0)
-                order = new List<string>(vertical ? VerticalDefaultOrder : CircularDefaultOrder);
+                order = new List<string>(state == ContextMenuState.NormalSelected ? NormalSelectedDefaultOrder
+                    : vertical ? VerticalDefaultOrder : CircularDefaultOrder);
             if (!vertical && order.Contains("create-arctap") && !order.Contains("create-single-arctap"))
             {
                 order = new List<string>(order);
                 order.Insert(order.IndexOf("create-arctap"), "create-single-arctap");
+            }
+            // Expand the former parent at its configured position without losing child ordering.
+            if (state == ContextMenuState.NormalSelected && order.Contains("selection-more"))
+            {
+                var extras = order.Where(NormalSelectedExtraIds.Contains).Concat(NormalSelectedExtraIds).Distinct().ToArray();
+                var expanded = order.Where(id => !NormalSelectedExtraIds.Contains(id)).ToList();
+                int index = expanded.IndexOf("selection-more");
+                expanded.RemoveAt(index); expanded.InsertRange(index, extras);
+                order = expanded;
             }
             // Unknown/stale IDs are ignored; new entries retain their default relative order.
             return choices.OrderBy(c =>

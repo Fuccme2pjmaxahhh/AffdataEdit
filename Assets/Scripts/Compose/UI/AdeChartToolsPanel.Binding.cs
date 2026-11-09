@@ -39,6 +39,20 @@ namespace Arcade.Compose
             Bind(timingScroll.transform.parent, "Timing操作/+ 当前时间", AddTiming);
             foreach (var page in controlPages)
             {
+                page.Group.gameObject.SetActive(false);
+                page.GroupInput = Instantiate(page.Time, page.Group.transform.parent, false);
+                page.GroupInput.name = "TimingGroupId";
+                page.GroupInput.onValueChanged = new TMPro.TMP_InputField.OnChangeEvent();
+                page.GroupInput.onEndEdit = new TMPro.TMP_InputField.SubmitEvent();
+                page.GroupInput.contentType = TMPro.TMP_InputField.ContentType.Standard;
+                page.GroupInput.characterLimit = 0;
+                page.GroupInput.onEndEdit.AddListener(_ =>
+                {
+                    if (!TryReadGroupInput(page, out var selectedGroup)) return;
+                    page.Group.value = Mathf.Max(0, groups.IndexOf(selectedGroup));
+                });
+                if (page.GroupInput.placeholder is TMPro.TMP_Text groupHint) groupHint.text = "组号，0 为默认组";
+                AdeTextSelection.Configure(page.GroupInput);
                 page.Scope.onValueChanged.AddListener(_ => RefreshControls(page));
                 page.Scroll.onValueChanged.AddListener(_ => ScrollControls(page));
                 Bind(page.Scroll.transform.parent, "事件操作/+ 当前时间", () => AddControl(page));
@@ -60,6 +74,16 @@ namespace Arcade.Compose
                 Bind(page.Statement.transform.parent, "语句操作/应用语句", () => ApplyControl(page, true));
                 BindDisclosure(page.Statement.transform.parent, "AFF 语句");
             }
+        }
+
+        private bool TryReadGroupInput(ControlPage page, out Gameplay.Chart.ArcTimingGroup timingGroup)
+        {
+            string text = AdeTextSelection.NormalizeForCommit(page.GroupInput);
+            if (Editing.AdeTimingEditor.TryResolveGroupId(text, groups, out timingGroup)) return true;
+            Message("请输入已存在的时间组编号，0 为默认组", true);
+            var selected = page.Selected as Gameplay.Chart.IHasTimingGroup;
+            page.GroupInput.SetTextWithoutNotify((selected?.TimingGroup?.Id ?? 0).ToString());
+            return false;
         }
 
         private void BindCamera(ControlPage page)
@@ -155,7 +179,8 @@ namespace Arcade.Compose
                 else next.Rotate[i - 3] = value;
             }
             next.CameraType = (Gameplay.Chart.CameraEaseType)page.Type.value;
-            next.TimingGroup = groups[page.Group.value];
+            if (!TryReadGroupInput(page, out var timingGroup)) return;
+            next.TimingGroup = timingGroup;
             if (ChartControlText.Format(next) == ChartControlText.Format(camera) && next.TimingGroup == camera.TimingGroup) return;
             AdeCommandManager.Instance.Add(new ChartControlCommand(camera, camera, next));
             page.Statement.SetTextWithoutNotify(ChartControlText.Format(camera));
