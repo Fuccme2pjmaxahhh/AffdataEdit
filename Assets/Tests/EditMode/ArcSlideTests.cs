@@ -15,6 +15,150 @@ using UnityEngine.EventSystems;
 
 public class ArcSlideTests
 {
+    [TestCase(1280, 720)]
+    [TestCase(800, 600)]
+    public void MenuBoundsExcludeAllFourToolbars(int width, int height)
+    {
+        var owner = new GameObject("Menu bounds owner"); owner.SetActive(false);
+        var canvasObject = new GameObject("Menu canvas", typeof(RectTransform));
+        try
+        {
+            var compose = owner.AddComponent<ArcadeComposeManager>();
+            var canvas = canvasObject.GetComponent<RectTransform>(); canvas.sizeDelta = new Vector2(width, height);
+            compose.EditorCanvas = canvas;
+            RectTransform Bar(string name, float x, float y, float w, float h)
+            {
+                var rect = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
+                rect.SetParent(canvas, false); rect.anchorMin = rect.anchorMax = Vector2.zero; rect.pivot = Vector2.zero;
+                rect.anchoredPosition = new Vector2(x, y); rect.sizeDelta = new Vector2(w, h); return rect;
+            }
+            compose.LeftBarView = Bar("Left", 0, 0, 70, height);
+            compose.RightBarView = Bar("Right", width - 70, 0, 70, height);
+            compose.TopBarView = Bar("Top", 0, height - 50, width, 50);
+            compose.BottomBarView = Bar("Bottom", 0, 0, width, 60);
+            var method = typeof(AdeMarkingMenuManager).GetMethod("GetMenuBounds", BindingFlags.Static | BindingFlags.NonPublic);
+            Assert.That((Rect)method.Invoke(null, new object[] { compose }), Is.EqualTo(new Rect(70, 60, width - 140, height - 110)));
+            compose.BottomBarView.gameObject.SetActive(false);
+            Assert.That(((Rect)method.Invoke(null, new object[] { compose })).yMin, Is.Zero);
+        }
+        finally { Object.DestroyImmediate(owner); Object.DestroyImmediate(canvasObject); }
+    }
+
+    [Test]
+    public void ObjectTextFirstClickSelectsWholeFieldAndNextClickPlacesCaret()
+    {
+        var root = new GameObject("Text click regression", typeof(RectTransform), typeof(Canvas));
+        try
+        {
+            var field = new GameObject("Value", typeof(RectTransform), typeof(TMPro.TMP_InputField)).GetComponent<TMPro.TMP_InputField>();
+            field.transform.SetParent(root.transform, false);
+            var label = new GameObject("Text", typeof(RectTransform), typeof(TMPro.TextMeshProUGUI)).GetComponent<TMPro.TextMeshProUGUI>();
+            label.transform.SetParent(field.transform, false); label.font = TMPro.TMP_Settings.defaultFontAsset;
+            label.rectTransform.sizeDelta = new Vector2(300, 60);
+            field.textComponent = label; field.textViewport = field.GetComponent<RectTransform>();
+            field.text = "-0.123,0.456"; label.ForceMeshUpdate();
+            AdeTextSelection.Configure(field);
+            var selection = field.GetComponent<AdeTextSelection>();
+            typeof(AdeTextSelection).GetMethod("Awake", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(selection, null);
+            var data = new PointerEventData(null) { button = PointerEventData.InputButton.Left, position = Vector2.zero };
+            selection.OnPointerDown(data);
+            Assert.That(field.selectionStringAnchorPosition, Is.Zero);
+            Assert.That(field.selectionStringFocusPosition, Is.EqualTo(field.text.Length));
+            selection.OnPointerUp(data);
+            typeof(AdeTextSelection).GetField("lastClickTime", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(selection, float.NegativeInfinity);
+            selection.OnPointerDown(data);
+            Assert.That(field.selectionStringAnchorPosition, Is.EqualTo(field.selectionStringFocusPosition));
+        }
+        finally { Object.DestroyImmediate(root); }
+    }
+
+    [Test]
+    public void MirrorSingleTapAndMixedNotesUsesHostOnceWithOrWithoutExplicitSelection()
+    {
+        var host = new ArcArc { Timing = 100, EndTiming = 101, XStart = .2f, XEnd = .2f,
+            YStart = .7f, YEnd = .7f, LineType = ArcLineType.TrueIsVoid };
+        var tap = new ArcArcTap { Timing = 100, Arc = host }; host.ArcTaps.Add(tap);
+        var arc = new ArcArc { XStart = .1f, XEnd = .3f };
+        var slide = new ArcSlide { StartCenter = .25f, EndCenter = .7f, LeftCurve = 1, RightCurve = 2 };
+        var groundTap = new ArcTap { Track = 1 }; var hold = new ArcHold { Track = 2 };
+        var build = typeof(Arcade.Compose.Operation.AdeMirrorOperation).GetMethod("CreateMirrorCommands", BindingFlags.Static | BindingFlags.NonPublic);
+        var commandType = typeof(Arcade.Compose.Command.EditArcEventCommand);
+        var noteField = commandType.GetField("note", BindingFlags.Instance | BindingFlags.NonPublic);
+        var valueField = commandType.GetField("newValues", BindingFlags.Instance | BindingFlags.NonPublic);
+        foreach (var selected in new[] { new ArcNote[] { tap, arc, slide, groundTap, hold },
+            new ArcNote[] { tap, host, arc, slide, groundTap, hold }, new ArcNote[] { host, arc, slide, groundTap, hold } })
+        {
+            var commands = (System.Collections.IList)build.Invoke(null, new object[] { selected });
+            Assert.That(commands.Count, Is.EqualTo(5));
+            foreach (var command in commands)
+            {
+                var original = (ArcNote)noteField.GetValue(command);
+                var value = (ArcNote)valueField.GetValue(command);
+                Assert.That(original, Is.Not.SameAs(tap));
+                if (original == host)
+                {
+                    var mirrored = (ArcArc)value;
+                    Assert.That(mirrored.XStart, Is.EqualTo(.8f).Within(.000001));
+                    Assert.That(mirrored.XEnd, Is.EqualTo(.8f).Within(.000001));
+                    Assert.That(mirrored.YStart, Is.EqualTo(.7f));
+                    Assert.That(mirrored.Timing, Is.EqualTo(100)); Assert.That(mirrored.EndTiming, Is.EqualTo(101));
+                }
+                if (value is ArcSlide mirroredSlide)
+                {
+                    Assert.That(mirroredSlide.StartCenter, Is.EqualTo(.75f));
+                    Assert.That(mirroredSlide.LeftCurve, Is.EqualTo(2)); Assert.That(mirroredSlide.RightCurve, Is.EqualTo(1));
+                }
+                if (value is ArcTap mirroredTap) Assert.That(mirroredTap.Track, Is.EqualTo(4));
+                if (value is ArcHold mirroredHold) Assert.That(mirroredHold.Track, Is.EqualTo(3));
+            }
+        }
+        Assert.That(host.XStart, Is.EqualTo(.2f), "Building the undo batch must not mutate the original");
+    }
+
+    [Test]
+    public void SingleTapDragTargetsDoNotDependOnHostSelection()
+    {
+        var host = new ArcArc { Timing = 100, EndTiming = 101, XStart = .5f, XEnd = .5f,
+            YStart = 1, YEnd = 1, LineType = ArcLineType.TrueIsVoid };
+        var tap = new ArcArcTap { Timing = 100, Arc = host }; host.ArcTaps.Add(tap);
+        var arc = new ArcArc(); var slide = new ArcSlide();
+        var resolve = typeof(AdeDragEdit).GetMethod("ResolveDragTargets", BindingFlags.Static | BindingFlags.NonPublic);
+        foreach (var selected in new[] { new ArcNote[] { tap, arc, slide }, new ArcNote[] { host, tap, arc, slide }, new ArcNote[] { host, arc, slide } })
+        {
+            var targets = (ArcNote[])resolve.Invoke(null, new object[] { selected });
+            Assert.That(targets, Is.EquivalentTo(new ArcNote[] { host, arc, slide }));
+        }
+        var ordinaryTap = new ArcArcTap { Arc = arc };
+        Assert.That((ArcNote[])resolve.Invoke(null, new object[] { new ArcNote[] { ordinaryTap, arc } }), Is.EqualTo(new ArcNote[] { arc }));
+    }
+
+    [Test]
+    public void GroupTimeDragPreservesSingleTapHostDurationAndChildOffset()
+    {
+        var move = typeof(AdeDragEdit).GetMethod("OffsetTiming", BindingFlags.Static | BindingFlags.NonPublic);
+        foreach (ArcNote source in new ArcNote[] {
+            new ArcArc { Timing = 100, EndTiming = 101 }, new ArcArcTap { Timing = 101 },
+            new ArcArc { Timing = 50, EndTiming = 400 }, new ArcSlide { Timing = 200, EndTiming = 700 } })
+        {
+            var value = (ArcNote)source.Clone();
+            foreach (int delta in new[] { 200, -50, 200, 0 })
+            {
+                move.Invoke(null, new object[] { value, source, delta });
+                Assert.That(value.Timing, Is.EqualTo(source.Timing + delta));
+                if (value is ArcLongNote length && source is ArcLongNote original)
+                    Assert.That(length.EndTiming, Is.EqualTo(original.EndTiming + delta));
+            }
+        }
+    }
+
+    [Test]
+    public void ClickCreateSelectionPlacesDeleteBeforeGridLikeAlpha()
+    {
+        var order = (string[])typeof(AdeMarkingMenuManager).GetField("CreateSelectedDefaultOrder", BindingFlags.Static | BindingFlags.NonPublic).GetValue(null);
+        Assert.That(order, Is.EqualTo(new[] { "create-none", "delete", "grid", "create-single-arctap", "create-arctap", "create-exit",
+            "create-arc", "create-hold", "create-tap", "convert-slide" }));
+    }
+
     [Test]
     public void SlideReversalMirrorsBothEdgesAndIsAnInvolution()
     {
@@ -809,6 +953,56 @@ public class ArcSlideTests
         Assert.That(b.CountJudgements(2000, 120), Is.EqualTo(2));
         b.TimingGroup = new ArcTimingGroup { NoInput = true };
         Assert.That(b.CountJudgements(2000, 120), Is.Zero);
+    }
+
+    [TestCase(120, 1)]
+    [TestCase(300, 1)]
+    [TestCase(120, 2)]
+    [TestCase(0, 1)]
+    [TestCase(-120, 1)]
+    public void SplittingSlideChainDoesNotChangeJudgementClock(double bpm, double density)
+    {
+        var whole = new ArcSlide { Timing = 0, EndTiming = 600 };
+        var a = new ArcSlide { Timing = 0, EndTiming = 130 };
+        var b = new ArcSlide { Timing = 130, EndTiming = 300 };
+        var c = new ArcSlide { Timing = 300, EndTiming = 600 };
+        Arcade.Gameplay.ArcSlideManager.UpdateConnections(new[] { c, a, b });
+        Assert.That(c.GroupRoot, Is.SameAs(a));
+        foreach (int t in new[] { -1, 0, 129, 130, 131, 249, 250, 299, 300, 301, 499, 500, 599, 600, 601, 0 })
+            Assert.That(a.CountJudgements(t, bpm, density) + b.CountJudgements(t, bpm, density) + c.CountJudgements(t, bpm, density),
+                Is.EqualTo(whole.CountJudgements(t, bpm, density)), $"t={t}");
+    }
+
+    [TestCase(-2)]
+    [TestCase(0)]
+    [TestCase(2)]
+    public void ToleratedSlideSeamsDoNotResetOrDuplicateTicks(int seamOffset)
+    {
+        var a = new ArcSlide { Timing = 0, EndTiming = 250 };
+        var b = new ArcSlide { Timing = 250 + seamOffset, EndTiming = 600 };
+        var whole = new ArcSlide { Timing = 0, EndTiming = 600 };
+        Arcade.Gameplay.ArcSlideManager.UpdateConnections(new[] { a, b });
+        double bpm = 30000d / 251;
+        for (int t = 245; t <= 605; t++)
+            Assert.That(a.CountJudgements(t, bpm) + b.CountJudgements(t, bpm), Is.EqualTo(whole.CountJudgements(t, bpm)), $"t={t}");
+    }
+
+    [Test]
+    public void SlideChainHasOnlyOneTailTickAndRebuildSeparatesDisconnectedSegments()
+    {
+        var a = new ArcSlide { Timing = 0, EndTiming = 300 };
+        var b = new ArcSlide { Timing = 300, EndTiming = 600 };
+        Arcade.Gameplay.ArcSlideManager.UpdateConnections(new[] { a, b });
+        Assert.That(a.CountJudgements(300, 120), Is.EqualTo(1));
+        Assert.That(b.CountJudgements(300, 120), Is.Zero);
+        Assert.That(a.CountJudgements(600, 120) + b.CountJudgements(600, 120), Is.EqualTo(3));
+        b.StartCenter = b.EndCenter = 2;
+        Arcade.Gameplay.ArcSlideManager.UpdateConnections(new[] { a, b });
+        Assert.That(b.GroupRoot, Is.SameAs(b));
+        Assert.That(a.CountJudgements(600, 120) + b.CountJudgements(600, 120), Is.EqualTo(4));
+        b.StartCenter = b.EndCenter = .5f;
+        Arcade.Gameplay.ArcSlideManager.UpdateConnections(new[] { b, a });
+        Assert.That(a.CountJudgements(600, 120) + b.CountJudgements(600, 120), Is.EqualTo(3));
     }
 
     [TestCase(501, 120, 1, 2)]

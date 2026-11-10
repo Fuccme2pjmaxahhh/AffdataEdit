@@ -26,8 +26,9 @@ namespace Arcade.Compose
         private bool pointerSelectionActive, characterDragging;
         private bool normalizesCommit;
         private bool pointerFocusEstablished;
+        private bool selectAllOnFirstClick;
 
-        public static void Configure(TMP_InputField field)
+        public static void Configure(TMP_InputField field, bool selectAllOnFirstClick = true)
         {
             field.onFocusSelectAll = false;
             // Keep IME punctuation intact while typing; validate the normalized
@@ -35,6 +36,7 @@ namespace Arcade.Compose
             field.characterValidation = TMP_InputField.CharacterValidation.None;
             if (!field.TryGetComponent<AdeTextSelection>(out _))
                 field.gameObject.AddComponent<AdeTextSelection>();
+            field.GetComponent<AdeTextSelection>().selectAllOnFirstClick = selectAllOnFirstClick;
         }
 
         public static string NormalizeForCommit(TMP_InputField field)
@@ -47,7 +49,7 @@ namespace Arcade.Compose
 
         public static void ConfigureSettings(TMP_InputField field, bool numericOrGrid)
         {
-            Configure(field);
+            Configure(field, selectAllOnFirstClick: false);
             var selection = field.GetComponent<AdeTextSelection>();
             if (!numericOrGrid || selection.normalizesCommit) return;
             selection.normalizesCommit = true;
@@ -99,7 +101,7 @@ namespace Arcade.Compose
             bool firstClick = !pointerFocusEstablished;
             pointerFocusEstablished = true;
             selectingAll = !shift && (clickCount >= 3
-                || (clickCount == 2 && blank));
+                || (clickCount == 2 && blank) || (firstClick && selectAllOnFirstClick));
             if (selectingAll) SelectWholeField();
             else if (clickCount == 2 && !shift && character >= 0)
             {

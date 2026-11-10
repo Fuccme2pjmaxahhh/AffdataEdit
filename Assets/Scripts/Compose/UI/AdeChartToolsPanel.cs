@@ -60,6 +60,7 @@ namespace Arcade.Compose
         private bool expanded;
         private bool timingLayoutDirty = true;
         private bool revealCurrentGroup;
+        private AdeAnimatedTabs pageSelector, groupSelector;
         private float timingViewportHeight;
 
         [Serializable]
@@ -91,6 +92,11 @@ namespace Arcade.Compose
             Instance = this;
             var timing = AdeTimingEditor.Instance;
             BindView();
+            pageSelector = new AdeAnimatedTabs(tabs);
+            groupSelector = new AdeAnimatedTabs(groupTabs);
+            tabs[0].GetComponentInChildren<TMP_Text>(true).text = "Timing";
+            foreach (var label in ArcadeComposeManager.Instance.BottomBarView.GetComponentsInChildren<TMP_Text>(true))
+                if (label.text == "时间组") label.text = "Timing";
             timing.View.SetActive(false);
             var timingEntry = ArcadeComposeManager.Instance.RightBarView.Find("Timing");
             if (timingEntry)
@@ -109,6 +115,7 @@ namespace Arcade.Compose
 
         private void OnDestroy()
         {
+            pageSelector?.Dispose(); groupSelector?.Dispose();
             AdeRightSideCards.Release(this);
             panelMotion.TryCancel();
             if (ArcGameplayManager.Instance) ArcGameplayManager.Instance.OnChartLoad.RemoveListener(OnChartLoad);
@@ -126,6 +133,7 @@ namespace Arcade.Compose
         private void LateUpdate()
         {
             if (!ready) return;
+            pageSelector?.Refresh(); groupSelector?.Refresh();
             if (lastChart != ArcGameplayManager.Instance.Chart || lastGroup != AdeTimingEditor.Instance.currentTimingGroup) dirty = true;
             if (dirty) Refresh();
             if (revealCurrentGroup && expanded && activePage == Page.Groups)
@@ -223,7 +231,7 @@ namespace Arcade.Compose
             pageHost.gameObject.SetActive(loaded);
             emptyState.gameObject.SetActive(!loaded);
             context.gameObject.SetActive(loaded);
-            context.text = "当前时间组：" + GroupName(lastGroup);
+            context.text = "当前 Timing：" + GroupName(lastGroup);
             RefreshGroups();
             foreach (var page in controlPages)
             {
@@ -246,10 +254,10 @@ namespace Arcade.Compose
         {
             for (int i = 0; i < tabs.Length; i++)
             {
-                Highlight(tabs[i], i == (int)activePage);
                 Highlight(entries[i], expanded && i == (int)activePage);
             }
-            for (int i = 0; i < groupTabs.Length; i++) Highlight(groupTabs[i], i == activeGroupTab);
+            pageSelector?.Select((int)activePage);
+            groupSelector?.Select(activeGroupTab);
         }
 
         private void ShowGroupTab(int index)

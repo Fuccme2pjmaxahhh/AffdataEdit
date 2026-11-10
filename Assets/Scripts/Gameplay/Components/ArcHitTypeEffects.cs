@@ -49,7 +49,8 @@ namespace Arcade.Gameplay
         {
             if (!CanSpawn || !Continuous) return;
             var game = ArcGameplayManager.Instance;
-            double bpm = ArcTimingManager.Instance.CalculateBpmByTiming(slide.Timing, slide.TimingGroup);
+            var root = slide.GroupRoot ?? slide;
+            double bpm = ArcTimingManager.Instance.CalculateBpmByTiming(root.Timing, root.TimingGroup);
             if (slide.CountJudgements(game.ChartTiming, bpm, game.TimingPointDensityFactor)
                 <= slide.CountJudgements(previousTiming, bpm, game.TimingPointDensityFactor)) return;
             float progress = Mathf.Clamp01((game.ChartTiming - (float)slide.Timing) / (slide.EndTiming - (float)slide.Timing));

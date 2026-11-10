@@ -1,6 +1,6 @@
 # Tabler Outline UI icons
 
-Source: [Tabler Icons v3.49.0](https://github.com/tabler/tabler-icons/tree/v3.49.0/icons/outline), distributed under the [MIT license](LICENSE). The SVG files in this directory are the original upstream sources.
+Source: [Tabler Icons v3.49.0](https://github.com/tabler/tabler-icons/tree/v3.49.0/icons/outline), distributed under the [MIT license](LICENSE). The SVG files retain the upstream style; `folder-sync`, `mouse-right`, `user-bust` and `clock` are local adaptations using the same 24-unit, rounded 2-unit strokes.
 
 ## Image mappings
 
@@ -10,14 +10,15 @@ Existing PNG paths and GUIDs are retained so scene and prefab references remain 
 | --- | --- |
 | `Assets/Textures/Icon/MDI/Folder.png` | [`folder-open`](folder-open.svg) |
 | `Assets/Textures/Icon/MDI/Save.png` | [`device-floppy`](device-floppy.svg) |
-| `Assets/Textures/Icon/MDI/FileSync.png` | [`folder-bolt`](folder-bolt.svg) |
+| `Assets/Textures/Icon/MDI/FileSync.png` | [`folder-sync`](folder-sync.svg) |
 | `Assets/Resources/AffdataEdit/Icons/CloudUpload.png` | [`cloud-upload`](cloud-upload.svg) |
 | `Assets/Resources/AffdataEdit/Icons/Realtime.png` | [`refresh-dot`](refresh-dot.svg) |
-| `Assets/Resources/AffdataEdit/Icons/Account.png` | [`user`](user.svg) |
+| `Assets/Resources/AffdataEdit/Icons/Account.png` | [`user-bust`](user-bust.svg) |
+| `Assets/Resources/AffdataEdit/Icons/Edit.png` | [`pencil`](pencil.svg) |
 | `Assets/Textures/Icon/MDI/Undo.png` | [`arrow-back-up`](arrow-back-up.svg) |
 | `Assets/Textures/Icon/MDI/Redo.png` | [`arrow-forward-up`](arrow-forward-up.svg) |
 | `Assets/Textures/Icon/MDI/Refresh.png` | [`refresh`](refresh.svg) |
-| `Assets/Textures/Icon/MDI/Timeline.png` | [`history`](history.svg) |
+| `Assets/Textures/Icon/MDI/Timeline.png` | [`clock`](clock.svg) |
 | `Assets/Textures/Icon/MDI/Swap.png` | [`arrows-exchange`](arrows-exchange.svg) |
 | `Assets/Textures/Icon/MDI/Grid.png` | [`grid-3x3`](grid-3x3.svg) |
 | `Assets/Textures/Icon/MDI/Check.png` | [`bug`](bug.svg) |
@@ -31,7 +32,7 @@ Existing PNG paths and GUIDs are retained so scene and prefab references remain 
 | `Assets/Resources/AffdataEdit/Icons/Close.png` | [`x`](x.svg) |
 | `Assets/Resources/AffdataEdit/Icons/ChevronDown.png` | [`chevron-down`](chevron-down.svg) |
 
-File watching uses `folder-bolt`, visually distinct from the circular `refresh` arrow.
+File watching uses a folder with a lower-right sync badge. Settings uses [`mouse-right`](mouse-right.svg), rendered to `Assets/Resources/AffdataEdit/Icons/MouseRight.png`, with a solid right button.
 
 ## Inline symbols
 

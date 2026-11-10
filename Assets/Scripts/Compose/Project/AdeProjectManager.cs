@@ -107,7 +107,15 @@ namespace Arcade.Compose
 		private void Awake()
 		{
 			Instance = this;
+			ConfigureHudInputNavigation(Name, Composer, Diff);
 		}
+
+        internal static void ConfigureHudInputNavigation(params InputField[] fields)
+        {
+            // Chart arrow-key scrolling must not navigate into metadata and start typing there.
+            foreach (var field in fields)
+                if (field) field.navigation = new Navigation { mode = Navigation.Mode.None };
+        }
         private void RefreshDifficultyAppearance(int selected)
         {
             if (!difficultyNormal)

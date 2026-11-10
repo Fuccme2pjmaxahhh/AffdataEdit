@@ -29,6 +29,16 @@ namespace Arcade.Compose
 				arc.VerticalColumn = 1;
 				arcMoreItem.VerticalColumn = 2;
 				list.Insert(index + 1, arcMoreItem);
+				var tap = create.ClickToCreateItems[1];
+				var hold = create.ClickToCreateItems[2];
+				if (list.Contains(tap) && list.Contains(hold))
+				{
+					// Tap/Hold share a row; Arc and its options button keep a separate row.
+					list.Remove(tap); list.Remove(hold);
+					index = list.IndexOf(arc);
+					list.InsertRange(index, new[] { tap, hold });
+					tap.VerticalColumn = 1; hold.VerticalColumn = 2;
+				}
 			}
 			var arcTap = create.ClickToCreateItems[4];
 			index = list.IndexOf(arcTap);
@@ -44,7 +54,7 @@ namespace Arcade.Compose
 					for (int i = 0; i < arcTapItems.Length; i++)
 					{
 						var mode = (ClickToCreateArctapMode)i;
-						arcTapItems[i].IconKind = () => "create-arctap";
+						arcTapItems[i].IconKind = () => mode == ClickToCreateArctapMode.Single ? "create-single-arctap" : "create-arctap";
 						arcTapItems[i].OnConfirmed.AddListener(() =>
 						{
 							create.SetClickToCreateMode(ClickToCreateMode.ArcTap);
@@ -126,14 +136,19 @@ namespace Arcade.Compose
 				colors[id].OnConfirmed.AddListener(() => create.SetArcColor(value));
 				colors[id].IconKind = () => create.ArcColor == value ? "check" : null;
 			}
-			var colorMenu = CloneVerticalItem(arc, "ContextMenuArcColors", "其他颜色");
+			var colorMenu = CloneVerticalItem(arc, "ContextMenuArcColors", "");
+			colorMenu.VerticalLeaf = false;
+			colorMenu.VerticalWidth = VerticalButtonWidth;
 			colorMenu.VerticalSubItems = new[] { colors[ArcColors.GreenId], colors[ArcColors.GrayId], colors[ArcColors.BlackId] };
+			colors[ArcColors.BlueId].VerticalColumn = 1;
+			colors[ArcColors.RedId].VerticalColumn = 2;
+			colorMenu.VerticalColumn = 3;
 
 			arcMoreItem = CloneVerticalItem(arc, "ContextMenuArcOptions", "");
 			arcMoreItem.OnConfirmed.AddListener(arc.OnConfirmed.Invoke);
 			arcMoreItem.VerticalLeaf = false;
 			arcMoreItem.VerticalWidth = VerticalButtonWidth;
-			var items = new List<MarkingMenuItem> { isVoid, colors[ArcColors.BlueId], colors[ArcColors.RedId], colorMenu, s, si, siMore, so, soMore, b };
+			var items = new List<MarkingMenuItem> { isVoid, colors[ArcColors.BlueId], colors[ArcColors.RedId], colorMenu, s, b, si, siMore, so, soMore };
 			items.RemoveAll(item => !item);
 			arcMoreItem.VerticalSubItems = items.ToArray();
 		}

@@ -239,6 +239,8 @@ namespace Arcade.Gameplay
             {
                 var slide = slides[i];
                 slide.GroupRoot = slide;
+                slide.GroupJudgementStartTiming = slide.Timing;
+                slide.GroupEndTiming = slide.EndTiming;
                 slide.IsGroupHead = slide.IsGroupTail = true;
                 slide.Overlap = new Vector4(0, 1, 0, 1);
                 if (slide.IsValid) ordered.Add((slide, i));
@@ -267,6 +269,8 @@ namespace Arcade.Gameplay
                 }
                 if (best == null) continue;
                 current.GroupRoot = best.GroupRoot;
+                current.GroupJudgementStartTiming = current.GroupRoot.GroupEndTiming;
+                current.GroupRoot.GroupEndTiming = System.Math.Max(current.GroupRoot.GroupEndTiming, current.EndTiming);
                 best.IsGroupTail = current.IsGroupHead = false;
                 best.Overlap.z = current.Overlap.x = bestLeft;
                 best.Overlap.w = current.Overlap.y = bestRight;

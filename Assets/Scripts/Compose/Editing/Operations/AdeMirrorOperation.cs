@@ -136,7 +136,14 @@ namespace Arcade.Compose.Operation
 
 		private void MirrorSelectedNotes()
 		{
-			var selected = AdeSelectionManager.Instance.SelectedNotes;
+			var commands = CreateMirrorCommands(AdeSelectionManager.Instance.SelectedNotes);
+			if (commands.Count > 0) AdeCommandManager.Instance.Add(new BatchCommand(commands.ToArray(), "镜像"));
+		}
+
+        internal static List<ICommand> CreateMirrorCommands(IEnumerable<ArcNote> selection)
+        {
+            // Use the same host promotion/deduplication as middle-button dragging.
+            var selected = Editing.AdeDragEdit.ResolveDragTargets(selection);
 			List<ICommand> commands = new List<ICommand>();
 			foreach (var n in selected)
 			{
@@ -172,7 +179,7 @@ namespace Arcade.Compose.Operation
 						break;
 				}
 			}
-			AdeCommandManager.Instance.Add(new BatchCommand(commands.ToArray(), "镜像"));
+			return commands;
 		}
 
 		public override AdeOperationResult TryExecuteOperation()

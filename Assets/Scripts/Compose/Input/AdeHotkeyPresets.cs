@@ -87,7 +87,7 @@ namespace Arcade.Compose
                 ["Click To Create Hold"] = new Binding("<Keyboard>/3"),
                 ["Click To Create Arc"] = new Binding("<Keyboard>/4"),
                 ["Click To Create Arctap"] = new Binding("<Keyboard>/5"),
-                ["Reverse Arc"] = new Binding("<Keyboard>/n", alt: true),
+                ["Reverse Arc"] = new Binding("<Keyboard>/n", ctrl: true),
                 ["Preview Selected Code"] = new Binding("<Keyboard>/tab"),
                 ["Select Spatial Range"] = new Binding("<Keyboard>/f", ctrl: true),
                 ["Arc Toggle Void"] = new Binding("<Keyboard>/f1"),

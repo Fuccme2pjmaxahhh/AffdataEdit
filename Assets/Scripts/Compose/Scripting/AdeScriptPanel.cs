@@ -38,10 +38,7 @@ namespace Arcade.Compose.Scripting
         private TMP_Text sectionTemplate, status, toolCount;
         private bool showQuick = true;
         private float toolTextSize, timeButtonSpace;
-        private RectTransform categoryHighlight;
-        private Image categoryTrack, categoryUnderline;
-        private float categoryPosition;
-        private MotionHandle categoryMotion;
+        private AdeAnimatedTabs categorySelector;
         private readonly Dictionary<RectTransform, MotionHandle> formMotions = new Dictionary<RectTransform, MotionHandle>();
         private readonly HashSet<RectTransform> closingForms = new HashSet<RectTransform>();
         private readonly List<Button> categoryButtons = new List<Button>();
@@ -68,6 +65,7 @@ namespace Arcade.Compose.Scripting
 
         private void LateUpdate()
         {
+            categorySelector?.Refresh();
             if (themeRevision == AdeUiTheme.Revision) return;
             themeRevision = AdeUiTheme.Revision;
             foreach (var row in rows) if (row) StyleRow(row);
@@ -94,7 +92,7 @@ namespace Arcade.Compose.Scripting
 
         private void OnDestroy()
         {
-            categoryMotion.TryCancel();
+            categorySelector?.Dispose();
             StopFormMotions();
             AdeScriptLibrary.Reported -= ShowStatus;
             running?.Cancel();
@@ -174,7 +172,7 @@ namespace Arcade.Compose.Scripting
             controls.transform.SetParent(view, false);
             controls.transform.SetSiblingIndex(view.Find("Problems").GetSiblingIndex());
             var controlsSize = controls.GetComponent<LayoutElement>();
-            controlsSize.minHeight = controlsSize.preferredHeight = 88;
+            controlsSize.minHeight = controlsSize.preferredHeight = 100;
             controlsSize.flexibleHeight = 0; controlsSize.flexibleWidth = 1;
             var controlsLayout = controls.GetComponent<VerticalLayoutGroup>();
             controlsLayout.spacing = 8;
@@ -220,17 +218,7 @@ namespace Arcade.Compose.Scripting
             if (showQuick == quick) return;
             showQuick = quick;
             Rebuild();
-            categoryMotion.TryCancel();
-            float from = categoryPosition, to = quick ? 0f : 1f;
-            categoryMotion = LMotion.Create(0f, 1f, .26f)
-                .WithEase(Ease.Linear).WithScheduler(MotionScheduler.UpdateIgnoreTimeScale)
-                .Bind(t =>
-                {
-                    // A restrained OutBack: one small overshoot, shared by block and underline.
-                    float u = t - 1;
-                    float eased = 1 + 1.65f * u * u * u + .65f * u * u;
-                    ApplyCategoryPosition(Mathf.LerpUnclamped(from, to, eased));
-                });
+
         }
 
         private void AddButtonPair(string name, string left, UnityEngine.Events.UnityAction leftAction,
@@ -245,7 +233,7 @@ namespace Arcade.Compose.Scripting
             layout.childControlWidth = layout.childControlHeight = true;
             layout.childForceExpandWidth = true; layout.childForceExpandHeight = true;
             var rootSize = root.GetComponent<LayoutElement>();
-            rootSize.minHeight = rootSize.preferredHeight = 40; rootSize.flexibleHeight = 0;
+            rootSize.minHeight = rootSize.preferredHeight = 44; rootSize.flexibleHeight = 0;
             var template = actionRowTemplate.GetComponentInChildren<Button>(true);
             for (int i = 0; i < 2; i++)
             {
@@ -260,23 +248,10 @@ namespace Arcade.Compose.Scripting
 
         private void BuildCategorySelector(Transform parent)
         {
-            var root = new GameObject("ToolCategory", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+            var root = new GameObject("ToolCategory", typeof(RectTransform), typeof(LayoutElement));
             root.layer = content.gameObject.layer; root.transform.SetParent(parent, false);
             var size = root.GetComponent<LayoutElement>();
-            size.minHeight = size.preferredHeight = 40; size.flexibleHeight = 0;
-            categoryTrack = root.GetComponent<Image>(); categoryTrack.type = Image.Type.Sliced;
-            var highlight = new GameObject("CategoryHighlight", typeof(RectTransform), typeof(Image));
-            highlight.layer = root.layer; highlight.transform.SetParent(root.transform, false);
-            categoryHighlight = highlight.GetComponent<RectTransform>();
-            highlight.GetComponent<Image>().type = Image.Type.Sliced;
-            highlight.GetComponent<Image>().raycastTarget = false;
-            var line = new GameObject("SelectionUnderline", typeof(RectTransform), typeof(Image));
-            line.layer = root.layer; line.transform.SetParent(highlight.transform, false);
-            var lineRect = line.GetComponent<RectTransform>();
-            lineRect.anchorMin = lineRect.anchorMax = new Vector2(.5f, 0);
-            lineRect.pivot = new Vector2(.5f, 0); lineRect.sizeDelta = new Vector2(0, 3);
-            lineRect.anchoredPosition = new Vector2(0, 2);
-            categoryUnderline = line.GetComponent<Image>(); categoryUnderline.raycastTarget = false;
+            size.minHeight = size.preferredHeight = 48; size.flexibleHeight = 0;
             for (int i = 0; i < 2; i++)
             {
                 var go = new GameObject(i == 0 ? "QuickTools" : "ExternalTools", typeof(RectTransform), typeof(Image), typeof(Button));
@@ -298,6 +273,7 @@ namespace Arcade.Compose.Scripting
                 label.rectTransform.offsetMin = label.rectTransform.offsetMax = Vector2.zero;
                 categoryButtons.Add(button);
             }
+            categorySelector = new AdeAnimatedTabs(categoryButtons.ToArray());
             StyleCategories();
         }
 
@@ -310,33 +286,7 @@ namespace Arcade.Compose.Scripting
             rect.offsetMax = new Vector2((position - 1) * 4, 0);
         }
 
-        private void ApplyCategoryPosition(float position)
-        {
-            categoryPosition = position;
-            if (!categoryHighlight) return;
-            SetCategoryBounds(categoryHighlight, position);
-            for (int i = 0; i < categoryButtons.Count; i++)
-                categoryButtons[i].GetComponentInChildren<TMP_Text>().color = Color.Lerp(
-                    AdeUiTheme.Current.Muted, AdeUiTheme.Current.Text, i == 0 ? 1 - position : position);
-        }
-
-        private void StyleCategories()
-        {
-            if (!categoryHighlight) return;
-            categoryTrack.sprite = AdeUiTheme.ReadOnlySurface;
-            var highlight = categoryHighlight.GetComponent<Image>();
-            highlight.sprite = AdeUiTheme.RoundedSurface; highlight.color = AdeUiTheme.Current.Selection;
-            float textWidth = 0;
-            foreach (var button in categoryButtons)
-            {
-                var label = button.GetComponentInChildren<TMP_Text>();
-                textWidth = Mathf.Max(textWidth, label.GetPreferredValues(label.text).x);
-            }
-            categoryUnderline.rectTransform.sizeDelta = new Vector2(textWidth * 1.25f, 3);
-            categoryUnderline.sprite = AdeUiTheme.PlainSurface;
-            categoryUnderline.color = AdeUiTheme.Dark ? Color.white : AdeUiTheme.Current.Text;
-            ApplyCategoryPosition(categoryPosition);
-        }
+        private void StyleCategories() => categorySelector?.Select(showQuick ? 0 : 1);
 
         private void AddRow(AdeScriptTool tool)
         {

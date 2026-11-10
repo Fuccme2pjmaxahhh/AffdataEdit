@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Arcade.Compose.MarkingMenu;
 using Arcade.Util.UnityExtension;
 using UnityEngine;
@@ -193,58 +193,92 @@ namespace Arcade.Compose
 			LayoutVerticalMenu(depth, origin, items, parent);
 			shownItems.Push(new MenuPage(items, origin));
 		}
+        internal static Rect GetMenuBounds(ArcadeComposeManager compose)
+        {
+            var canvas = compose.EditorCanvas;
+            var bounds = new Rect(Vector2.zero, canvas.rect.size);
+            var corners = new Vector3[4];
+            Rect Bar(RectTransform bar)
+            {
+                if (!bar || !bar.gameObject.activeInHierarchy) return Rect.zero;
+                bar.GetWorldCorners(corners);
+                var min = (Vector2)canvas.InverseTransformPoint(corners[0]) - canvas.rect.min;
+                var max = (Vector2)canvas.InverseTransformPoint(corners[2]) - canvas.rect.min;
+                return Rect.MinMaxRect(min.x, min.y, max.x, max.y);
+            }
+            var left = Bar(compose.LeftBarView); var right = Bar(compose.RightBarView);
+            var bottom = Bar(compose.BottomBarView); var top = Bar(compose.TopBarView);
+            if (left.width > 0) bounds.xMin = Mathf.Clamp(left.xMax, bounds.xMin, bounds.xMax);
+            if (right.width > 0) bounds.xMax = Mathf.Clamp(right.xMin, bounds.xMin, bounds.xMax);
+            if (bottom.height > 0) bounds.yMin = Mathf.Clamp(bottom.yMax, bounds.yMin, bounds.yMax);
+            if (top.height > 0) bounds.yMax = Mathf.Clamp(top.yMin, bounds.yMin, bounds.yMax);
+            return bounds;
+        }
 		private void LayoutVerticalMenu(int depth, Vector2 origin, MarkingMenuItem[] items, MarkingMenuItem parent)
 		{
 			if (items.Length == 0) return;
 			const float padding = 0, rowSpacing = 0;
-			// A row holds one item, or a left/right pair; a right item with VerticalWidth is a fixed-width button.
-			var rows = new List<(MarkingMenuItem Left, MarkingMenuItem Right)>();
-			for (int i = 0; i < items.Length; i++)
-			{
-				if (items[i].VerticalColumn == 1 && i + 1 < items.Length && items[i + 1].VerticalColumn == 2)
-					rows.Add((items[i], items[++i]));
-				else rows.Add((items[i], null));
-			}
-			float width = 260, height = 60;
-			foreach (var (left, right) in rows)
-			{
-				float rowWidth = left.ItemRectTransform.rect.width;
-				if (right)
-				{
-					rowWidth = right.VerticalWidth > 0 ? rowWidth + right.VerticalWidth
-						: Mathf.Max(rowWidth, right.ItemRectTransform.rect.width) * 2;
-					height = Mathf.Max(height, right.ItemRectTransform.rect.height);
-				}
-				width = Mathf.Max(width, rowWidth);
-				height = Mathf.Max(height, left.ItemRectTransform.rect.height);
-			}
+            // Consecutive numbered columns form a row; a positive width reserves a submenu button.
+            var rows = new List<List<MarkingMenuItem>>();
+            for (int i = 0; i < items.Length; i++)
+            {
+                var row = new List<MarkingMenuItem> { items[i] };
+                if (items[i].VerticalColumn == 1)
+                    while (i + 1 < items.Length && items[i + 1].VerticalColumn == row.Count + 1)
+                        row.Add(items[++i]);
+                rows.Add(row);
+            }
+            float width = 260, height = 60;
+            foreach (var row in rows)
+            {
+                float fixedWidth = 0, flexibleWidth = 0;
+                int flexibleCount = 0;
+                foreach (var item in row)
+                {
+                    if (row.Count > 1 && item.VerticalWidth > 0) fixedWidth += item.VerticalWidth;
+                    else { flexibleCount++; flexibleWidth = Mathf.Max(flexibleWidth, item.ItemRectTransform.rect.width); }
+                    height = Mathf.Max(height, item.ItemRectTransform.rect.height);
+                }
+                width = Mathf.Max(width, fixedWidth + flexibleCount * flexibleWidth);
+            }
 			int count = rows.Count;
+            var available = GetMenuBounds(ArcadeComposeManager.Instance);
+            width = Mathf.Min(width, available.width);
+            height = Mathf.Min(height, available.height / count);
 			Vector2 size = new Vector2(width + padding * 2, height * count + rowSpacing * (count - 1) + padding * 2);
-			Vector2 available = ArcadeComposeManager.Instance.EditorCanvas.rect.size;
 			Vector2 topLeft = origin + new Vector2(8, -8);
 			if (parent)
 			{
 				// Cascade beside the parent row: to the right when it fits, otherwise to the left.
 				var parentPanel = (RectTransform)menuPanels[depth - 1].transform;
 				float left = parentPanel.anchoredPosition.x, right = left + parentPanel.sizeDelta.x;
-				topLeft.x = right + size.x <= available.x - padding ? right : left - size.x;
+				topLeft.x = right + size.x <= available.xMax - padding ? right : left - size.x;
 				topLeft.y = parent.Position.y + parent.ItemRectTransform.rect.height / 2 + padding;
 			}
-			topLeft.x = Mathf.Clamp(topLeft.x, padding, Mathf.Max(padding, available.x - size.x - padding));
-			topLeft.y = Mathf.Clamp(topLeft.y, Mathf.Min(size.y + padding, available.y - padding), available.y - padding);
-			for (int row = 0; row < count; row++)
-			{
-				var (left, right) = rows[row];
-				float leftWidth = !right ? width : right.VerticalWidth > 0 ? width - right.VerticalWidth : width / 2;
-				float y = -padding - height * (row + .5f) - rowSpacing * row;
-				// Only the panel's outer corners clip the edge-to-edge row highlights.
-				int corners = (row == 0 ? 3 : 0) | (row == count - 1 ? 12 : 0);
-				left.SetRowSize(leftWidth, height, row < count - 1, right ? corners & 5 : corners);
-				left.Position = topLeft + new Vector2(padding + leftWidth / 2, y);
-				if (!right) continue;
-				right.SetRowSize(width - leftWidth, height, row < count - 1, corners & 10);
-				right.Position = topLeft + new Vector2(padding + (leftWidth + width) / 2, y);
-			}
+			topLeft.x = Mathf.Clamp(topLeft.x, available.xMin + padding, Mathf.Max(available.xMin + padding, available.xMax - size.x - padding));
+			topLeft.y = Mathf.Clamp(topLeft.y, Mathf.Min(available.yMin + size.y + padding, available.yMax - padding), available.yMax - padding);
+            for (int row = 0; row < count; row++)
+            {
+                var columns = rows[row];
+                float fixedWidth = 0;
+                int flexibleCount = 0;
+                foreach (var item in columns)
+                    if (columns.Count > 1 && item.VerticalWidth > 0) fixedWidth += item.VerticalWidth;
+                    else flexibleCount++;
+                float flexibleWidth = flexibleCount > 0 ? (width - fixedWidth) / flexibleCount : 0;
+                float y = -padding - height * (row + .5f) - rowSpacing * row;
+                int corners = (row == 0 ? 3 : 0) | (row == count - 1 ? 12 : 0);
+                float x = padding;
+                for (int column = 0; column < columns.Count; column++)
+                {
+                    var item = columns[column];
+                    float cellWidth = columns.Count > 1 && item.VerticalWidth > 0 ? item.VerticalWidth : flexibleWidth;
+                    int cellCorners = corners & ((column == 0 ? 5 : 0) | (column == columns.Count - 1 ? 10 : 0));
+                    item.SetRowSize(cellWidth, height, row < count - 1, cellCorners);
+                    item.Position = topLeft + new Vector2(x + cellWidth / 2, y);
+                    x += cellWidth;
+                }
+            }
 			var root = ArcadeComposeManager.Instance.EditorCanvas;
 			while (menuPanels.Count <= depth)
 			{

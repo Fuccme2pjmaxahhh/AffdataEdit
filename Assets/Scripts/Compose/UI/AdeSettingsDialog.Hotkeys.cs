@@ -49,7 +49,7 @@ namespace Arcade.Compose
             }
             content.RebindingButtons = buttons.ToArray();
             var gestures = AdeUiKit.CreateLabelRow(wrapper, template.GetComponentInChildren<TMP_Text>(true).transform,
-                "鼠标组合操作（固定）\n中键拖动：按当前拖动模式编辑时间／位置\n位置模式 Alt＋中键：整体移动 Arc、Slide、单 ArcTap；按下时选择最近可见端点为原点，Slide 只移动 X\nCtrl＋左键：多选／切换选择；再次点已选 Arc 可选整链\nShift＋左键：时间范围选择\n时间拖动按下即吸附最近网格线；松开中键提交，Esc 取消；Q 播放／暂停时继续拖动\n自由相机：中键转向，中键＋滚轮调速，Shift＋WASD 加速");
+                "鼠标组合操作（固定）\n中键拖动：按当前模式编辑时间／位置；混选时整体移动，单 ArcTap 连同短宿主移动且不重复计算\n位置模式 Alt＋中键：整体移动 Arc、Trace、Slide、单 ArcTap；按下时选择最近可见端点为原点，Slide 只移动 X\nCtrl＋左键：多选／切换选择；再次点已选 Arc 可选整链\nShift＋左键：时间范围选择\n时间拖动按下即吸附最近网格线；松开中键提交，Esc 取消；Q 播放／暂停时继续拖动\n自由相机：中键转向，中键＋滚轮调速，Shift＋WASD 加速");
             gestures.transform.parent.name = "MouseGestureHelp";
         }
 

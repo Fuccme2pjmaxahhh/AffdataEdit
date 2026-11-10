@@ -116,7 +116,7 @@ namespace Arcade.Compose
             ScrollGroups();
             bool loaded = lastChart != null;
             bool editable = loaded && lastGroup != null;
-            groupCount.text = "时间组  ·  " + groups.Count;
+            groupCount.text = "Timing  ·  " + groups.Count;
             Size(groupScroll.transform, -1, Mathf.Min(groups.Count, 4) * (ControlHeight + 4) - 4);
             groupProperties.gameObject.SetActive(editable);
             defaultGroupHint.gameObject.SetActive(!editable);

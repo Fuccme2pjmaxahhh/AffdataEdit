@@ -12,13 +12,18 @@ namespace Arcade.Compose
     // Their original dialogs and callbacks remain available as a fallback if setup fails.
     public sealed partial class AdeSettingsDialog : MonoBehaviour
     {
-        public enum Page { General, Appearance, Audio, Grid, ContextMenu, Hotkeys, Account, Storage, About }
+        public enum Page { General, Appearance, Editing, Audio, Grid, ContextMenu, Hotkeys, Account, Storage, About }
         public static AdeSettingsDialog Instance { get; private set; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStaticState() => Instance = null;
         public bool Ready { get; private set; }
-        private static readonly string[] Titles = { "常规", "外观", "音频", "网格", "右键", "热键", "账号", "存储", "关于" };
+        private static readonly string[] Titles = { "常规", "外观", "编辑", "音频", "网格", "右键", "热键", "账号", "存储", "关于" };
+        private static readonly HashSet<string> EditingRows = new HashSet<string>
+        {
+            "CancelLimit", "FixNotesTimeOnPaste", "EnableTapWidthEditing", "ChartSortMode", "DragEditMode",
+            "ShowJudgementDetails", "ShowSpectrum", "SpectrumBrightness"
+        };
         private readonly RectTransform[] pages = new RectTransform[Titles.Length];
         private readonly Button[] navigation = new Button[Titles.Length];
         private readonly Graphic[] icons = new Graphic[Titles.Length];
@@ -94,6 +99,7 @@ namespace Arcade.Compose
             foreach (Transform row in settings.Find("Wraper"))
                 Register(row, row.name == "DarkUi" ? Page.Appearance : row.name == "Log" ? Page.About
                     : row.name == "KeepContextMenuOpen" || row.name == "VerticalContextMenu" ? Page.ContextMenu
+                    : EditingRows.Contains(row.name) ? Page.Editing
                     : row.name == "PlaybackSync" || row.name == "GlobalAudioOffset" || row.name.StartsWith("WindowsAudio") ? Page.Audio : Page.General);
             foreach (Transform row in settings)
                 if (row.name != "Wraper" && row.name != "Text" && row.name != "Version") Register(row, Page.About);
@@ -477,11 +483,12 @@ namespace Arcade.Compose
             var icon = Rect("Icon", button.transform);
             icon.anchorMin = icon.anchorMax = new Vector2(0, .5f);
             icon.anchoredPosition = new Vector2(26, 0); icon.sizeDelta = new Vector2(24, 24);
-            if (page == Page.ContextMenu)
+            if (page == Page.ContextMenu || page == Page.Editing)
             {
-                var mouse = icon.gameObject.AddComponent<MarkingMenu.ContextMenuIcon>();
-                mouse.Kind = "mouse";
-                icons[(int)page] = mouse;
+                var image = icon.gameObject.AddComponent<Image>();
+                image.sprite = Resources.Load<Sprite>(page == Page.ContextMenu ? "AffdataEdit/Icons/MouseRight" : "AffdataEdit/Icons/Edit");
+                image.preserveAspect = true;
+                icons[(int)page] = image;
             }
             else if (page == Page.About)
             {

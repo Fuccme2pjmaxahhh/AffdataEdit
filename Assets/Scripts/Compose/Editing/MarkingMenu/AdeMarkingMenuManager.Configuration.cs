@@ -60,6 +60,12 @@ namespace Arcade.Compose
         };
 
         // AA 1.13.1 normal selection: retain the common clockwise order, then AE additions.
+        internal static readonly string[] CreateSelectedDefaultOrder =
+        {
+            "create-none", "delete", "grid", "create-single-arctap", "create-arctap", "create-exit",
+            "create-arc", "create-hold", "create-tap", "convert-slide"
+        };
+
         internal static readonly string[] NormalSelectedDefaultOrder =
         {
             "grid", "create-toggle", "mirror-y", "horizontal-cut", "convert-slide",
@@ -165,6 +171,7 @@ namespace Arcade.Compose
             var order = vertical ? options.VerticalOrder : options.CircularOrder;
             if (order == null || order.Count == 0)
                 order = new List<string>(state == ContextMenuState.NormalSelected ? NormalSelectedDefaultOrder
+                    : !vertical && state == ContextMenuState.CreateSelected ? CreateSelectedDefaultOrder
                     : vertical ? VerticalDefaultOrder : CircularDefaultOrder);
             if (!vertical && order.Contains("create-arctap") && !order.Contains("create-single-arctap"))
             {

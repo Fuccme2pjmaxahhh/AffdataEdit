@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
@@ -35,9 +35,9 @@ namespace Arcade.Compose
             switch (name)
             {
                 case "Save": return "保存谱面";
-                case "FileWatch": return "监视文件变化";
+                case "FileWatch": return "谱面文件实时同步";
                 case "SaveMode": return "保存模式";
-                case "Folder": return "打开谱面";
+                case "Folder": return "打开谱面文件夹";
                 case "Auto": return "自动播放";
                 case "CloudRealtime": return "云端实时同步";
                 case "CloudSave": return "保存到云端";
@@ -48,7 +48,7 @@ namespace Arcade.Compose
                 case "Feedback": return "应用反馈";
                 case "Volume": return "音量设置";
                 case "Hotkeys": return "热键设置";
-                case "Timing": return "时间组与谱面工具";
+                case "Timing": return "Timing列表";
                 case "Skin": return "外观设置";
                 case "Check": return "谱面检查";
                 case "Scripts": return "外置脚本";

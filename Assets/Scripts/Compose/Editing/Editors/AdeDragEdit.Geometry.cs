@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using Arcade.Gameplay;
 using Arcade.Gameplay.Chart;
 using Arcade.Compose.UI;
@@ -77,24 +77,25 @@ namespace Arcade.Compose.Editing
                 && screen.z <= camera.farClipPlane && screen.x >= 0 && screen.x <= 1 && screen.y >= 0 && screen.y <= 1;
         }
 
-        internal static bool TryChooseGroupAnchor(ArcNote[] targets, Camera camera, Vector2 pointer, out Vector3 anchor, out int timing)
+        internal static bool TryChooseGroupAnchor(ArcNote[] targets, Camera camera, Vector2 pointer, out Vector3 anchor, out int timing, out ArcTimingGroup anchorGroup)
         {
-            anchor = default; timing = 0;
+            anchor = default; timing = 0; anchorGroup = null;
             if (!camera) return false;
             float best = float.PositiveInfinity;
             foreach (var target in targets)
             {
                 if (((IHasTimingGroup)target).GroupHide()) continue;
-                int count = target is ArcSlide ? 4 : 2;
+                int count = target is ArcSlide ? 4 : target is ArcLongNote ? 2 : 1;
                 for (int i = 0; i < count; i++)
                 {
-                    bool end = i >= count / 2;
+                    bool end = count > 1 && i >= count / 2;
                     var point = EndpointPosition(target, end);
                     if (target is ArcSlide slide) point.x = slide.WorldX(AdeSlideEditor.EditingRange(slide, end)[i % 2]);
                     if (!IsVisibleSlideEndpoint(camera, point)) continue;
                     float distance = ((Vector2)camera.WorldToScreenPoint(point) - pointer).sqrMagnitude;
                     if (distance >= best) continue;
                     best = distance; anchor = point; timing = end ? ((ArcLongNote)target).EndTiming : target.Timing;
+                    anchorGroup = ((IHasTimingGroup)target).TimingGroup;
                 }
             }
             return !float.IsPositiveInfinity(best);
