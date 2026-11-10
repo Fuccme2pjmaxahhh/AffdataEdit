@@ -74,6 +74,11 @@ public class AdeHotkeyPresetTests
         var keyboard = InputSystem.AddDevice<Keyboard>();
         try
         {
+            // The inactive fixture bypasses Awake, including its macOS Cmd mapping.
+            if (AdeInputManager.UsesCommand)
+                for (int i = 0; i < Map.bindings.Count; i++)
+                    if (Map.bindings[i].path == "<Keyboard>/ctrl")
+                        Map.ChangeBinding(i).WithPath("<Keyboard>/*Meta");
             var input = root.AddComponent<AdeInputManager>(); input.Controls = controls;
             input.EventSystem = root.AddComponent<EventSystem>();
             var presets = CreatePresets(); presets.Load();

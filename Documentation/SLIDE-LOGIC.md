@@ -173,7 +173,7 @@ ScoreManager 把每段在 end 时的 CountJudgements 加入总判定数 N；当�
 
 每段比较本帧和前帧 CountJudgements。只要增加，生成一个 PURE；即使低帧率一帧跨过多个 tick，也只生成一个字，分数仍计入跨过的全部 tick。连接段分别触发。
 
-横坐标取**触发帧当前进度**的 (L+R)/2，不倒退重建每一个被跨过 tick 的精确位置。世界 z=0，高度是地面0、普通天空5.5、高天空8.245；最近修复正是让天空/高天空不再投到地上。
+横坐标取**触发帧当前进度**的 (L+R)/2，不倒退重建每一个被跨过 tick 的精确位置。所有 Slide 判定文字统一使用世界 y=0、z=0 的地面锚点，再加与 Hold 相同的长音符上抬偏移；不随 Slide 本体的离散高度改变。
 
 世界点先经 GameplayCamera 投影至 EditorCanvas，之后加 UI 上抬偏移约110×scale；sprite大小114×108×scale，再用 OutCubic 向上移动30×scale。scale基于相机像素高度、Canvas缩放、设计分辨率。字在 .3秒内淡出，动画/对象存活 .4秒，最后 .1秒可能已透明。对象池复用，Image不拦截射线。
 

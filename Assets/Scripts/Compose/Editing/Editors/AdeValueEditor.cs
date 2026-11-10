@@ -100,10 +100,14 @@ namespace Arcade.Compose.Editing
                 HandleValueChange(AdeTextSelection.NormalizeForCommit(tapWidthInput),
                     (string raw, ref float result) =>
                     {
-                        if (!float.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out result)
-                            || float.IsNaN(result) || float.IsInfinity(result) || result <= 0)
-                            return new ValueChangeErrorMessage { message = "宽度必须为大于 0 的有限数值（1 为普通大小）" };
-                        return null;
+                        if (float.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out result)
+                            && !float.IsNaN(result) && !float.IsInfinity(result))
+                        {
+                            // Commit the same two-decimal value that AFF saving will preserve.
+                            result = float.Parse(result.ToString("f2", CultureInfo.InvariantCulture), CultureInfo.InvariantCulture);
+                            if (result > 0) return null;
+                        }
+                        return new ValueChangeErrorMessage { message = "宽度须至少为 0.01，保留两位小数（1 为普通大小）" };
                     }, (value, note) => note is ArcTap ? (ValueChangeErrorMessage?)null : new ValueChangeErrorMessage { message = "请选择地键" },
                     (value, note) => ((ArcTap)note).Width = value);
             });
@@ -162,7 +166,7 @@ namespace Arcade.Compose.Editing
 			List<ArcNote> selected = AdeSelectionManager.Instance.SelectedNotes;
             if (tapWidthRow)
                 UpdateField(note => note is ArcTap && ArcadeComposeManager.Instance.ArcadePreference.EnableTapWidthEditing,
-                    note => ((ArcTap)note).Width.ToString("f3", CultureInfo.InvariantCulture), "-",
+                    note => ((ArcTap)note).Width.ToString("f2", CultureInfo.InvariantCulture), "-",
                     active => tapWidthRow.gameObject.SetActive(active), text => tapWidthInput.SetTextWithoutNotify(text));
             if (smoothnessRow)
             {

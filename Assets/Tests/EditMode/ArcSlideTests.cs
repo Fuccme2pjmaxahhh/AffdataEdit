@@ -759,12 +759,9 @@ public class ArcSlideTests
     }
 
     [TestCase("slide(0,500,0.1,0.2,0.9,0.2,1,2);")]
-    [TestCase("slide(0,500,0.5,0.3,0.5,0.3,0,0,1);")]
     [TestCase("slide(0,1,0.5,0.3,0.5,0.3,0,0);")]
     [TestCase("slide(100,0,0.5,0.3,0.5,0.3,0,0);")]
-    [TestCase("slide(0,500,0.1,0.5,0.5,0.3,0,0);")]
     [TestCase("slide(0,500,0.5,0,0.5,0.3,0,0);")]
-    [TestCase("slide(0,500,0.5,0.3,0.5,0.3,3,0);")]
     [TestCase("slide(0,500,0.5,0.3,0.5,0.3,0);")]
     [TestCase("slide(-2147483648,2147483647,0.5,0.3,0.5,0.3,0,0);")]
     public void InvalidSlidesReportErrorsInsteadOfCreatingBrokenNotes(string text)
@@ -773,6 +770,16 @@ public class ArcSlideTests
         var chart = Parse(text);
         Assert.That(chart.error, Is.Not.Empty);
         Assert.That(new ArcChart(chart).Slides, Is.Empty);
+    }
+
+    [TestCase("slide(0,500,0.5,0.3,0.5,0.3,0,0,1);")]
+    [TestCase("slide(0,500,0.1,0.5,0.5,0.3,0,0);")]
+    [TestCase("slide(0,500,0.5,0.3,0.5,0.3,3,0);")]
+    public void SupportedSlideHeightOutsideLanesAndBezierFormsAreAccepted(string text)
+    {
+        var chart = Parse(text);
+        Assert.That(chart.error, Is.Empty);
+        Assert.That(new ArcChart(chart).Slides, Has.Count.EqualTo(1));
     }
 
     [TestCase(true)]

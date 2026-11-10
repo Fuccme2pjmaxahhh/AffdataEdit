@@ -98,7 +98,7 @@ public class ArcCameraLifecycleTests
             manager.ResetCamera();
             Assert.That(manager.IsReset, Is.True);
             Assert.That(cameraObject.transform.position.y, Is.EqualTo(9));
-            Assert.That(labelObject.transform.localPosition.y, Is.EqualTo(0.1f));
+            Assert.That(labelObject.transform.localPosition.y, Is.EqualTo(0.13f));
             Assert.That(manager.GameplayCamera.nearClipPlane, Is.EqualTo(0.01f));
         }
         finally

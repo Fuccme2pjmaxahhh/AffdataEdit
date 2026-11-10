@@ -55,8 +55,7 @@ namespace Arcade.Gameplay
                 <= slide.CountJudgements(previousTiming, bpm, game.TimingPointDensityFactor)) return;
             float progress = Mathf.Clamp01((game.ChartTiming - (float)slide.Timing) / (slide.EndTiming - (float)slide.Timing));
             Vector2 range = slide.Range(progress);
-            float height = slide.IsFloor ? 0 : slide.WorldHeight;
-            ShowPure(new Vector3(slide.WorldX((range.x + range.y) * .5f), height, 0), true);
+            ShowPure(new Vector3(slide.WorldX((range.x + range.y) * .5f), 0, 0), true);
         }
 
         internal void ShowPure(Vector3 position, bool longNote = false)
