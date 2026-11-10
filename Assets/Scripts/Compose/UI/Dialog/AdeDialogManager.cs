@@ -52,7 +52,7 @@ namespace Arcade.Compose
 
 		public Transform Opening, Closed;
 
-		private const float TransitionDuration = 0.25f, ClosedScale = 1.08f;
+		private const float TransitionDuration = 0.25f, ClosedScale = 0.96f; // centred dialogs grow in from 96%
 		private readonly Dictionary<AdeDialog, MotionHandle> motions = new Dictionary<AdeDialog, MotionHandle>();
 		private readonly HashSet<AdeDialog> closing = new HashSet<AdeDialog>();
 
@@ -141,6 +141,36 @@ namespace Arcade.Compose
 			if (!group) return;
 			group.alpha = t;
 			view.localScale = Vector3.one * Mathf.LerpUnclamped(ClosedScale, 1, t);
+		}
+
+		// Side panels attached to the right toolbar slide out of it instead of zooming: a short 24-unit
+		// slide with a fade, eased out on open and closing faster with an ease-in.
+		private const float SideOpenDuration = 0.2f, SideCloseDuration = 0.14f, SideOffset = 24;
+		private static readonly Dictionary<RectTransform, float> sideOffsets = new Dictionary<RectTransform, float>();
+
+		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+		private static void ResetSideOffsets() => sideOffsets.Clear();
+
+		internal static MotionHandle AnimateSideView(CanvasGroup group, RectTransform view, float from, float to, Action completed)
+		{
+			bool opening = to > from;
+			float duration = Mathf.Max(0.01f, (opening ? SideOpenDuration : SideCloseDuration) * Mathf.Abs(to - from));
+			return LMotion.Create(from, to, duration).WithEase(opening ? Ease.OutCubic : Ease.InCubic)
+				.WithScheduler(MotionScheduler.UpdateIgnoreTimeScale)
+				.WithOnComplete(completed).Bind(t => PoseSide(group, view, t));
+		}
+
+		// Applies only the change in offset, so the panel's own anchored position stays authoritative.
+		internal static void PoseSide(CanvasGroup group, RectTransform view, float t)
+		{
+			if (!group || !view) return;
+			group.alpha = t;
+			view.localScale = Vector3.one;
+			sideOffsets.TryGetValue(view, out float applied);
+			float offset = (1 - t) * SideOffset;
+			view.anchoredPosition += new Vector2(offset - applied, 0);
+			if (offset == 0) sideOffsets.Remove(view);
+			else sideOffsets[view] = offset;
 		}
 
 		public void SwitchOpenState(AdeDialog dialog)

@@ -66,10 +66,11 @@ namespace Arcade.Compose
             if (IsOpen) return;
             IsOpen = true;
             motion.TryCancel();
+            float from = view.gameObject.activeSelf ? group.alpha : 0;
             view.gameObject.SetActive(true);
-            AdeDialogManager.Pose(group, view, 0);
+            AdeDialogManager.PoseSide(group, view, from);
             group.blocksRaycasts = true;
-            motion = AdeDialogManager.AnimateView(group, view, 0, 1, () => { });
+            motion = AdeDialogManager.AnimateSideView(group, view, from, 1, () => { });
             Opened?.Invoke();
         }
 
@@ -79,7 +80,7 @@ namespace Arcade.Compose
             IsOpen = false;
             group.blocksRaycasts = false;
             motion.TryCancel();
-            motion = AdeDialogManager.AnimateView(group, view, group.alpha, 0, () =>
+            motion = AdeDialogManager.AnimateSideView(group, view, group.alpha, 0, () =>
             {
                 view.gameObject.SetActive(false);
                 AdeRightSideCards.Release(this);

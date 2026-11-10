@@ -165,7 +165,7 @@ namespace Arcade.Compose
             AdeRightSideCards.Activate(this);
             bool opening = !expanded;
             activePage = page;
-            if (!panel.gameObject.activeSelf) AdeDialogManager.Pose(panelGroup, panel, 0);
+            if (!panel.gameObject.activeSelf) AdeDialogManager.PoseSide(panelGroup, panel, 0);
             expanded = true;
             panelGroup.blocksRaycasts = true;
             panel.gameObject.SetActive(true);
@@ -176,7 +176,7 @@ namespace Arcade.Compose
             if (opening)
             {
                 panelMotion.TryCancel();
-                panelMotion = AdeDialogManager.AnimateView(panelGroup, panel, panelGroup.alpha, 1, () => { });
+                panelMotion = AdeDialogManager.AnimateSideView(panelGroup, panel, panelGroup.alpha, 1, () => { });
             }
         }
 
@@ -186,7 +186,7 @@ namespace Arcade.Compose
             expanded = false;
             panelGroup.blocksRaycasts = false;
             panelMotion.TryCancel();
-            panelMotion = AdeDialogManager.AnimateView(panelGroup, panel, panelGroup.alpha, 0,
+            panelMotion = AdeDialogManager.AnimateSideView(panelGroup, panel, panelGroup.alpha, 0,
                 () => { panel.gameObject.SetActive(false); AdeRightSideCards.Release(this); });
             UpdateHighlights();
         }
