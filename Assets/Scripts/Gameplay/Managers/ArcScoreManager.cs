@@ -129,8 +129,9 @@ namespace Arcade.Gameplay
 		}
 		private static int CountSlideJudgements(ArcSlide slide, int timing)
 		{
+			var root = slide.GroupRoot ?? slide;
 			return slide.CountJudgements(timing,
-				ArcTimingManager.Instance.CalculateBpmByTiming(slide.Timing, slide.TimingGroup),
+				ArcTimingManager.Instance.CalculateBpmByTiming(root.Timing, root.TimingGroup),
 				ArcGameplayManager.Instance.TimingPointDensityFactor);
 		}
 		private int CalculateScore(int timing)

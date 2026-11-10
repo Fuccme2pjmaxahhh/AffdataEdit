@@ -74,6 +74,9 @@ namespace Arcade.Compose.Operation
 					if (AdeSelectionManager.Instance.SelectedNotes.Count != 0)
 					{
 						items.Add(Delete);
+                        var mirror = AdeMirrorOperation.Instance;
+                        if (mirror && mirror.ConvertToSlideItem && AdeSelectionManager.Instance.SelectedNotes.Exists(note => note is ArcArc || note is ArcHold))
+                            items.Add(mirror.ConvertToSlideItem);
 					}
 					return items.ToArray();
 				}
@@ -166,6 +169,29 @@ namespace Arcade.Compose.Operation
 				return ArcLineType.FalseNotVoid;
 			}
 		}
+
+        private ArcArc creatingArc;
+        internal bool CanEditArcCreation => enable && mode == ClickToCreateMode.Arc
+            && !AdeEditorHotkeyCommands.HasSelectedArcOrSlide
+            && (!AdeOperationManager.Instance || !AdeOperationManager.Instance.HasOngoingOperation || creatingArc != null);
+
+        internal bool TryApplyArcCreationAction(string action)
+        {
+            if (!CanEditArcCreation || !AdeEditorHotkeyCommands.IsArcCreationAction(action)) return false;
+            if (action == "Arc Toggle Void") currentArcIsVoid = !currentArcIsVoid;
+            else if (action == "Arc Toggle Color") currentArcColor = currentArcColor == 0 ? 1 : 0;
+            else currentArcCurveType = AdeEditorHotkeyCommands.EditCurve(action, currentArcCurveType);
+            if (creatingArc != null)
+            {
+                creatingArc.Color = currentArcColor;
+                creatingArc.LineType = currentArcLineType;
+                creatingArc.CurveType = currentArcCurveType;
+                creatingArc.Rebuild();
+                creatingArc.CalculateJudgeTimings();
+                ArcArcManager.Instance.CalculateArcRelationship(creatingArc);
+            }
+            return true;
+        }
 
 		private ArcCurveType currentArcCurveType = ArcCurveType.S;
 
@@ -404,11 +430,11 @@ namespace Arcade.Compose.Operation
 			try
 			{
 				Action<Vector2> setStart = p => { note.StartCenter = note.EndCenter = p.x; note.Rebuild(); };
-				setStart(await AdeCursorManager.Instance.SelectCoordinate(start, Progress.Create(setStart), cancellationToken));
+				setStart(await AdeCursorManager.Instance.SelectCoordinate(start, Progress.Create(setStart), cancellationToken, fixedWorldPlane: true));
 				Action<int> setEndTime = t => { note.EndTiming = Mathf.Max(start + 2, t); note.Rebuild(); };
 				setEndTime(await AdeCursorManager.Instance.SelectTiming(Progress.Create(setEndTime), cancellationToken, true));
 				Action<Vector2> setEnd = p => { note.EndCenter = p.x; note.Rebuild(); };
-				setEnd(await AdeCursorManager.Instance.SelectCoordinate(note.EndTiming, Progress.Create(setEnd), cancellationToken));
+				setEnd(await AdeCursorManager.Instance.SelectCoordinate(note.EndTiming, Progress.Create(setEnd), cancellationToken, fixedWorldPlane: true));
 				AdeCommandManager.Instance.Commit();
 				AdeSelectionManager.Instance.DeselectAllNotes();
 				AdeSelectionManager.Instance.SelectNote(note);
@@ -462,6 +488,7 @@ namespace Arcade.Compose.Operation
 			ArcArc note = new ArcArc() { Timing = timing, EndTiming = timing, Color = currentArcColor, Effect = "none", LineType = currentArcLineType, CurveType = currentArcCurveType, TimingGroup = timingGroup };
 			AdeCommandManager.Instance.Prepare(new AddArcEventCommand(note));
 
+            creatingArc = note;
 			try
 			{
 				Action<Vector2> updateStartCoordinate = (coord) =>
@@ -473,7 +500,7 @@ namespace Arcade.Compose.Operation
 					note.Rebuild();
 					ArcArcManager.Instance.CalculateArcRelationship(note);
 				};
-				var startCoord = await AdeCursorManager.Instance.SelectCoordinate(note.Timing, Progress.Create(updateStartCoordinate), cancellationToken);
+				var startCoord = await AdeCursorManager.Instance.SelectCoordinate(note.Timing, Progress.Create(updateStartCoordinate), cancellationToken, fixedWorldPlane: true);
 				updateStartCoordinate(startCoord);
 
 				Action<int> updateEndTiming = (int timing) =>
@@ -483,8 +510,8 @@ namespace Arcade.Compose.Operation
 						note.EndTiming = timing;
 						note.Rebuild();
 						note.CalculateJudgeTimings();
-						ArcGameplayManager.Instance.ResetJudge();
 						ArcArcManager.Instance.CalculateArcRelationship(note);
+						note.Judged = ArcGameplayManager.Instance.ChartTiming > note.EndTiming;
 					}
 				};
 				while (true)
@@ -504,7 +531,7 @@ namespace Arcade.Compose.Operation
 					note.Rebuild();
 					ArcArcManager.Instance.CalculateArcRelationship(note);
 				};
-				var endCoord = await AdeCursorManager.Instance.SelectCoordinate(note.EndTiming, Progress.Create(updateEndCoordinate), cancellationToken);
+				var endCoord = await AdeCursorManager.Instance.SelectCoordinate(note.EndTiming, Progress.Create(updateEndCoordinate), cancellationToken, fixedWorldPlane: true);
 				updateEndCoordinate(endCoord);
 			}
 			catch (OperationCanceledException ex)
@@ -512,6 +539,7 @@ namespace Arcade.Compose.Operation
 				AdeCommandManager.Instance.Cancel();
 				throw ex;
 			}
+            finally { creatingArc = null; }
 			AdeCommandManager.Instance.Commit();
 			AdeSelectionManager.Instance.SelectNote(note);
 		}
@@ -537,7 +565,7 @@ namespace Arcade.Compose.Operation
 					arc.Rebuild();
 					ArcArcManager.Instance.CalculateArcRelationship(arc);
 				};
-				var startCoord = await AdeCursorManager.Instance.SelectCoordinate(arc.Timing, Progress.Create(updateStartCoordinate), cancellationToken);
+				var startCoord = await AdeCursorManager.Instance.SelectCoordinate(arc.Timing, Progress.Create(updateStartCoordinate), cancellationToken, fixedWorldPlane: true);
 				updateStartCoordinate(startCoord);
 			}
 			catch (OperationCanceledException ex)

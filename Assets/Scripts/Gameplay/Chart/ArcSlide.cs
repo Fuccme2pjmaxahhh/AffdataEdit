@@ -7,7 +7,7 @@ namespace Arcade.Gameplay.Chart
     {
         // Default preview span; authored coordinates are unrestricted.
         public const float MinX = -0.5f, MaxX = 1.5f;
-        private float startCenter = 0.5f, startWidth = 0.333f, endCenter = 0.5f, endWidth = 0.333f;
+        private float startCenter = 0.5f, startWidth = 0.5f, endCenter = 0.5f, endWidth = 0.5f;
         public float StartCenter { get => startCenter; set => startCenter = RawAffSlide.RoundCoordinate(value); }
         public float StartWidth { get => startWidth; set => startWidth = RawAffSlide.RoundCoordinate(value); }
         public float EndCenter { get => endCenter; set => endCenter = RawAffSlide.RoundCoordinate(value); }
@@ -28,6 +28,7 @@ namespace Arcade.Gameplay.Chart
         }
         // Derived runtime identity; never copied or serialized as chart data.
         public ArcSlide GroupRoot { get; internal set; }
+        internal int GroupJudgementStartTiming, GroupEndTiming;
         public bool IsGroupHead = true, IsGroupTail = true;
         public Vector4 Overlap = new Vector4(0, 1, 0, 1);
         private bool selected;
@@ -107,20 +108,26 @@ namespace Arcade.Gameplay.Chart
                 return sw + dr * r - dl * l > 0;
             }
         }
-        // SkyArea ticks use the start BPM, with a final tick for a remainder >= 2ms.
-        // Count analytically so seeking and tempo edits need no per-frame tick allocations.
+        // Each segment owns a non-overlapping portion of its chain's clock. Callers
+        // supply the chain head's BPM; only the chain tail owns the final remainder tick.
         public int CountJudgements(int timing, double bpm, double density = 1)
         {
-            if (!IsValid || this.NoInput() || timing < Timing || double.IsNaN(bpm)
+            if (!IsValid || this.NoInput() || double.IsNaN(bpm)
                 || double.IsInfinity(bpm) || density <= 0 || double.IsNaN(density) || double.IsInfinity(density)) return 0;
             bpm = System.Math.Abs(bpm);
-            double duration = (long)EndTiming - Timing;
-            double elapsed = System.Math.Min((long)timing - Timing, duration);
-            if (bpm == 0) return timing >= EndTiming ? 1 : 0;
+            var root = GroupRoot ?? this;
+            int chainEnd = GroupRoot == null ? EndTiming : root.GroupEndTiming;
+            int previousEnd = root == this ? Timing : GroupJudgementStartTiming;
+            if (timing < previousEnd) return 0;
+            double duration = (long)chainEnd - root.Timing;
+            double elapsed = System.Math.Min((long)System.Math.Min(timing, EndTiming) - root.Timing, duration);
+            double previous = System.Math.Max(0, (long)previousEnd - root.Timing);
+            if (bpm == 0) return IsGroupTail && timing >= chainEnd ? 1 : 0;
             double interval = (bpm >= 249.99 ? 60000d : 30000d) / bpm / density;
             double fullTicks = System.Math.Floor(duration / interval + 1e-9);
-            double count = System.Math.Min(fullTicks, System.Math.Floor(elapsed / interval + 1e-9));
-            if (timing >= EndTiming && duration - fullTicks * interval >= 2d - 1e-9) count++;
+            double count = System.Math.Max(0, System.Math.Min(fullTicks, System.Math.Floor(elapsed / interval + 1e-9))
+                - System.Math.Min(fullTicks, System.Math.Floor(previous / interval + 1e-9)));
+            if (IsGroupTail && timing >= chainEnd && duration - fullTicks * interval >= 2d - 1e-9) count++;
             return (int)System.Math.Min(count, int.MaxValue);
         }
 
@@ -151,7 +158,7 @@ namespace Arcade.Gameplay.Chart
         {
             ArcScoreManager.Invalidate();
             Visual?.Invalidate();
-            if (ArcSlideManager.Instance) ArcSlideManager.Instance.RebuildGroups();
+            if (ArcSlideManager.Instance) ArcSlideManager.Instance.RebuildGroups(false);
         }
     }
 }

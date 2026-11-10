@@ -3,7 +3,9 @@
   "references": [
     "Arcade",
     "Unity.InputSystem",
-    "Unity.ugui"
+    "Unity.ugui",
+    "Unity.TextMeshPro",
+    "UniTask"
   ],
   "includePlatforms": [
     "Editor"

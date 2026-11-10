@@ -214,6 +214,18 @@ namespace Arcade.Compose.Operation
 				};
 				var newTiming = await AdeCursorManager.Instance.SelectTiming(Progress.Create(updateTiming), cancellationToken);
 				updateTiming(newTiming);
+                if (ArcadeComposeManager.Instance.ArcadePreference.FixNotesTimeOnPaste)
+                {
+                    FixPastedNotesTime(newNotes, AdeGridManager.Instance.FixPasteTiming);
+                    foreach (var note in newNotes)
+                    {
+                        if (note is ArcArc arc) { arc.Rebuild(); arc.CalculateJudgeTimings(); ArcArcManager.Instance.CalculateArcRelationship(arc); }
+                        else if (note is ArcSlide slide) slide.Rebuild();
+                        else if (note is ArcHold hold) hold.CalculateJudgeTimings();
+                        else if (note is ArcArcTap tap) { tap.RemoveArcTapConnection(); tap.Relocate(); }
+                        else if (note is ArcTap groundTap) groundTap.SetupArcTapConnection();
+                    }
+                }
 				var skipped = arcTapCommands.Keys.Where(note => note.Timing < note.Arc.Timing
 					|| note.Timing > note.Arc.EndTiming).ToArray();
 				if (skipped.Length > 0)
@@ -241,10 +253,39 @@ namespace Arcade.Compose.Operation
 			{
 				foreach (var note in newNotes)
 				{
+					if (note is ArcArc host && AdeSelectionManager.IsSingleArcTapHost(host)) continue;
+					if (note is ArcArcTap tap && newNotes.Contains(tap.Arc) && !AdeSelectionManager.IsSingleArcTapHost(tap.Arc)) continue;
 					AdeSelectionManager.Instance.SelectNote(note);
 				}
 			}
 		}
+
+        internal static void FixPastedNotesTime(List<ArcNote> notes, Func<int, int> snap)
+        {
+            var taps = new HashSet<ArcArcTap>(notes.OfType<ArcArcTap>());
+            foreach (var arc in notes.OfType<ArcArc>()) foreach (var tap in arc.ArcTaps) taps.Add(tap);
+            foreach (var tap in taps) tap.Timing = snap(tap.Timing);
+            foreach (var note in notes)
+            {
+                if (note is ArcArcTap) continue;
+                int start = snap(note.Timing);
+                if (note is ArcLongNote longNote)
+                {
+                    int end = snap(longNote.EndTiming);
+                    if (note is ArcArc arc)
+                    {
+                        foreach (var tap in arc.ArcTaps) { start = Math.Min(start, tap.Timing); end = Math.Max(end, tap.Timing); }
+                        if (arc.ArcTaps.Count == 1 && Math.Abs((long)arc.EndTiming - arc.Timing) < 10)
+                            end = start + (arc.EndTiming - arc.Timing);
+                    }
+                    // Preserve legal short Holds/Slides when independent rounding would collapse them.
+                    int gap = note is ArcSlide ? 2 : note is ArcHold ? 1 : 0;
+                    if ((long)end - start < gap) continue;
+                    longNote.EndTiming = end;
+                }
+                note.Timing = start;
+            }
+        }
 
 		public override AdeOperationResult TryExecuteOperation()
 		{

@@ -11,9 +11,14 @@ namespace Arcade.Compose
 		private readonly HashSet<Sprite> generatedShapes = new HashSet<Sprite>();
 		private const string ControlShapePrefix = "ThemeControl/";
 
+		internal static Sprite PlainSurface => Instance.Shape("ThemePlainSurface", 0, Color.white, Color.white);
 		internal static Sprite RoundedSurface => Instance.Shape("ThemeRoundedSurface", ControlRadius, Color.white, Color.white);
         internal static Sprite PanelSurface => Instance.Shape("ThemePanel", PanelRadius, Current.Panel, Current.Border);
         internal static Sprite ReadOnlySurface => Instance.Shape("ThemeReadOnly", ControlRadius, Current.Chrome, Current.Border);
+        // Segmented-control track: its selection (inset 3, see AdeAnimatedTabs) keeps the normal control radius,
+        // so the track's radius grows by the inset to stay concentric and the selection matches regular buttons.
+        internal static Sprite SegmentTrackSurface => Instance.Shape("ThemeSegmentTrack", ControlRadius + 3, Current.Chrome, Current.Border);
+        internal static Sprite InputSurface => Instance.Shape("ThemeInput", ControlRadius, Current.Input, Current.Border);
         internal static Sprite ContextMenuSurface(bool highlighted) => Instance.Shape(
             highlighted ? "ThemeContextMenuHover" : "ThemeContextMenu", ControlRadius,
             highlighted ? ContextMenuSelection : Current.Panel, highlighted ? Current.Accent : Current.Border);
@@ -70,6 +75,15 @@ namespace Arcade.Compose
 				darkSprites[i + 1] = Shape(primary ? "ThemePrimaryDisabled" : "ThemeSecondaryDisabled", ControlRadius, Current.Input, Current.Border);
 				darkSprites[i + 2] = Shape(primary ? "ThemePrimaryPressed" : "ThemeSecondaryPressed", ControlRadius, Color.Lerp(primary ? Current.Accent : Current.Input, Current.Chrome, .15f), Current.Border);
 			}
+		}
+
+		// Gives a button the standard bordered control surface; later theme sweeps keep it styled.
+		internal static void UseControlSurface(Selectable selectable)
+		{
+			if (!Instance || !selectable || !(selectable.targetGraphic is Image image)) return;
+			selectable.transition = Selectable.Transition.ColorTint;
+			image.sprite = Instance.Shape(ControlShapePrefix + "UISprite", ControlRadius, Current.Input, Current.Border);
+			Instance.StyleControl(selectable);
 		}
 
 		private void StyleControl(Selectable selectable)

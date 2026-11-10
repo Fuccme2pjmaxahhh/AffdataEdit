@@ -100,7 +100,8 @@ namespace Arcade.Gameplay
             if (!emitting)
             {
                 var main = particles.main;
-                main.prewarm = played || !ArcGameplayManager.Instance.IsPlaying;
+                main.prewarm = played || !ArcGameplayManager.Instance.IsPlaying
+                    || (Arcade.Compose.AdeOperationManager.Instance && Arcade.Compose.AdeOperationManager.Instance.HasOngoingOperation);
                 particles.Play();
                 // A cold start must not wait for the first emission interval to become visible.
                 if (!main.prewarm) particles.Emit(1);

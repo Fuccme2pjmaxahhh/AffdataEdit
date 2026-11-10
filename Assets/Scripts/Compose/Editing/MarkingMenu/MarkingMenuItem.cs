@@ -151,6 +151,13 @@ namespace Arcade.Compose.MarkingMenu
 			fadeMotion.TryComplete();
 			ApplyTheme();
 			LayoutRebuilder.ForceRebuildLayoutImmediate(ItemRectTransform);
+            if (!vertical && (name == "S" || name == "SI" || name == "SO" || name == "B"
+                || name == "SISI" || name == "SISO" || name == "SOSI" || name == "SOSO"))
+            {
+                fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+                ItemRectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, ItemText.GetPreferredValues("SoSo").x + 24);
+                LayoutRebuilder.ForceRebuildLayoutImmediate(ItemRectTransform);
+            }
 			fadeMotion = LMotion.Create(ItemCanvasGroup.alpha, 1f, 0.15f)
 				.WithEase(Ease.OutQuad).WithScheduler(MotionScheduler.Update)
 				.BindToAlpha(ItemCanvasGroup);

@@ -116,7 +116,7 @@ namespace Arcade.Compose
             ScrollGroups();
             bool loaded = lastChart != null;
             bool editable = loaded && lastGroup != null;
-            groupCount.text = "时间组  ·  " + groups.Count;
+            groupCount.text = "Timing  ·  " + groups.Count;
             Size(groupScroll.transform, -1, Mathf.Min(groups.Count, 4) * (ControlHeight + 4) - 4);
             groupProperties.gameObject.SetActive(editable);
             defaultGroupHint.gameObject.SetActive(!editable);
@@ -322,6 +322,9 @@ namespace Arcade.Compose
                 var button = Quiet(Button(page.List, "", () =>
                 {
                     page.Selected = page.Events[page.First + index];
+                    var selectedGroup = ((IHasTimingGroup)page.Selected).TimingGroup;
+                    AdeTimingEditor.Instance.SetCurrentTimingGroup(selectedGroup);
+                    RevealCurrentGroup();
                     FillControl(page); HighlightControlRows(page); ClearMessage();
                 }));
                 button.GetComponentInChildren<TMP_Text>().alignment = TextAlignmentOptions.Left;
@@ -392,6 +395,8 @@ namespace Arcade.Compose
             if (!preserveInput || !page.Time.isFocused) page.Time.SetTextWithoutNotify(page.Selected.Timing.ToString());
             page.Group.SetValueWithoutNotify(Mathf.Max(0, groups.IndexOf(((IHasTimingGroup)page.Selected).TimingGroup)));
             page.Group.RefreshShownValue();
+            if (!preserveInput || !page.GroupInput.isFocused)
+                page.GroupInput.SetTextWithoutNotify((((IHasTimingGroup)page.Selected).TimingGroup?.Id ?? 0).ToString());
             if (page.Selected is ArcCamera camera)
             {
                 for (int i = 0; i < 3; i++)
@@ -474,7 +479,8 @@ namespace Arcade.Compose
                     text = $"scenecontrol({page.Time.text},{type}{(args.Length == 0 ? "" : "," + args)});";
                 }
             }
-            if (!ChartControlText.TryParse(text, page.Camera, groups[page.Group.value], out var next, out string error))
+            if (!TryReadGroupInput(page, out var timingGroup)) return;
+            if (!ChartControlText.TryParse(text, page.Camera, timingGroup, out var next, out string error))
             { Message(error, true); return; }
             AdeCommandManager.Instance.Add(new ChartControlCommand(page.Selected, page.Selected, next));
             Message("修改已应用。可撤销。");

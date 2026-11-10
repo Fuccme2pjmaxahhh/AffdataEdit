@@ -293,7 +293,7 @@ public class ArcSceneControlManager : MonoBehaviour
 	private void UpdateEnwidenCameraRatio(float enwidenCameraRatio)
 	{
 		Vector3 SkyInputPosition = SkyInput.localPosition;
-		SkyInputPosition.y = 5.5f + enwidenCameraRatio * 2.745f;
+		SkyInputPosition.y = 5.5f * (1 + enwidenCameraRatio * .5f);
 		SkyInput.localPosition = SkyInputPosition;
 		ArcCameraManager.Instance.EnwidenRatio = enwidenCameraRatio;
 	}

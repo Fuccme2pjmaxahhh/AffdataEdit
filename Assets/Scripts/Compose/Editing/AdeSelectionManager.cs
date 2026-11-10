@@ -99,12 +99,21 @@ namespace Arcade.Compose
 			}
 		}
 
+        internal static ArcNote TimingGroupOwner(ArcNote note) => note is ArcArcTap tap ? tap.Arc : note;
+
 		public void SelectNote(ArcNote note)
 		{
 			note.Selected = true;
 			if (!SelectedNotes.Contains(note))
 			{
 				SelectedNotes.Add(note);
+                var timing = Editing.AdeTimingEditor.Instance;
+                var owner = TimingGroupOwner(note);
+                if (timing && owner is IHasTimingGroup grouped)
+                {
+                    if (timing.currentTimingGroup != grouped.TimingGroup) timing.SetCurrentTimingGroup(grouped.TimingGroup);
+                    if (AdeChartToolsPanel.Instance) AdeChartToolsPanel.Instance.RevealCurrentGroup();
+                }
 				foreach (var l in NoteEventListeners) l.OnNoteSelect(note);
 			}
 		}
@@ -144,7 +153,7 @@ namespace Arcade.Compose
 					notes.Add(arcTap.Arc);
 			return notes.ToArray();
 		}
-		private static bool IsSingleArcTapHost(ArcArc arc)
+		internal static bool IsSingleArcTapHost(ArcArc arc)
 		{
 			return arc != null && arc.IsVoid && arc.EndTiming - arc.Timing == 1
 				&& arc.XStart == arc.XEnd && arc.YStart == arc.YEnd;

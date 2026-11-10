@@ -8,34 +8,50 @@ namespace Arcade.Compose.Command
 {
     public sealed class ConvertArcToSlideCommand : ICommand
     {
-        private readonly ArcArc original;
+        private readonly ArcNote original;
         private readonly ArcSlide[] slides;
         private readonly BatchCommand changes;
         private readonly List<ArcArcTap> selectedArcTaps = new List<ArcArcTap>();
-        public string Name => "Arc 转换为 Slide";
+        public string Name => "转换为 Slide";
 
-        private ConvertArcToSlideCommand(ArcArc arc, ArcSlide[] converted)
+        private ConvertArcToSlideCommand(ArcNote source, ArcSlide[] converted)
         {
-            original = arc;
+            original = source;
             slides = converted;
             var commands = new List<ICommand>();
-            foreach (var tap in arc.ArcTaps)
+            var arc = source as ArcArc;
+            if (arc != null) foreach (var tap in arc.ArcTaps)
                 if (AdeSelectionManager.Instance.SelectedNotes.Contains(tap)) selectedArcTaps.Add(tap);
-            if (arc.ArcTaps.Count > 0)
+            if (arc != null && arc.ArcTaps.Count > 0)
             {
                 // Slide cannot carry ArcTaps: retain their original geometry as a void trace.
                 var carrier = (ArcArc)arc.Clone();
                 carrier.LineType = ArcLineType.TrueIsVoid;
                 commands.Add(new EditArcEventCommand(arc, carrier));
             }
-            else commands.Add(new RemoveArcEventCommand(arc));
+            else commands.Add(new RemoveArcEventCommand(source));
             foreach (var slide in slides) commands.Add(new AddArcEventCommand(slide));
             changes = new BatchCommand(commands.ToArray(), Name);
         }
 
-        public static bool TryCreate(ArcArc arc, out ConvertArcToSlideCommand command)
+        internal static SlideHeight NearestHeight(float y)
+        {
+            float ground = Mathf.Abs(y - (-2f / 9f)), sky = Mathf.Abs(y - 1), high = Mathf.Abs(y - 1.61f);
+            return ground <= sky && ground <= high ? SlideHeight.Ground : sky <= high ? SlideHeight.Sky : SlideHeight.HighSky;
+        }
+
+        public static bool TryCreate(ArcNote source, out ConvertArcToSlideCommand command)
         {
             command = null;
+            if (source is ArcHold hold)
+            {
+                var converted = new ArcSlide { Timing = hold.Timing, EndTiming = hold.EndTiming, TimingGroup = hold.TimingGroup,
+                    StartCenter = .5f - hold.WorldX / 8.5f, EndCenter = .5f - hold.WorldX / 8.5f, Height = SlideHeight.Ground };
+                if (!converted.IsValid) return false;
+                command = new ConvertArcToSlideCommand(hold, new[] { converted });
+                return true;
+            }
+            if (!(source is ArcArc arc)) return false;
             long duration = (long)arc.EndTiming - arc.Timing;
             if (duration < 2 || duration > int.MaxValue) return false;
             int curve = arc.CurveType == ArcCurveType.B ? 3
@@ -45,8 +61,8 @@ namespace Arcade.Compose.Command
             {
                 Timing = arc.Timing, EndTiming = arc.EndTiming, TimingGroup = arc.TimingGroup,
                 StartCenter = arc.XStart, EndCenter = arc.XEnd,
-                StartWidth = 1f / 3, EndWidth = 1f / 3, LeftCurve = curve, RightCurve = curve,
-                Height = SlideHeight.Sky,
+                StartWidth = .5f, EndWidth = .5f, LeftCurve = curve, RightCurve = curve,
+                Height = NearestHeight(ArcAlgorithm.Y(arc.YStart, arc.YEnd, .5f, arc.CurveType)),
             };
             if (!slide.IsValid) return false;
             var slides = new[] { slide };
@@ -196,8 +212,10 @@ namespace Arcade.Compose.Command
 	{
 		private readonly ArcEvent note = null;
 		private readonly ArcEvent oldValues, newValues;
-		public EditArcEventCommand(ArcEvent note, ArcEvent newValues)
+        private readonly bool preservePlaybackJudgement;
+		public EditArcEventCommand(ArcEvent note, ArcEvent newValues, bool preservePlaybackJudgement = false)
 		{
+			this.preservePlaybackJudgement = preservePlaybackJudgement;
 			this.note = note;
 			oldValues = note.Clone();
 			this.newValues = newValues;
@@ -217,7 +235,7 @@ namespace Arcade.Compose.Command
 			(note as ArcArc)?.Rebuild();
 			(note as ArcTap)?.SetupArcTapConnection();
 			if (note is ArcArc arc) ArcArcManager.Instance.CalculateArcRelationship(arc);
-			ArcGameplayManager.Instance.ResetJudge();
+			RefreshJudgement();
 		}
 		public void Undo()
 		{
@@ -227,8 +245,14 @@ namespace Arcade.Compose.Command
 			(note as ArcArc)?.Rebuild();
 			(note as ArcTap)?.SetupArcTapConnection();
 			if (note is ArcArc arc) ArcArcManager.Instance.CalculateArcRelationship(arc);
-			ArcGameplayManager.Instance.ResetJudge();
+			RefreshJudgement();
 		}
+        private void RefreshJudgement()
+        {
+            var game = ArcGameplayManager.Instance;
+            if (!preservePlaybackJudgement || !game.IsPlaying) game.ResetJudge();
+            else if (note is ArcNote changed && game.ChartTiming < changed.Timing) changed.Judged = false;
+        }
 	}
 
 	public class AddArcTapCommand : ICommand

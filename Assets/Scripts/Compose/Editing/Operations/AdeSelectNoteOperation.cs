@@ -42,7 +42,7 @@ namespace Arcade.Compose.Operation
 			var input = AdeInputManager.Instance;
 			bool spatial = input.CheckHotkeyActionPressed(input.Hotkeys.Get().FindAction("Select Spatial Range"));
 			if ((spatial || input.CheckHotkeyActionPressed(input.Hotkeys.Get().FindAction("Select Time Range")))
-				&& ArcadeComposeManager.Instance.IsEditorMode && ArcGameplayManager.Instance.IsLoaded
+				&& ArcGameplayManager.Instance.IsLoaded
 				&& (!AdeDialogManager.Instance || AdeDialogManager.Instance.Opening.childCount == 0))
 			{
 				var cancellation = CancellationTokenSource.CreateLinkedTokenSource(destroyCancellationToken);
@@ -90,7 +90,7 @@ namespace Arcade.Compose.Operation
 				}
 
 				var create = AdeClickToCreate.Instance;
-				bool creating = !multiple && !range && ArcadeComposeManager.Instance.IsEditorMode
+				bool creating = !multiple && !range
 					&& create.Enable && create.Mode != ClickToCreateMode.Idle;
 				ArcNote n = multiple || range || creating ? ArcNoteRenderer.PickNote(camera, position) : PickCyclingNote(camera, position);
 				if (n != null)

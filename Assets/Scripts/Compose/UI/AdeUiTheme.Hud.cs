@@ -39,6 +39,7 @@ namespace Arcade.Compose
             hudMaterial.SetColor("_BorderColor", border);
             hudMaterial.SetColor("_TextColor", foreground);
             var panel = ArcSkinManager.Instance.SongInfo;
+            LayoutHudFields(panel.rectTransform);
             panel.sprite = darkSprites[11];
             panel.material = hudMaterial;
             panel.color = Color.white;
@@ -65,6 +66,25 @@ namespace Arcade.Compose
                 color.a = label.color.a;
                 label.color = color;
             }
+        }
+
+        private static void LayoutHudFields(RectTransform panel)
+        {
+            // The player artwork is offset 30 units beyond the window. Keep editable
+            // text inside that visible edge. AE's rating contains only "10", not "Future 10".
+            var rating = (RectTransform)panel.Find("Difficult");
+            rating.anchoredPosition = new Vector2(-116, -85);
+            rating.sizeDelta = new Vector2(68, 40);
+            var ratingInput = rating.GetComponent<TMP_InputField>();
+            ratingInput.textComponent.alignment = TextAlignmentOptions.MidlineRight;
+            if (ratingInput.placeholder is TMP_Text placeholder) placeholder.alignment = TextAlignmentOptions.MidlineRight;
+            ((RectTransform)panel.Find("Difficulties")).anchoredPosition = new Vector2(-284, -89);
+            var name = (RectTransform)panel.Find("Name");
+            name.anchoredPosition = new Vector2(-245, -122);
+            name.sizeDelta = new Vector2(197, 40);
+            var composer = (RectTransform)panel.Find("Composer");
+            composer.anchoredPosition = new Vector2(-245, -152);
+            composer.sizeDelta = new Vector2(197, 40);
         }
 
         private static bool IsPlaybackHud(Graphic graphic)

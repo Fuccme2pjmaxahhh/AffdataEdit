@@ -12,13 +12,18 @@ namespace Arcade.Compose
     // Their original dialogs and callbacks remain available as a fallback if setup fails.
     public sealed partial class AdeSettingsDialog : MonoBehaviour
     {
-        public enum Page { General, Appearance, Audio, Grid, ContextMenu, Hotkeys, Account, Storage, About }
+        public enum Page { General, Appearance, Editing, Audio, Grid, ContextMenu, Hotkeys, Account, Storage, About }
         public static AdeSettingsDialog Instance { get; private set; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStaticState() => Instance = null;
         public bool Ready { get; private set; }
-        private static readonly string[] Titles = { "常规", "外观", "音频", "网格", "右键", "热键", "账号", "存储", "关于" };
+        private static readonly string[] Titles = { "常规", "外观", "编辑", "音频", "网格", "右键", "热键", "账号", "存储", "关于" };
+        private static readonly HashSet<string> EditingRows = new HashSet<string>
+        {
+            "CancelLimit", "FixNotesTimeOnPaste", "EnableTapWidthEditing", "ChartSortMode", "DragEditMode",
+            "ShowJudgementDetails", "ShowSpectrum", "SpectrumBrightness"
+        };
         private readonly RectTransform[] pages = new RectTransform[Titles.Length];
         private readonly Button[] navigation = new Button[Titles.Length];
         private readonly Graphic[] icons = new Graphic[Titles.Length];
@@ -85,6 +90,8 @@ namespace Arcade.Compose
             if (Arcade.Audio.BassOutputSettings.IsWindows) AdeAudioOutputSettings.AddTo(compose);
             BuildSpectrumSetting(settings.Find("Wraper"));
             BuildHitTypeSetting(settings.Find("Wraper"));
+            BuildPasteTimingSetting(settings.Find("Wraper"));
+            BuildTapWidthSetting(settings.Find("Wraper"));
             BuildContextMenuSetting(settings.Find("Wraper"));
             BuildChartSortSetting(settings.Find("Wraper"));
             BuildDragEditingSettings(settings.Find("Wraper"));
@@ -92,6 +99,7 @@ namespace Arcade.Compose
             foreach (Transform row in settings.Find("Wraper"))
                 Register(row, row.name == "DarkUi" ? Page.Appearance : row.name == "Log" ? Page.About
                     : row.name == "KeepContextMenuOpen" || row.name == "VerticalContextMenu" ? Page.ContextMenu
+                    : EditingRows.Contains(row.name) ? Page.Editing
                     : row.name == "PlaybackSync" || row.name == "GlobalAudioOffset" || row.name.StartsWith("WindowsAudio") ? Page.Audio : Page.General);
             foreach (Transform row in settings)
                 if (row.name != "Wraper" && row.name != "Text" && row.name != "Version") Register(row, Page.About);
@@ -111,8 +119,47 @@ namespace Arcade.Compose
             BindEntries();
         }
 
-        private void Register(Transform row, Page page) => rows.Add(new BorrowedRow
-        { Row = row, Parent = row.parent, Index = row.GetSiblingIndex(), Page = page });
+        private void Register(Transform row, Page page)
+        {
+            foreach (var input in row.GetComponentsInChildren<TMP_InputField>(true))
+                AdeTextSelection.ConfigureSettings(input, page == Page.Grid
+                    || input.contentType == TMP_InputField.ContentType.IntegerNumber
+                    || input.contentType == TMP_InputField.ContentType.DecimalNumber
+                    || input.characterValidation == TMP_InputField.CharacterValidation.Integer
+                    || input.characterValidation == TMP_InputField.CharacterValidation.Decimal);
+            rows.Add(new BorrowedRow { Row = row, Parent = row.parent, Index = row.GetSiblingIndex(), Page = page });
+        }
+
+        private void BuildTapWidthSetting(Transform parent)
+        {
+            var compose = ArcadeComposeManager.Instance;
+            var template = compose.PlaybackSyncToggle.GetComponentInParent<HorizontalLayoutGroup>(true).transform;
+            var row = AdeUiKit.CloneRow(template, parent, "EnableTapWidthEditing");
+            row.GetComponentInChildren<TMP_Text>(true).text = "允许编辑地键宽度";
+            var toggle = row.GetComponentInChildren<Toggle>(true);
+            toggle.SetIsOnWithoutNotify(compose.ArcadePreference.EnableTapWidthEditing);
+            toggle.onValueChanged.AddListener(value =>
+            {
+                compose.ArcadePreference.EnableTapWidthEditing = value;
+                compose.SavePreferences();
+                Editing.AdeValueEditor.Instance.UpdateFields();
+            });
+        }
+
+        private void BuildPasteTimingSetting(Transform parent)
+        {
+            var compose = ArcadeComposeManager.Instance;
+            var template = compose.PlaybackSyncToggle.GetComponentInParent<HorizontalLayoutGroup>(true).transform;
+            var row = AdeUiKit.CloneRow(template, parent, "FixNotesTimeOnPaste");
+            row.GetComponentInChildren<TMP_Text>(true).text = "在粘贴时修正时间";
+            var toggle = row.GetComponentInChildren<Toggle>(true);
+            toggle.SetIsOnWithoutNotify(compose.ArcadePreference.FixNotesTimeOnPaste);
+            toggle.onValueChanged.AddListener(value =>
+            {
+                compose.ArcadePreference.FixNotesTimeOnPaste = value;
+                compose.SavePreferences();
+            });
+        }
 
         private void BuildHitTypeSetting(Transform parent)
         {
@@ -436,11 +483,12 @@ namespace Arcade.Compose
             var icon = Rect("Icon", button.transform);
             icon.anchorMin = icon.anchorMax = new Vector2(0, .5f);
             icon.anchoredPosition = new Vector2(26, 0); icon.sizeDelta = new Vector2(24, 24);
-            if (page == Page.ContextMenu)
+            if (page == Page.ContextMenu || page == Page.Editing)
             {
-                var mouse = icon.gameObject.AddComponent<MarkingMenu.ContextMenuIcon>();
-                mouse.Kind = "mouse";
-                icons[(int)page] = mouse;
+                var image = icon.gameObject.AddComponent<Image>();
+                image.sprite = Resources.Load<Sprite>(page == Page.ContextMenu ? "AffdataEdit/Icons/MouseRight" : "AffdataEdit/Icons/Edit");
+                image.preserveAspect = true;
+                icons[(int)page] = image;
             }
             else if (page == Page.About)
             {

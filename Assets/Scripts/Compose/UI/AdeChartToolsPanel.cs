@@ -59,6 +59,8 @@ namespace Arcade.Compose
         private MotionHandle panelMotion;
         private bool expanded;
         private bool timingLayoutDirty = true;
+        private bool revealCurrentGroup;
+        private AdeAnimatedTabs pageSelector, groupSelector;
         private float timingViewportHeight;
 
         [Serializable]
@@ -77,6 +79,7 @@ namespace Arcade.Compose
             [NonSerialized] public RectTransform TopSpacer, BottomSpacer;
             [NonSerialized] public ArcEvent Selected;
             public TMP_Dropdown Scope, Group, Type;
+            public TMP_InputField GroupInput;
             public TMP_InputField Time, Duration, CustomType, Parameters, Statement;
             public TMP_InputField[] Vectors;
             public TMP_Text Hint, Summary;
@@ -89,6 +92,11 @@ namespace Arcade.Compose
             Instance = this;
             var timing = AdeTimingEditor.Instance;
             BindView();
+            pageSelector = new AdeAnimatedTabs(tabs);
+            groupSelector = new AdeAnimatedTabs(groupTabs);
+            tabs[0].GetComponentInChildren<TMP_Text>(true).text = "Timing";
+            foreach (var label in ArcadeComposeManager.Instance.BottomBarView.GetComponentsInChildren<TMP_Text>(true))
+                if (label.text == "时间组") label.text = "Timing";
             timing.View.SetActive(false);
             var timingEntry = ArcadeComposeManager.Instance.RightBarView.Find("Timing");
             if (timingEntry)
@@ -107,6 +115,7 @@ namespace Arcade.Compose
 
         private void OnDestroy()
         {
+            pageSelector?.Dispose(); groupSelector?.Dispose();
             AdeRightSideCards.Release(this);
             panelMotion.TryCancel();
             if (ArcGameplayManager.Instance) ArcGameplayManager.Instance.OnChartLoad.RemoveListener(OnChartLoad);
@@ -124,12 +133,25 @@ namespace Arcade.Compose
         private void LateUpdate()
         {
             if (!ready) return;
+            pageSelector?.Refresh(); groupSelector?.Refresh();
             if (lastChart != ArcGameplayManager.Instance.Chart || lastGroup != AdeTimingEditor.Instance.currentTimingGroup) dirty = true;
             if (dirty) Refresh();
+            if (revealCurrentGroup && expanded && activePage == Page.Groups)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(groupList);
+                int index = Mathf.Max(0, groups.IndexOf(lastGroup));
+                float viewport = groupScroll.viewport.rect.height;
+                float y = Mathf.Clamp(index * (ControlHeight + 4) - viewport / 2 + ControlHeight / 2,
+                    0, Mathf.Max(0, groupList.rect.height - viewport));
+                groupList.anchoredPosition = new Vector2(groupList.anchoredPosition.x, y);
+                groupFirst = -1; ScrollGroups(); revealCurrentGroup = false;
+            }
             ResizeTimingList();
             if (themeRevision != AdeUiTheme.Revision) ApplyTheme();
             if (!ArcadeComposeManager.Instance.IsEditorMode && expanded) Collapse();
         }
+
+        internal void RevealCurrentGroup() { revealCurrentGroup = true; dirty = true; }
 
         public void Toggle(Page page)
         {
@@ -143,7 +165,7 @@ namespace Arcade.Compose
             AdeRightSideCards.Activate(this);
             bool opening = !expanded;
             activePage = page;
-            if (!panel.gameObject.activeSelf) AdeDialogManager.Pose(panelGroup, panel, 0);
+            if (!panel.gameObject.activeSelf) AdeDialogManager.PoseSide(panelGroup, panel, 0);
             expanded = true;
             panelGroup.blocksRaycasts = true;
             panel.gameObject.SetActive(true);
@@ -154,7 +176,7 @@ namespace Arcade.Compose
             if (opening)
             {
                 panelMotion.TryCancel();
-                panelMotion = AdeDialogManager.AnimateView(panelGroup, panel, panelGroup.alpha, 1, () => { });
+                panelMotion = AdeDialogManager.AnimateSideView(panelGroup, panel, panelGroup.alpha, 1, () => { });
             }
         }
 
@@ -164,7 +186,7 @@ namespace Arcade.Compose
             expanded = false;
             panelGroup.blocksRaycasts = false;
             panelMotion.TryCancel();
-            panelMotion = AdeDialogManager.AnimateView(panelGroup, panel, panelGroup.alpha, 0,
+            panelMotion = AdeDialogManager.AnimateSideView(panelGroup, panel, panelGroup.alpha, 0,
                 () => { panel.gameObject.SetActive(false); AdeRightSideCards.Release(this); });
             UpdateHighlights();
         }
@@ -209,7 +231,7 @@ namespace Arcade.Compose
             pageHost.gameObject.SetActive(loaded);
             emptyState.gameObject.SetActive(!loaded);
             context.gameObject.SetActive(loaded);
-            context.text = "当前时间组：" + GroupName(lastGroup);
+            context.text = "当前 Timing：" + GroupName(lastGroup);
             RefreshGroups();
             foreach (var page in controlPages)
             {
@@ -232,10 +254,10 @@ namespace Arcade.Compose
         {
             for (int i = 0; i < tabs.Length; i++)
             {
-                Highlight(tabs[i], i == (int)activePage);
                 Highlight(entries[i], expanded && i == (int)activePage);
             }
-            for (int i = 0; i < groupTabs.Length; i++) Highlight(groupTabs[i], i == activeGroupTab);
+            pageSelector?.Select((int)activePage);
+            groupSelector?.Select(activeGroupTab);
         }
 
         private void ShowGroupTab(int index)

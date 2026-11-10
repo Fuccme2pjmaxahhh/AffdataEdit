@@ -37,6 +37,7 @@ namespace Arcade.Compose.Scripting
         public string Name, Source;
         public AdeScriptDialect Dialect;
         public AdeScriptToolKind Kind;
+        public bool IsQuick => Dialect == AdeScriptDialect.AA && Kind != AdeScriptToolKind.Parameters;
         public Script Script;
         public DynValue Function;
         public Aa.AsyncEditing Editing;

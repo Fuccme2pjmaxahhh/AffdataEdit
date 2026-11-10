@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Collections.Generic;
 using UnityEngine;
@@ -82,6 +82,10 @@ namespace Arcade.Compose.Dialog
 		[SerializeField] private RectTransform customBackgroundContainer;
 		private Dictionary<string, AdeSkinBackgroundOption> customBackgroundButtons;
 		private int tabThemeRevision = -1;
+        private AdeAnimatedTabs tabSelector;
+        private InputField customBackgroundSearch;
+        private RectTransform skinView;
+        private Transform resourceActions;
 
 		public GameObject BackgroundOptionPrefab;
 
@@ -112,13 +116,28 @@ namespace Arcade.Compose.Dialog
 
 		private void OnDestroy()
 		{
-			Dialog.OnClose -= OnClose;
+			tabSelector?.Dispose();
+            Dialog.OnClose -= OnClose;
 			if (sideCard) sideCard.Closed -= OnClose;
 		}
 
 		private void Start()
 		{
-			SideDropdown.onValueChanged.AddListener(SelectSide);
+			tabSelector = new AdeAnimatedTabs(presetTab, customTab);
+            skinView = sideCard ? sideCard.transform.Find("View") as RectTransform : null;
+            customBackgroundSearch = Instantiate(BackgroundSearchInput, ExternalBackgroundContainer.parent, false);
+            customBackgroundSearch.name = "CustomBackgroundSearch";
+            var actions = ExternalBackgroundContainer.parent.Find("资源");
+            resourceActions = actions;
+            customBackgroundSearch.transform.SetSiblingIndex(actions ? actions.GetSiblingIndex() + 1 : customBackgroundContainer.GetSiblingIndex() - 1);
+            customBackgroundSearch.onValueChanged = new InputField.OnChangeEvent();
+            customBackgroundSearch.onEndEdit = new InputField.SubmitEvent();
+            customBackgroundSearch.SetTextWithoutNotify("");
+            if (customBackgroundSearch.placeholder is Text searchHint) searchHint.text = "搜索背景";
+            customBackgroundSearch.onValueChanged.AddListener(UpdateBackgroundFilterResult);
+            StyleBackgroundSearch(BackgroundSearchInput);
+            StyleBackgroundSearch(customBackgroundSearch);
+            SideDropdown.onValueChanged.AddListener(SelectSide);
 			NoteDropdown.onValueChanged.AddListener(SelectNote);
 			ThemeDropdown.onValueChanged.AddListener(SelectTheme);
 			BackgroundSearchInput.onValueChanged.AddListener(UpdateBackgroundFilterResult);
@@ -301,13 +320,29 @@ namespace Arcade.Compose.Dialog
 				VerifySkinOptions();
 			}
 			Initialize();
-			UpdateBackgroundFilterResult(custom ? "" : BackgroundSearchInput.text);
+			UpdateBackgroundFilterResult(custom ? customBackgroundSearch.text : BackgroundSearchInput.text);
 			SavePreferences();
 		}
 
 		private void LateUpdate()
 		{
 			if (tabThemeRevision != AdeUiTheme.Revision) UpdateTabs();
+            tabSelector?.Refresh();
+            if (skinView && ArcadeComposeManager.Instance)
+            {
+                float width = Mathf.Min(760, ArcadeComposeManager.Instance.EditorCanvas.rect.width - 100);
+                if (!Mathf.Approximately(skinView.rect.width, width)) skinView.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
+            }
+            foreach (var container in new[] { InternalBackgroundContainer, ExternalBackgroundContainer, customBackgroundContainer })
+            {
+                if (!container) continue;
+                var grid = container.GetComponent<GridLayoutGroup>();
+                if (!grid) continue;
+                grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount; grid.constraintCount = 3;
+                float cellWidth = Mathf.Max(1, (container.rect.width - grid.padding.horizontal - grid.spacing.x * 2) / 3);
+                var cell = new Vector2(cellWidth, 156);
+                if (grid.cellSize != cell) grid.cellSize = cell;
+            }
 		}
 
 		private void UpdateTabs()
@@ -316,17 +351,51 @@ namespace Arcade.Compose.Dialog
 			tabThemeRevision = AdeUiTheme.Revision;
 			presetPage.SetActive(!preference.Customize);
 			customPage.SetActive(preference.Customize);
-			foreach (var tab in new[] { presetTab, customTab })
-			{
-				var colors = tab.colors;
-				bool selected = (tab == customTab) == preference.Customize;
-				colors.normalColor = colors.selectedColor = selected ? AdeUiTheme.Current.Selection : AdeUiTheme.Current.Panel;
-				colors.highlightedColor = Color.Lerp(colors.normalColor, AdeUiTheme.Current.Text, selected ? .03f : .05f);
-				colors.pressedColor = Color.Lerp(colors.highlightedColor, AdeUiTheme.Current.Text, .06f);
-				colors.fadeDuration = 0;
-				tab.colors = colors;
-			}
+            tabSelector?.Select(preference.Customize ? 1 : 0);
+            StyleResourceActions();
+            StyleBackgroundSearch(BackgroundSearchInput);
+            StyleBackgroundSearch(customBackgroundSearch);
 		}
+
+        // 重载皮肤／背景文件夹／重载背景 use the same bordered control surface and states as other panel buttons.
+        private void StyleResourceActions()
+        {
+            if (!resourceActions) return;
+            foreach (var button in resourceActions.GetComponentsInChildren<Button>(true))
+            {
+                AdeUiTheme.UseControlSurface(button);
+                var label = button.GetComponentInChildren<Text>(true);
+                if (label) label.color = AdeUiTheme.Current.Text;
+            }
+        }
+
+        private static void StyleBackgroundSearch(InputField input)
+        {
+            if (!input) return;
+            var size = input.GetComponent<LayoutElement>() ?? input.gameObject.AddComponent<LayoutElement>();
+            size.minHeight = size.preferredHeight = 44;
+            size.flexibleWidth = 1; size.flexibleHeight = 0;
+            var background = input.GetComponent<Image>();
+            background.sprite = AdeUiTheme.InputSurface; background.type = Image.Type.Sliced;
+            background.color = Color.white;
+            // TMP's viewport owns the inset so the caret, text and placeholder agree.
+            input.textViewport.anchorMin = Vector2.zero; input.textViewport.anchorMax = Vector2.one;
+            input.textViewport.offsetMin = new Vector2(12, 4);
+            input.textViewport.offsetMax = new Vector2(-12, -4);
+            AdeEditorText.Configure(input.textComponent, 20);
+            input.textComponent.fontStyle = TMPro.FontStyles.Normal;
+            input.textComponent.alignment = TMPro.TextAlignmentOptions.MidlineLeft;
+            input.textComponent.color = AdeUiTheme.Current.Text;
+            input.textComponent.margin = Vector4.zero;
+            if (input.placeholder is Text hint)
+            {
+                AdeEditorText.Configure(hint, 20);
+                hint.fontStyle = TMPro.FontStyles.Normal;
+                hint.alignment = TMPro.TextAlignmentOptions.MidlineLeft;
+                hint.color = AdeUiTheme.Current.Muted;
+                hint.margin = Vector4.zero;
+            }
+        }
 
 		private void LoadPreferences()
 		{
@@ -514,7 +583,7 @@ namespace Arcade.Compose.Dialog
 			int internalMatchedBgCount = 0;
 			foreach (var bgPair in InternalBackgroundButtons)
 			{
-				bool show = isClear || (isRegexPattern ? regex.IsMatch(bgPair.Key) : bgPair.Key.Contains(pattern));
+				bool show = isClear || (isRegexPattern ? regex.IsMatch(bgPair.Key) : bgPair.Key.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0);
 				bgPair.Value.gameObject.SetActive(show);
 				if (show)
 				{
@@ -524,13 +593,17 @@ namespace Arcade.Compose.Dialog
 			int externalMatchedBgCount = 0;
 			foreach (var bgPair in ExternalBackgroundButtons)
 			{
-				bool show = isClear || (isRegexPattern ? regex.IsMatch(bgPair.Key) : bgPair.Key.Contains(pattern));
+				bool show = isClear || (isRegexPattern ? regex.IsMatch(bgPair.Key) : bgPair.Key.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0);
 				bgPair.Value.gameObject.SetActive(show);
 				if (show)
 				{
 					externalMatchedBgCount += 1;
 				}
 			}
+            if (customBackgroundButtons != null)
+                foreach (var bgPair in customBackgroundButtons)
+                    bgPair.Value.gameObject.SetActive(isClear || (isRegexPattern ? regex.IsMatch(bgPair.Key)
+                        : bgPair.Key.IndexOf(pattern, StringComparison.OrdinalIgnoreCase) >= 0));
 			InternalBackgroundLabel.text = internalMatchedBgCount > 0 ? "皮肤内置背景" : "没有匹配的皮肤内置背景";
 			ExternalBackgroundLabel.text = AdeSkinHost.Instance.ExternalBackgrounds.Count > 0 ? externalMatchedBgCount > 0 ? "自定义背景" : "没有匹配的自定义背景" : "没有可用的自定义背景";
 		}

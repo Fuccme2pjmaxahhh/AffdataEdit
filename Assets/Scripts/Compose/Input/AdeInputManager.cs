@@ -121,6 +121,7 @@ namespace Arcade.Compose
 
 		private AdeHotkeyRebindingButton rebindingButton = null;
 		private RebindingOperation rebindingOperation = null;
+        private bool cancelWithoutClearing;
 
 		public AdeHotkeyRebindingButton CurrentRebindingButton
 		{
@@ -145,7 +146,9 @@ namespace Arcade.Compose
 			// cleanup old operation
 			if (rebindingOperation != null)
 			{
-				rebindingOperation.Cancel();
+                cancelWithoutClearing = true;
+                try { rebindingOperation.Cancel(); }
+                finally { cancelWithoutClearing = false; }
 			}
 			// start new operation
 			if (nextRebindingButton != null)
@@ -275,9 +278,15 @@ namespace Arcade.Compose
 					})
 					.OnCancel((operation) =>
 					{
+                        if (!cancelWithoutClearing)
+                        {
+                            new AdeHotkeyPresets.Binding("").Apply(action);
+                            Presets.CaptureEdit();
+                        }
 						CleanupCurrentOperation();
 					}).Start();
 				rebindingButton = nextRebindingButton;
+                AdeToast.Instance?.Show("请按新热键；按 Esc 退出绑定并设为未绑定");
 			}
 			UpdateTextForHotkeyButton(button);
 		}

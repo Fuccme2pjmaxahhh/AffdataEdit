@@ -11,6 +11,7 @@ namespace Arcade.Compose
         private readonly List<Image> hotkeyGroups = new List<Image>();
         private readonly List<TMP_Text> hotkeyHeadings = new List<TMP_Text>();
         private readonly List<Image> fixedHotkeys = new List<Image>();
+        private TMP_Text hotkeyGestureHelp;
         private const float HotkeyWidth = 208, ControlHeight = 44, AudioInputWidth = 88;
 
         private void BuildHotkeyGroups()
@@ -19,6 +20,18 @@ namespace Arcade.Compose
             foreach (var row in rows)
             {
                 if (row.Page != Page.Hotkeys || row.Row.name == "Reset" || row.Row == hotkeyPresetRow) continue;
+                var body = row.Row.GetComponentInChildren<TMP_Text>(true);
+                if (!row.Row.GetComponentInChildren<Selectable>(true) && body
+                    && (row.Row.name == "MouseGestureHelp" || body.text.Contains("\n")))
+                {
+                    // This is flowing body text, not a fixed-height section heading.
+                    hotkeyGestureHelp = body;
+                    var bodySize = body.GetComponent<LayoutElement>();
+                    if (bodySize) { bodySize.minHeight = bodySize.preferredHeight = -1; bodySize.flexibleHeight = 0; }
+                    row.Host = null;
+                    section = null;
+                    continue;
+                }
                 if (!row.Row.GetComponentInChildren<Selectable>(true)
                     && row.Row.GetComponentsInChildren<TMP_Text>(true).Length == 1)
                 {
@@ -65,6 +78,13 @@ namespace Arcade.Compose
 
         private void StyleHotkeyGroups()
         {
+            if (hotkeyGestureHelp)
+            {
+                hotkeyGestureHelp.fontSize = AdeEditorText.CaptionSize;
+                hotkeyGestureHelp.fontStyle = FontStyles.Normal;
+                hotkeyGestureHelp.textWrappingMode = TextWrappingModes.Normal;
+                hotkeyGestureHelp.color = AdeUiTheme.Current.Text;
+            }
             foreach (var group in hotkeyGroups)
             {
                 group.sprite = AdeUiTheme.RoundedSurface;

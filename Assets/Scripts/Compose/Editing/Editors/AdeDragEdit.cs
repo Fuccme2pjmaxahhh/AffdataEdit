@@ -1,6 +1,8 @@
-using System;
+﻿using System;
 using System.Threading;
+using System.Linq;
 using Arcade.Compose.Command;
+using Arcade.Compose.UI;
 using Arcade.Gameplay;
 using Arcade.Gameplay.Chart;
 using Arcade.Util.UniTaskHelper;
@@ -21,15 +23,18 @@ namespace Arcade.Compose.Editing
         private const string PreferenceKey = "AffdataEdit.DragMode";
         public DragMode Mode { get; private set; }
         public bool IsDragging { get; private set; }
+        internal bool IsDraggingSlide => IsDragging && note is ArcSlide;
         private ArcNote note, before, draft;
         private ArcChart chart;
         private ArcTimingGroup previousGroup;
-        private bool end, prepared, moved, wasEditingHold;
+        private bool end, right, prepared, moved, wasEditingHold;
+        private Vector2 slideRange;
         private DragMode activeMode;
         private Vector2 pointerStart;
         private int endpointTiming;
         private Vector3 previewPoint;
         private EditArcEventCommand command;
+        private Action<bool> finishGroup;
 
         private void Awake()
         {
@@ -48,7 +53,7 @@ namespace Arcade.Compose.Editing
 
         private void Update()
         {
-            if (!ArcadeComposeManager.Instance.IsEditorMode || (!IsDragging && !AdeGameplayContentInputHandler.InputActive)) return;
+            if (!IsDragging && !AdeGameplayContentInputHandler.InputActive) return;
             var input = AdeInputManager.Instance;
             var hotkeys = input.Hotkeys.Get();
             if (input.CheckHotkeyActionPressed(hotkeys.FindAction("Drag Edit Time"))) SetMode(DragMode.Time);
@@ -63,9 +68,21 @@ namespace Arcade.Compose.Editing
         public override AdeOperationResult TryExecuteOperation()
         {
             var mouse = Mouse.current;
-            var selected = AdeSelectionManager.Instance.SelectedNotes;
             if (AdeCameraManager.FreeCameraEnabled || Mode == DragMode.Off || mouse == null || !mouse.middleButton.wasPressedThisFrame
-                || !AdeGameplayContentInputHandler.InputActive || !ArcGameplayManager.Instance.IsLoaded || selected.Count != 1) return false;
+                || !AdeGameplayContentInputHandler.InputActive || !ArcGameplayManager.Instance.IsLoaded) return false;
+            var selected = AdeSelectionManager.Instance.SelectedNotes;
+            bool alt = Keyboard.current != null && (Keyboard.current.leftAltKey.isPressed || Keyboard.current.rightAltKey.isPressed);
+            var targets = ResolveDragTargets(selected);
+            bool whole = targets.Length > 1 || targets.Any(n => n is ArcArc arc && arc.ArcTaps.Count > 0 && AdeSelectionManager.IsSingleArcTapHost(arc))
+                || (Mode == DragMode.Position && alt);
+            if (whole && targets.Length > 0)
+            {
+                var token = new CancellationTokenSource();
+                return AdeOperationResult.FromOngoingOperation(new AdeOngoingOperation
+                { cancellation = token, keepSelection = true, cancel = () => Finish(false),
+                    task = MoveSelection(targets, Mode, token.Token).WithExceptionLogger() });
+            }
+            if (selected.Count != 1) return false;
             if (!BeginDrag(selected[0], Mode, mouse.position.ReadValue())) return false;
             var cancellation = new CancellationTokenSource();
             return AdeOperationResult.FromOngoingOperation(new AdeOngoingOperation
@@ -75,27 +92,157 @@ namespace Arcade.Compose.Editing
             });
         }
 
+        internal static ArcNote[] ResolveDragTargets(System.Collections.Generic.IEnumerable<ArcNote> selected)
+        {
+            var targets = selected.Select(n => n is ArcArcTap tap && AdeSelectionManager.IsSingleArcTapHost(tap.Arc) ? tap.Arc : n)
+                .Distinct().ToArray();
+            return targets.Where(n => !(n is ArcArcTap tap) || !targets.Contains(tap.Arc)).ToArray();
+        }
+
+        internal static void OffsetTiming(ArcNote value, ArcNote original, int delta)
+        {
+            value.Timing = checked(original.Timing + delta);
+            if (value is ArcLongNote longValue && original is ArcLongNote longSource)
+                longValue.EndTiming = checked(longSource.EndTiming + delta);
+        }
+
+        private async UniTask MoveSelection(ArcNote[] targets, DragMode mode, CancellationToken cancellationToken)
+        {
+            bool time = mode == DragMode.Time;
+            if (targets.Any(n => time ? !(n is ArcArc || n is ArcSlide || n is ArcTap || n is ArcHold || n is ArcArcTap)
+                : !(n is ArcArc || n is ArcSlide)))
+            { AdeToast.Instance.Show("整体位置移动请选择 Arc、Trace、Slide 或单 ArcTap"); return; }
+            var cursor = AdeCursorManager.Instance;
+            var camera = cursor.GameplayCamera;
+            if (!TryChooseGroupAnchor(targets, camera, Mouse.current.position.ReadValue(), out var anchor, out int timing, out var group)) return;
+            // Arc.Assign deliberately does not assign its child taps. Move each live child once with its own undo command.
+            var edits = time ? targets.Concat(targets.OfType<ArcArc>().SelectMany(a => a.ArcTaps)).Distinct().ToArray() : targets;
+            var originals = edits.Select(n => (ArcNote)n.Clone()).ToArray();
+            var values = edits.Select(n => (ArcNote)n.Clone()).ToArray();
+            for (int i = 0; i < edits.Length; i++)
+                if (values[i] is ArcArcTap tap)
+                { tap.Arc = ((ArcArcTap)edits[i]).Arc; ((ArcArcTap)originals[i]).Arc = tap.Arc; }
+            var batch = new BatchCommand(edits.Select((n, i) => (ICommand)new EditArcEventCommand(n, values[i], true)).ToArray(),
+                time ? "整体时间移动" : "整体位置移动");
+            var sourceChart = ArcGameplayManager.Instance.Chart;
+            var previous = AdeTimingEditor.Instance.currentTimingGroup;
+            if (!cursor.BeginDragCursor(!time, true)) return;
+            AdeTimingEditor.Instance.SetCurrentTimingGroup(group);
+            var start = new Vector2(ArcAlgorithm.WorldXToArc(anchor.x), ArcAlgorithm.WorldYToArc(anchor.y));
+            bool preparedBatch = false, changed = false;
+            IsDragging = true;
+            finishGroup = commit =>
+            {
+                if (preparedBatch) { if (commit && changed) AdeCommandManager.Instance.Commit(); else AdeCommandManager.Instance.Cancel(); preparedBatch = false; }
+                IsDragging = false;
+            };
+            try
+            {
+                while (IsDragging)
+                {
+                    await UniTask.NextFrame(cancellationToken);
+                    if (!IsDragging || !Application.isFocused || Mouse.current == null || ArcGameplayManager.Instance.Chart != sourceChart) return;
+                    var ray = camera.ScreenPointToRay(Mouse.current.position.ReadValue());
+                    float z = -ArcTimingManager.Instance.CalculatePositionByTiming(timing, group) / 1000;
+                    var display = anchor; display.z = z;
+                    int displayTiming = timing;
+                    bool valid = false;
+                    if (time)
+                    {
+                        if (TryGroundTiming(ray, timing, out int raw, out var ground))
+                        {
+                            long delta = (long)AdeGridManager.Instance.AttachDragTimingFromPos(ground.z, raw) - timing;
+                            long min = int.MinValue, max = int.MaxValue;
+                            foreach (var original in originals)
+                            {
+                                min = Math.Max(min, (long)int.MinValue - original.Timing);
+                                max = Math.Min(max, (long)int.MaxValue - (original is ArcLongNote ln ? ln.EndTiming : original.Timing));
+                            }
+                            // Standalone taps on ordinary arcs remain within their unchanged host.
+                            foreach (var tap in originals.OfType<ArcArcTap>())
+                                if (!targets.Contains(tap.Arc)) { min = Math.Max(min, (long)tap.Arc.Timing - tap.Timing); max = Math.Min(max, (long)tap.Arc.EndTiming - tap.Timing); }
+                            delta = Math.Max(min, Math.Min(max, delta));
+                            if (delta >= int.MinValue && delta <= int.MaxValue)
+                            {
+                                for (int i = 0; i < values.Length; i++) OffsetTiming(values[i], originals[i], (int)delta);
+                                displayTiming = checked(timing + (int)delta);
+                                display.z = -ArcTimingManager.Instance.CalculatePositionByTiming(displayTiming, group) / 1000;
+                                valid = true;
+                            }
+                        }
+                    }
+                    else if (new Plane(Vector3.forward, new Vector3(0, 0, z)).Raycast(ray, out float distance))
+                    {
+                        var hit = ray.GetPoint(distance);
+                        var point = AdeGridManager.Instance.AttachDragCoordinate(new Vector2(ArcAlgorithm.WorldXToArc(hit.x), ArcAlgorithm.WorldYToArc(hit.y)));
+                        for (int i = 0; i < values.Length; i++) OffsetNote(values[i], originals[i], point - start);
+                        display = new Vector3(ArcAlgorithm.ArcXToWorld(point.x), ArcAlgorithm.ArcYToWorld(point.y), z);
+                        valid = true;
+                    }
+                    if (valid)
+                    {
+                        changed = values.Where((value, i) => Changed(value, originals[i])).Any();
+                        if (changed && !preparedBatch) { AdeCommandManager.Instance.Prepare(batch); preparedBatch = true; }
+                        else if (preparedBatch) batch.Do();
+                        cursor.UpdateDragCursor(displayTiming, display);
+                        AdeValueEditor.Instance.UpdateFields();
+                    }
+                    if (!Mouse.current.middleButton.isPressed) { finishGroup(true); return; }
+                }
+            }
+            finally
+            {
+                if (preparedBatch) AdeCommandManager.Instance.Cancel();
+                IsDragging = false; finishGroup = null;
+                cursor.EndDragCursor();
+                AdeTimingEditor.Instance.SetCurrentTimingGroup(previous);
+                AdeValueEditor.Instance.UpdateFields();
+            }
+        }
+
+        internal static void OffsetNote(ArcNote value, ArcNote original, Vector2 delta)
+        {
+            if (value is ArcArc arc && original is ArcArc from)
+            {
+                arc.XStart = from.XStart + delta.x; arc.XEnd = from.XEnd + delta.x;
+                arc.YStart = from.YStart + delta.y; arc.YEnd = from.YEnd + delta.y;
+            }
+            else if (value is ArcSlide slide && original is ArcSlide source)
+            {
+                slide.StartCenter = source.StartCenter + delta.x;
+                slide.EndCenter = source.EndCenter + delta.x;
+            }
+        }
+
         internal bool BeginDrag(ArcNote target, DragMode mode, Vector2 pointer)
         {
             if (IsDragging || mode == DragMode.Off || !(target is ArcTap || target is ArcHold
                 || target is ArcArc || target is ArcArcTap || target is ArcSlide)) return false;
-            if (!TryChooseEndpoint(target, mode, pointer, out bool isEnd)) return false;
+            right = false;
+            bool isEnd;
+            if (mode == DragMode.Position && target is ArcSlide slide)
+            {
+                if (!TryChooseSlideCorner(slide, pointer, out isEnd, out right)) return false;
+                slideRange = AdeSlideEditor.EditingRange(slide, isEnd);
+            }
+            else if (!TryChooseEndpoint(target, mode, pointer, out isEnd)) return false;
             if (!AdeCursorManager.Instance.BeginDragCursor(mode == DragMode.Position && (target is ArcArc || target is ArcSlide),
                 target is ArcArc || target is ArcSlide)) return false;
-            ArcGameplayManager.Instance.Pause();
             note = target; before = (ArcNote)target.Clone(); draft = (ArcNote)target.Clone();
             if (draft is ArcArcTap draftTap) draftTap.Arc = ((ArcArcTap)target).Arc;
             chart = ArcGameplayManager.Instance.Chart;
             activeMode = mode; end = isEnd; pointerStart = pointer;
             endpointTiming = end ? ((ArcLongNote)note).EndTiming : note.Timing;
-            previewPoint = EndpointPosition(note, end);
+            previewPoint = DragEndpointPosition();
             previousGroup = AdeTimingEditor.Instance.currentTimingGroup;
             var group = target is ArcArcTap tap ? tap.Arc.TimingGroup : ((IHasTimingGroup)target).TimingGroup;
             AdeTimingEditor.Instance.SetCurrentTimingGroup(group);
             if (note is ArcHold hold) { wasEditingHold = hold.IsEditing; hold.IsEditing = true; }
-            prepared = moved = false;
-            command = new EditArcEventCommand(note, draft);
+            prepared = false;
+            moved = mode == DragMode.Time || note is ArcArcTap;
+            command = new EditArcEventCommand(note, draft, true);
             IsDragging = true;
+            if (moved) ApplyPointer(pointer);
             UpdateCursor();
             AdeToast.Instance.Show(mode == DragMode.Time || target is ArcArcTap
                 ? (end ? "拖动结束时间" : "拖动开始时间") : (end ? "拖动终点位置" : "拖动起点位置"));
@@ -133,7 +280,7 @@ namespace Arcade.Compose.Editing
             if (timing)
             {
                 if (!TryGroundTiming(ray, endpointTiming, out int raw, out var point)) return;
-                int snapped = AdeGridManager.Instance.AttachBeatlineTimingFromPos(point.z, raw);
+                int snapped = AdeGridManager.Instance.AttachDragTimingFromPos(point.z, raw);
                 ApplyTiming(snapped);
             }
             else if (note is ArcTap || note is ArcHold)
@@ -198,14 +345,15 @@ namespace Arcade.Compose.Editing
             }
             else if (draft is ArcSlide slide)
             {
-                // Slide uses half the Arc's world width, and retains its endpoint width.
-                float center = .5f - (ArcAlgorithm.ArcXToWorld(coordinate.x) / slide.WorldWidth);
-                if (end) slide.EndCenter = center; else slide.StartCenter = center;
-                if (!slide.IsValid)
-                {
-                    if (end) slide.EndCenter = ((ArcSlide)note).EndCenter;
-                    else slide.StartCenter = ((ArcSlide)note).StartCenter;
-                }
+                float x = .5f - (ArcAlgorithm.ArcXToWorld(coordinate.x) / slide.WorldWidth);
+                if (slideRange.x == slideRange.y) right = x > slideRange.x;
+                var candidate = (ArcSlide)slide.Clone();
+                AdeSlideEditor.SetRangeEndpoints(candidate, end,
+                    right ? slideRange.x : Mathf.Min(x, slideRange.y),
+                    right ? Mathf.Max(x, slideRange.x) : slideRange.y);
+                if (!candidate.IsValid) return;
+                slide.StartCenter = candidate.StartCenter; slide.StartWidth = candidate.StartWidth;
+                slide.EndCenter = candidate.EndCenter; slide.EndWidth = candidate.EndWidth;
             }
         }
 
@@ -214,18 +362,19 @@ namespace Arcade.Compose.Editing
             if (!Changed(note, draft)) return;
             if (!prepared) { AdeCommandManager.Instance.Prepare(command); prepared = true; }
             else command.Do();
-            previewPoint = EndpointPosition(note, end);
+            previewPoint = DragEndpointPosition();
             AdeValueEditor.Instance.UpdateFields();
         }
 
         private void UpdateCursor()
         {
-            previewPoint = EndpointPosition(note, end);
+            previewPoint = DragEndpointPosition();
             AdeCursorManager.Instance.UpdateDragCursor(endpointTiming, previewPoint);
         }
 
         internal void Finish(bool commit)
         {
+            if (finishGroup != null) { finishGroup(commit); return; }
             if (!IsDragging) return;
             IsDragging = false;
             try

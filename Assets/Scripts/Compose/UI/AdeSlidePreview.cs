@@ -15,6 +15,7 @@ namespace Arcade.Compose.UI
         public Action<ArcSlide> OnEdited;
         private ArcSlide edit;
         private int corner;
+        private Vector2 startEndpoints, endEndpoints;
         private IReadOnlyList<float> gridPositions;
         private float gridScaleFactor = 1f;
 
@@ -57,7 +58,7 @@ namespace Arcade.Compose.UI
             }
             foreach(float t in new[]{0f,1f})
             {
-                var range=Note.Range(t);
+                var range=AdeSlideEditor.EditingRange(Note, t == 1);
                 foreach(float x in new[]{range.x,range.y})
                 {
                     var p=Point(x,t);Quad(vh,p-new Vector2(4,4),p+new Vector2(4,-4),p+new Vector2(-4,4),p+new Vector2(4,4),Color.white);
@@ -73,23 +74,32 @@ namespace Arcade.Compose.UI
         public void OnBeginDrag(PointerEventData e)
         {
             if(Note==null)return; edit=(ArcSlide)Note.Clone();
+            startEndpoints = AdeSlideEditor.EditingRange(edit, false); endEndpoints = AdeSlideEditor.EditingRange(edit, true);
             RectTransformUtility.ScreenPointToLocalPointInRectangle(rectTransform,e.position,e.pressEventCamera,out var p);
             float best=float.MaxValue;
-            for(int i=0;i<4;i++){var range=Note.Range(i/2);float x=i%2==0?range.x:range.y;float d=(Point(x,i/2)-p).sqrMagnitude;if(d<best){best=d;corner=i;}}
+            for(int i=0;i<4;i++){var range=AdeSlideEditor.EditingRange(Note,i>=2);float x=i%2==0?range.x:range.y;float d=(Point(x,i/2)-p).sqrMagnitude;if(d<best){best=d;corner=i;}}
         }
         public void OnDrag(PointerEventData e)
         {
             if(edit==null)return;
             RectTransformUtility.ScreenPointToLocalPointInRectangle(rectTransform,e.position,e.pressEventCamera,out var p);
             float x=Mathf.LerpUnclamped(ArcSlide.MinX, ArcSlide.MaxX, (p.x-rectTransform.rect.xMin-8)/(rectTransform.rect.width-16));
-            float t=corner/2;var range=edit.Range(t);
-            if(corner%2==0)range.x=SnapX(x, float.NegativeInfinity, range.y-1f/48);
-            else range.y=SnapX(x, range.x+1f/48, float.PositiveInfinity);
-            if(corner<2){edit.StartCenter=(range.x+range.y)/2;edit.StartWidth=range.y-range.x;}else{edit.EndCenter=(range.x+range.y)/2;edit.EndWidth=range.y-range.x;}
+            var range=corner<2 ? startEndpoints : endEndpoints;
+            if (range.x == range.y) corner = (corner / 2) * 2 + (x > range.x ? 1 : 0);
+            if(corner%2==0)range.x=SnapX(x, float.NegativeInfinity, range.y);
+            else range.y=SnapX(x, range.x, float.PositiveInfinity);
+            var candidate = (ArcSlide)edit.Clone();
+            AdeSlideEditor.SetRangeEndpoints(candidate, corner>=2, range.x, range.y);
+            if (!candidate.IsValid) return;
+            if (corner<2) startEndpoints=range; else endEndpoints=range;
+            edit=candidate;
             Note=edit;SetVerticesDirty();
         }
         private float SnapX(float x, float min, float max)
         {
+            // The opposite endpoint remains reachable even when it is off the X grid.
+            if (x <= min) return min;
+            if (x >= max) return max;
             x = Mathf.Clamp(x, min, max);
             float nearest = x, distance = .3f; // Same capture distance as the editor's X grid.
             var positions = AdeGridManager.Instance ? AdeGridManager.Instance.VerticalXPositions : null;

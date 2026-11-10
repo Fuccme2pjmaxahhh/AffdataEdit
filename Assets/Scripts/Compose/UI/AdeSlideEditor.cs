@@ -22,6 +22,7 @@ namespace Arcade.Compose.UI
     {
         private readonly List<GameObject> rows = new List<GameObject>();
         private InputField startRange, endRange;
+        private Button moveStart, moveEnd;
         private Dropdown leftCurve, rightCurve, height;
         private AdeSlidePreview preview;
         private MarkingMenuItem menu;
@@ -78,7 +79,14 @@ namespace Arcade.Compose.UI
         {
             var row = Instantiate(template, template.parent); row.name = label;
             row.GetComponentsInChildren<Text>(true)[0].text = label;
-            foreach (var button in row.GetComponentsInChildren<Button>(true)) button.gameObject.SetActive(false);
+            var move = row.GetComponentInChildren<Button>(true);
+            move.onClick = new Button.ButtonClickedEvent();
+            move.onClick.AddListener(() =>
+            {
+                if (start) AdeValueEditor.Instance.OnReselectStartCoordinate();
+                else AdeValueEditor.Instance.OnReselectEndCoordinate();
+            });
+            if (start) moveStart = move; else moveEnd = move;
             var input = row.GetComponentInChildren<InputField>(true);
             input.onEndEdit = new InputField.SubmitEvent(); input.onValueChanged = new InputField.OnChangeEvent();
             input.contentType = InputField.ContentType.Standard;
@@ -138,6 +146,20 @@ namespace Arcade.Compose.UI
         {
             AdeToast.Instance.Show("Slide 坐标须为有限数值、三位小数下宽度大于 0，左右边界不可交叉"); Refresh();
         }
+        internal static Vector2 EditingRange(ArcSlide note, bool end)
+        {
+            float center = end ? note.EndCenter : note.StartCenter;
+            return (end ? note.EndWidth : note.StartWidth) == .02f ? new Vector2(center, center) : note.Range(end ? 1 : 0);
+        }
+
+        internal static void SetRangeEndpoints(ArcSlide note, bool end, float left, float right)
+        {
+            float width = RawAffSlide.RoundCoordinate(right - left);
+            float center = (left + right) / 2;
+            if (width == 0) { center = left; width = .02f; }
+            if (end) { note.EndCenter = center; note.EndWidth = width; }
+            else { note.StartCenter = center; note.StartWidth = width; }
+        }
         private void Refresh()
         {
             if (!ready) return;
@@ -145,6 +167,8 @@ namespace Arcade.Compose.UI
             bool active = selected.Count > 0 && selected.All(n => n is ArcSlide);
             foreach (var row in rows) row.SetActive(active);
             if (!active) return;
+            moveStart.gameObject.SetActive(selected.Count == 1);
+            moveEnd.gameObject.SetActive(selected.Count == 1);
             var note = (ArcSlide)selected[0];
             height.SetValueWithoutNotify((int)note.Height);
             height.RefreshShownValue();
@@ -154,6 +178,7 @@ namespace Arcade.Compose.UI
             endRange.SetTextWithoutNotify(selected.Cast<ArcSlide>().All(n => n.EndCenter == note.EndCenter && n.EndWidth == note.EndWidth)
                 ? Range(note.EndCenter, note.EndWidth) : "-,-");
             leftCurve.SetValueWithoutNotify(note.LeftCurve); rightCurve.SetValueWithoutNotify(note.RightCurve);
+            leftCurve.RefreshShownValue(); rightCurve.RefreshShownValue();
             if (selected.Cast<ArcSlide>().Any(n => n.LeftCurve != note.LeftCurve)) leftCurve.captionText.text = "混合";
             if (selected.Cast<ArcSlide>().Any(n => n.RightCurve != note.RightCurve)) rightCurve.captionText.text = "混合";
             preview.gameObject.SetActive(selected.Count == 1);

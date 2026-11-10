@@ -66,7 +66,7 @@ namespace Arcade.Compose
 			if (mouse == null) return;
 			var keyboard = Keyboard.current;
 			bool dialogOpen = AdeDialogManager.Instance && AdeDialogManager.Instance.Opening.childCount > 0;
-			if (isOn && (!ArcadeComposeManager.Instance.IsEditorMode || dialogOpen
+			if (isOn && (dialogOpen
 				|| openedChart != ArcGameplayManager.Instance.Chart))
 			{
 				Exit();
@@ -80,7 +80,7 @@ namespace Arcade.Compose
 			if (mouse.rightButton.wasPressedThisFrame)
 			{
 				if (isOn) Exit();
-				else if (!dialogOpen && ArcadeComposeManager.Instance.IsEditorMode && PointerOverChart())
+				else if (!dialogOpen && PointerOverChart())
 					Enter();
 				return;
 			}

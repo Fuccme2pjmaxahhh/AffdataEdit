@@ -24,8 +24,11 @@ namespace Arcade.Compose
         private Vector2 pointerDownPosition;
         private int pointerDownAnchor;
         private bool pointerSelectionActive, characterDragging;
+        private bool normalizesCommit;
+        private bool pointerFocusEstablished;
+        private bool selectAllOnFirstClick;
 
-        public static void Configure(TMP_InputField field)
+        public static void Configure(TMP_InputField field, bool selectAllOnFirstClick = true)
         {
             field.onFocusSelectAll = false;
             // Keep IME punctuation intact while typing; validate the normalized
@@ -33,6 +36,7 @@ namespace Arcade.Compose
             field.characterValidation = TMP_InputField.CharacterValidation.None;
             if (!field.TryGetComponent<AdeTextSelection>(out _))
                 field.gameObject.AddComponent<AdeTextSelection>();
+            field.GetComponent<AdeTextSelection>().selectAllOnFirstClick = selectAllOnFirstClick;
         }
 
         public static string NormalizeForCommit(TMP_InputField field)
@@ -41,6 +45,17 @@ namespace Arcade.Compose
                 .Replace('。', '.').Replace('．', '.');
             field.SetTextWithoutNotify(normalized);
             return normalized;
+        }
+
+        public static void ConfigureSettings(TMP_InputField field, bool numericOrGrid)
+        {
+            Configure(field, selectAllOnFirstClick: false);
+            var selection = field.GetComponent<AdeTextSelection>();
+            if (!numericOrGrid || selection.normalizesCommit) return;
+            selection.normalizesCommit = true;
+            var handlers = field.onEndEdit;
+            field.onEndEdit = new TMP_InputField.SubmitEvent();
+            field.onEndEdit.AddListener(_ => handlers.Invoke(NormalizeForCommit(field)));
         }
 
         private void Awake() => input = GetComponent<TMP_InputField>();
@@ -83,12 +98,22 @@ namespace Arcade.Compose
             pointerDownPosition = eventData.position;
             pointerDownAnchor = shift ? previousAnchor : position;
             pointerSelectionActive = true;
+            bool firstClick = !pointerFocusEstablished;
+            pointerFocusEstablished = true;
             selectingAll = !shift && (clickCount >= 3
-                || (clickCount == 2 && blank));
+                || (clickCount == 2 && blank) || (firstClick && selectAllOnFirstClick));
             if (selectingAll) SelectWholeField();
             else if (clickCount == 2 && !shift && character >= 0)
             {
                 SelectCoordinatePart(input.textComponent.textInfo.characterInfo[character].index);
+            }
+            else if (firstClick && !shift && input.text.Length > 0)
+            {
+                int index = character >= 0 ? input.textComponent.textInfo.characterInfo[character].index : position;
+                var fragment = NearestFragment(input.text, index);
+                coordinateAnchor = fragment.x; coordinateFocus = fragment.y;
+                selectingCoordinate = true;
+                SetSelection(fragment.x, fragment.y);
             }
             else
             {
@@ -153,7 +178,25 @@ namespace Arcade.Compose
             if (Keyboard.current != null && Keyboard.current.anyKey.wasPressedThisFrame) ResetClicks();
         }
 
-        private void OnApplicationFocus(bool focused) { if (!focused) ResetClicks(); }
+        private void OnApplicationFocus(bool focused) { if (!focused) { pointerFocusEstablished = false; ResetClicks(); } }
+
+        internal static Vector2Int NearestFragment(string text, int index)
+        {
+            int best = int.MaxValue;
+            var result = Vector2Int.zero;
+            bool Separator(char c) => char.IsWhiteSpace(c) || c == '.' || c == '．' || c == '。'
+                || c == ',' || c == '，' || c == ';' || c == '；';
+            for (int i = 0; i < text.Length;)
+            {
+                if (Separator(text[i])) { i++; continue; }
+                int start = i++;
+                while (i < text.Length && !Separator(text[i])) i++;
+                int distance = index < start ? start - index : index >= i ? index - (i - 1) : 0;
+                if (distance >= best) continue;
+                best = distance; result = new Vector2Int(start, i);
+            }
+            return result;
+        }
 
         private void SelectWholeField()
         {
@@ -201,8 +244,8 @@ namespace Arcade.Compose
             input.ForceLabelUpdate();
         }
 
-        public void OnDeselect(BaseEventData eventData) => ResetClicks();
-        private void OnDisable() => ResetClicks();
+        public void OnDeselect(BaseEventData eventData) { pointerFocusEstablished = false; ResetClicks(); }
+        private void OnDisable() { pointerFocusEstablished = false; ResetClicks(); }
         private void ResetClicks()
         {
             selectingAll = false;

@@ -55,6 +55,9 @@ namespace Arcade.Compose
 		public void Show(string text)
 		{
 			if (!isActiveAndEnabled || string.IsNullOrWhiteSpace(text)) return;
+            // Binding instructions must remain visible above the open settings dialog.
+            var canvas = GetComponent<Canvas>();
+            if (canvas) { canvas.overrideSorting = true; canvas.sortingOrder = 100; }
 			toastMotion.TryCancel();
 			// Replace a visible message only after it has faded out.
 			if (noticeGroup.alpha > 0f) FadeNotice(0f, () => BeginNotice(text));
