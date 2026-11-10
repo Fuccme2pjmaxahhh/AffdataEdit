@@ -247,33 +247,62 @@ namespace Arcade.Gameplay
             }
             ordered.Sort((a, b) => a.note.Timing != b.note.Timing
                 ? a.note.Timing.CompareTo(b.note.Timing) : a.index.CompareTo(b.index));
+            var tails = new Dictionary<(ArcTimingGroup Group, SlideHeight Height, int EndTiming), List<(ArcSlide Note, int Order)>>();
             for (int i = 0; i < ordered.Count; i++)
             {
                 var current = ordered[i].note;
+                var startRange = current.Range(0);
                 ArcSlide best = null;
+                (ArcTimingGroup Group, SlideHeight Height, int EndTiming) bestKey = default;
+                int bestIndex = -1, bestOrder = int.MaxValue;
                 float bestLeft = 0, bestRight = 0;
                 double bestOverlap = MinimumContinuityOverlap;
-                for (int j = 0; j < i; j++)
+                // Only nearby end times can connect. Explicit source order preserves
+                // the original tie-break even when candidates live in different buckets.
+                for (long timing = (long)current.Timing - ContinuityToleranceMilliseconds;
+                    timing <= (long)current.Timing + ContinuityToleranceMilliseconds; timing++)
                 {
-                    var before = ordered[j].note;
-                    if (!before.IsGroupTail || before.TimingGroup != current.TimingGroup || before.Height != current.Height
-                        || System.Math.Abs((long)current.Timing - before.EndTiming) > ContinuityToleranceMilliseconds) continue;
-                    var a = before.Range(1); var b = current.Range(0);
-                    float left = Mathf.Max(a.x, b.x), right = Mathf.Min(a.y, b.y);
-                    // Coordinates have three decimals; remove float noise at the strict threshold.
-                    double overlapWidth = System.Math.Round((double)right - left, 6);
-                    if (overlapWidth > bestOverlap)
+                    if (timing < int.MinValue || timing > int.MaxValue) continue;
+                    var key = (current.TimingGroup, current.Height, (int)timing);
+                    if (!tails.TryGetValue(key, out var candidates)) continue;
+                    for (int j = 0; j < candidates.Count; j++)
                     {
-                        best = before; bestOverlap = overlapWidth; bestLeft = left; bestRight = right;
+                        var candidate = candidates[j];
+                        var endRange = candidate.Note.Range(1);
+                        float left = Mathf.Max(endRange.x, startRange.x), right = Mathf.Min(endRange.y, startRange.y);
+                        // Coordinates have three decimals; remove float noise at the strict threshold.
+                        double overlapWidth = System.Math.Round((double)right - left, 6);
+                        if (overlapWidth > bestOverlap
+                            || (best != null && overlapWidth == bestOverlap && candidate.Order < bestOrder))
+                        {
+                            best = candidate.Note;
+                            bestKey = key; bestIndex = j; bestOrder = candidate.Order;
+                            bestOverlap = overlapWidth; bestLeft = left; bestRight = right;
+                        }
                     }
                 }
-                if (best == null) continue;
-                current.GroupRoot = best.GroupRoot;
-                current.GroupJudgementStartTiming = current.GroupRoot.GroupEndTiming;
-                current.GroupRoot.GroupEndTiming = System.Math.Max(current.GroupRoot.GroupEndTiming, current.EndTiming);
-                best.IsGroupTail = current.IsGroupHead = false;
-                best.Overlap.z = current.Overlap.x = bestLeft;
-                best.Overlap.w = current.Overlap.y = bestRight;
+                if (best != null)
+                {
+                    current.GroupRoot = best.GroupRoot;
+                    current.GroupJudgementStartTiming = current.GroupRoot.GroupEndTiming;
+                    current.GroupRoot.GroupEndTiming = System.Math.Max(current.GroupRoot.GroupEndTiming, current.EndTiming);
+                    best.IsGroupTail = current.IsGroupHead = false;
+                    best.Overlap.z = current.Overlap.x = bestLeft;
+                    best.Overlap.w = current.Overlap.y = bestRight;
+
+                    var candidates = tails[bestKey];
+                    int lastIndex = candidates.Count - 1;
+                    candidates[bestIndex] = candidates[lastIndex];
+                    candidates.RemoveAt(lastIndex);
+                    if (candidates.Count == 0) tails.Remove(bestKey);
+                }
+                var endKey = (current.TimingGroup, current.Height, current.EndTiming);
+                if (!tails.TryGetValue(endKey, out var bucket))
+                {
+                    bucket = new List<(ArcSlide Note, int Order)>();
+                    tails.Add(endKey, bucket);
+                }
+                bucket.Add((current, i));
             }
         }
         private void OnDestroy()
