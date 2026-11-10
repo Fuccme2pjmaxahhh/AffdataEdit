@@ -4,7 +4,7 @@
 
 ## 入口与环境
 
-Windows Arcade Alpha发布包只读参考现位于 `E:\AffdataDev\Arcade-Alpha_v1.12.2_read`（2026-11-08用户从C盘搬移改名）。读取配置、反编译、PURE类入口及辅助脚本见已保存的 `affdataedit-dev/references/arcade-alpha-read.md`。当前AffdataEdit跳字源码为 `Assets/Scripts/Gameplay/Components/ArcHitTypeEffects.cs`。
+Windows 参考实现发布包只读参考现位于 `E:\AffdataDev\Arcade-Alpha_v1.12.2_read`（2026-11-08用户从C盘搬移改名）。读取配置、反编译、PURE类入口及辅助脚本见已保存的 `affdataedit-dev/references/arcade-alpha-read.md`。当前AffdataEdit跳字源码为 `Assets/Scripts/Gameplay/Components/ArcHitTypeEffects.cs`。
 
 | 用途 | 路径／状态（记录时） |
 | --- | --- |
@@ -96,7 +96,7 @@ Arc 反转：时间不动，交换头尾 XY；`Si↔So`、`SiSi↔SoSo`、`SiSo�
 ### 在粘贴时修正时间（2026-11-08）
 
 - 设置→常规新增“在粘贴时修正时间”，`ArcadePreference.FixNotesTimeOnPaste` 默认 true，修改后保存；旧设置缺少字段时也默认开启。
-- 只读核对 AA 1.13.1 的 `AdeCopyOrCut`、`ArcEditorUtility.FixNotesTime`、`AdeGridManager.TryAttachTiming`，参考在 `E:\AffdataDev\Checks\AAPaste`。确认复制／剪切粘贴时，对全部节拍线按时间顺序查找严格相差 <2ms 的线，使用未取整节拍时间判断阈值，写入取整时间；不受网格显示开关影响，不改变鼠标预览过程。
+- 只读核对 参考实现 1.13.1 的 `AdeCopyOrCut`、`ArcEditorUtility.FixNotesTime`、`AdeGridManager.TryAttachTiming`，参考在 `E:\AffdataDev\Checks\AAPaste`。确认复制／剪切粘贴时，对全部节拍线按时间顺序查找严格相差 <2ms 的线，使用未取整节拍时间判断阈值，写入取整时间；不受网格显示开关影响，不改变鼠标预览过程。
 - 修正 Tap、ArcTap、长物件头尾及嵌套 ArcTap；Arc 包含修正后的 ArcTap，单 ArcTap 短宿主保留时长。短 Hold／Slide 若吸附后不足合法时长则保留原头尾；超出父 Arc 的独立 ArcTap 继续走已有跳过规则。复用原粘贴命令的撤销／取消。
 - 同次将 Slide F4 改为包含 (S,S) 的五组合循环。Unity 3 项专项检查通过，编译 warn-as-error 通过；结果 `E:\AffdataDev\Checks\paste-timing-results.xml`。未打包，未做完整应用手动交互验收。
 
@@ -116,15 +116,15 @@ Esc 是固定“取消当前操作”：在黑线上点立得创建 ArcTap，即
 
 - 用户纠正F1～F4优先级：存在选中Arc／Slide时优先普通编辑，不修改创建参数；选中Slide但不支持的Arc颜色／虚实动作不回退到创建。无选中Arc／Slide时仍可修改Arc创建参数／预览；活动创建操作与编辑命令保持互斥，避免向Prepare中的命令再Add。创建Arc、Slide、单ArcTap的坐标选择启用fixedWorldPlane，进入该坐标阶段时捕获Z，网格／碰撞面与坐标采样使用同一深度，确认或取消finally解除锁定。SelectCoordinate默认仍跟随时间，编辑、粘贴、脚本、矩形选区不启用冻结；时间选择与中键拖动不变。 13项针对性检查通过（creation-priority-plane-results.xml），源码warn-as-error编译通过；未把这些检查等同于全部播放速度、SV、自由相机与鼠标输入组合的实机验收。
 
-- 用户最新要求不使用更多子菜单：移除NormalSelected的更多父项，上下翻转／水平剪切／转Slide按可用性直接在原更多位置展开（点立得之后、镜像之前），其他AA共同操作相对顺序不变。设置恢复平铺操作标题；已有显式排序中selection-more占位按子项顺序展开，旧隐藏more项忽略，保留各操作显隐。奇数不补偶数槽继续生效。
+- 用户最新要求不使用更多子菜单：移除NormalSelected的更多父项，上下翻转／水平剪切／转Slide按可用性直接在原更多位置展开（点立得之后、镜像之前），其他参考实现共同操作相对顺序不变。设置恢复平铺操作标题；已有显式排序中selection-more占位按子项顺序展开，旧隐藏more项忽略，保留各操作显隐。奇数不补偶数槽继续生效。
 
-- 用户按新截图再次纠正：非点立得选中主菜单真正采用AA八入口结构，顺时针从左侧：网格、点立得、更多、镜像、剪切、复制、时间对齐、删除。原上下翻转／水平剪切／转Slide按类型收进更多，设置以“更多／”标注子项并保留独立显隐；没有可用子项时隐藏更多。取消奇数补偶数槽（用户最新要求），镜像优化也按实际项数配对，不留空槽。此前只重排平铺操作的方案不再作为完成标准。
+- 用户按新截图再次纠正：非点立得选中主菜单真正采用参考实现八入口结构，顺时针从左侧：网格、点立得、更多、镜像、剪切、复制、时间对齐、删除。原上下翻转／水平剪切／转Slide按类型收进更多，设置以“更多／”标注子项并保留独立显隐；没有可用子项时隐藏更多。取消奇数补偶数槽（用户最新要求），镜像优化也按实际项数配对，不留空槽。此前只重排平铺操作的方案不再作为完成标准。
 
-- 所有物件的NormalSelected默认菜单按AA共同操作顺序：网格、点立得、删除、时间对齐、水平镜像、复制、剪切；AE上下翻转／水平剪切／转Slide随后，按原对象类型可用性过滤，不删任何已有功能。已只读观察正在运行AA 1.13.1的Hold选中菜单确认共同顺序；运行菜单及设置目录共用新默认，用户显式排序仍优先，恢复默认可采用新顺序。用户撤回取消偶数槽的要求：继续保留奇数补偶数槽及现有圆环几何，点立得状态不变。
+- 所有物件的NormalSelected默认菜单按参考实现共同操作顺序：网格、点立得、删除、时间对齐、水平镜像、复制、剪切；AE上下翻转／水平剪切／转Slide随后，按原对象类型可用性过滤，不删任何已有功能。已只读观察正在运行参考实现 1.13.1的Hold选中菜单确认共同顺序；运行菜单及设置目录共用新默认，用户显式排序仍优先，恢复默认可采用新顺序。用户撤回取消偶数槽的要求：继续保留奇数补偶数槽及现有圆环几何，点立得状态不变。
 
 - 创建Arc时恢复New F1～F4：只有Arc创建状态的四个属性动作可穿过进行中操作守卫，优先修改创建参数及当前预览Arc，不误改旧选中物件。开始坐标／结束时间／结束坐标三阶段均即时重建预览与关系／判定时间，不全局ResetJudge；finally清理预览引用。其他操作、模态框、文本输入及右键菜单原守卫保留。四项ArcCreationHotkeyTests通过，覆盖四动作创建参数及Hold／反转拒绝分支；未进行完整三阶段物理按键实机验收。
 
-- 用户纠正先前共用要求：NormalSelected保持当前普通物件菜单；CreateSelected重新独立，AA只读Items实现为创建目录加删除（AdeClickToCreate.cs），AE额外保留选中Arc/Hold时转Slide。设置恢复四种状态，排序／隐藏各自保存，原共用配置继续属于NormalSelected；Legacy仍无直接创建Slide，NEW保留原创建目录；操作进行中的取消菜单优先规则不变。
+- 用户纠正先前共用要求：NormalSelected保持当前普通物件菜单；CreateSelected重新独立，参考实现只读Items实现为创建目录加删除（AdeClickToCreate.cs），AE额外保留选中Arc/Hold时转Slide。设置恢复四种状态，排序／隐藏各自保存，原共用配置继续属于NormalSelected；Legacy仍无直接创建Slide，NEW保留原创建目录；操作进行中的取消菜单优先规则不变。
 
 - 用户后续微调：Future选中亮度由0.46小幅回落到0.42，其余难度及非选中态不变。
 
@@ -146,15 +146,15 @@ Esc 是固定“取消当前操作”：在黑线上点立得创建 ArcTap，即
 
 - 本次环形镜像／避让专项1/1通过；最终包 Windows_2026-11-08_23-09-41.log 成功，47.8秒，未检出C#／Shader警告错误。实机打开脚本卡确认53个工具计数位于标题右侧、操作按钮均分全行、快速／普通切换及单行工具名正常；确认侧栏外置脚本延迟提示。未实机运行Lua工具或完整复核所有环形菜单、全部侧栏提示和主题组合。
 
-- 环形角度优化改为镜像成对移动，避免逐按钮搜索造成上下不匀称。Arc缓动页固定左虚实／右颜色，S、Si、So、B上半圈，SiSi、SiSo、SoSi、SoSo下半圈；保留8单位避让。外置脚本用快速／普通双按钮切换，AA Selection/Interactive归快速、Parameters与全部A1归普通；操作双按钮均分全行，工具行只显示单行名称，加载数量放标题右侧。侧栏图标停留0.5秒显示简短提示，移开／按下／关闭即隐藏。
+- 环形角度优化改为镜像成对移动，避免逐按钮搜索造成上下不匀称。Arc缓动页固定左虚实／右颜色，S、Si、So、B上半圈，SiSi、SiSo、SoSi、SoSo下半圈；保留8单位避让。外置脚本用快速／普通双按钮切换，参考实现 Selection/Interactive归快速、Parameters与全部A1归普通；操作双按钮均分全行，工具行只显示单行名称，加载数量放标题右侧。侧栏图标停留0.5秒显示简短提示，移开／按下／关闭即隐藏。
 
 - 后续用户要求：Legacy 点立得直接创建 Slide 的入口从运行菜单和设置目录移除，NEW 保留；选中物件的转 Slide 不变。环形角度在原等分附近做局部紧凑搜索，首项固定、其他项偏移不超过12°／基础角距28%，保留顺序、奇数空槽及8单位按钮矩形间距。Alt+N 增加 Slide：时间不动，交换开始／结束中心和宽度，左右侧分别 Si↔So，S/B不变，原批量撤销命令及 Arc 行为保留。
 
 - 点立得开启时，只要有选中物件，菜单与普通选中菜单相同（共用 NormalSelected 的排序／隐藏配置），不再以创建菜单覆盖；设置中合并为“已选中（共用）”目录。所有环形页基础半径缩小15%，按实际按钮矩形重新扩展，至少保留8单位间距；弧形子菜单同样适用，竖向菜单不受影响。
 
-- Legacy 设置列表按顺时针表示，运行菜单同方向；超过4项从左侧起，4项及以下从右侧起。默认创建目录依据 AA 序列反向为顺时针，并在 Tap 后追加 Slide：不创建、网格、单ArcTap、ArcTap、退出、Arc、Hold、Tap、Slide。显式自定义顺序仍优先，恢复默认可使用新目录；New 不变。
-- 用户后续纠正：AA 仅参考菜单排序，不参考其按钮位置。Legacy 恢复原圆环布局、实际按钮边界避让与小幅间距均衡；顺时针排序保留，奇数项补齐到偶数槽（留一个空位）。取消 AA 的非线性角度与椭圆半径；New 菜单不变。
-- 设置→常规新增“允许编辑地键宽度”，默认关闭并保存；开启后纯 Tap 选择显示宽度行，1为普通大小，0.5为一半，2为两倍，接受正有限数，支持多选、原命令撤销及既有AFF读写／CPU和驻留渲染宽度路径。关闭只隐藏编辑入口，不改谱面数据。参考 AA 的 Width 倍率及 AllowUnofficialParams 显示门控，未扩展其他非官方参数。
+- Legacy 设置列表按顺时针表示，运行菜单同方向；超过4项从左侧起，4项及以下从右侧起。默认创建目录依据 参考实现 序列反向为顺时针，并在 Tap 后追加 Slide：不创建、网格、单ArcTap、ArcTap、退出、Arc、Hold、Tap、Slide。显式自定义顺序仍优先，恢复默认可使用新目录；New 不变。
+- 用户后续纠正：参考实现 仅参考菜单排序，不参考其按钮位置。Legacy 恢复原圆环布局、实际按钮边界避让与小幅间距均衡；顺时针排序保留，奇数项补齐到偶数槽（留一个空位）。取消 参考实现 的非线性角度与椭圆半径；New 菜单不变。
+- 设置→常规新增“允许编辑地键宽度”，默认关闭并保存；开启后纯 Tap 选择显示宽度行，1为普通大小，0.5为一半，2为两倍，接受正有限数，支持多选、原命令撤销及既有AFF读写／CPU和驻留渲染宽度路径。关闭只隐藏编辑入口，不改谱面数据。参考 参考实现 的 Width 倍率及 AllowUnofficialParams 显示门控，未扩展其他非官方参数。
 - 本次8项专项检查通过（`tap-width-aa-menu-results.xml`），C# warn-as-error 编译通过；未进行完整应用菜单截图或手动交互验收。
 
 - Q 与中键拖动可同时进行：开始拖动不暂停播放，按 Q 不提前 Finish；Alt 整体拖动的定位面随对应时间的 Z 更新。拖动专用命令在播放时保留全谱判定，避免每帧编辑重置音效／粒子；只有移动到未来的目标解除自身 Judged。
@@ -162,7 +162,7 @@ Esc 是固定“取消当前操作”：在黑线上点立得创建 ArcTap，即
 
 - 最新修复：Slide F4 最新轮换仅 SS／SiSi／SoSo／BB 四种同侧缓动组合，其他组合无效。打击三角格按实际 mesh 顶点→1.7缩放→纹理 UV 逆算覆盖，修正随位置增大的偏离；进入新区域补0.2秒噪声历史，避免快速窄 Slide 等待随机点亮。
 - 播放模式放开右键入口、后续操作调度、位置／时间选择、点立得选择分支及相关编辑热键的编辑模式限制；保留文本输入、模态对话框、菜单遮罩与操作互斥守卫。4 项相关检查通过（`slide-cycle-effect-results.xml`），完整播放模式右键交互尚未手动验收；本次未打包。
-- 慢放只读对照见 `Documentation/AA-SLOW-AUDIO.md`，确认 AA 用 FMOD + NativeAudioHelper/NStretch，AE 用 BASS_FX Tempo 默认路径；本次未改音频后端，不将源码差异等同于已完成听感 A/B 根因验证。
+- 慢放只读对照见 `Documentation/SLOW-AUDIO-ANALYSIS.md`，确认 参考实现 用 FMOD + NativeAudioHelper/NStretch，AE 用 BASS_FX Tempo 默认路径；本次未改音频后端，不将源码差异等同于已完成听感 A/B 根因验证。
 
 - 整体移动比例修正：ArcXToWorld 和 Slide.WorldX 实际均为 `4.25 - 8.5*x`；Slide 的偏移直接加 delta.x，删除误加的 ×2。回归检查改为断言 Arc／Slide 世界位移一致，2 项移动检查通过（`slide-move-scale-results.xml`），warn-as-error 编译通过；未打包。
 
@@ -173,7 +173,7 @@ Esc 是固定“取消当前操作”：在黑线上点立得创建 ArcTap，即
 - 创建 Arc 选择尾时间时不再每帧 ResetJudge；仅更新创建中的 Arc 的 Judged 状态，保留 AudioPlayed，避免 Q 播放时整谱重响。Slide 几何 Rebuild 调用 RebuildGroups(false)，保留音效／网格反馈时钟；增删、载入等仍默认重置。长物件粒子在 ongoing 编辑操作中首次发射启用预热，保持预览期间的粒子表现。
 - Slide 左右曲线下拉框每次 RefreshShownValue，清掉同值 SetValueWithoutNotify 时残留的“混合”标题。
 - 粘贴结果恢复选择时，single ArcTap 只选音符、不同时选隐藏宿主；普通 Arc 只选父 Arc、不同时选其全部 ArcTap，避免编辑面板只剩通用时间字段。
-- F6／位置编辑下 Alt+中键按 AA `AdeValueEditor.MoveSelectedArcsPositionTask` 操作：按下时以全部选中物件中最近的可见端点为原点、Arc 同 XY 偏移、Slide 仅跟随 X 偏移，保持时间／曲线／相对位置，松开提交、Esc 取消、Q 仅切换播放且保留拖动。独立选中的 single ArcTap 自动映射到宿主，去重移动一次；支持 Arc／Slide／single ArcTap 混选，其他类型不参与该操作。AA 只读参考 `E:\AffdataDev\Checks\AAMove`。
+- F6／位置编辑下 Alt+中键按 参考实现 `AdeValueEditor.MoveSelectedArcsPositionTask` 操作：按下时以全部选中物件中最近的可见端点为原点、Arc 同 XY 偏移、Slide 仅跟随 X 偏移，保持时间／曲线／相对位置，松开提交、Esc 取消、Q 仅切换播放且保留拖动。独立选中的 single ArcTap 自动映射到宿主，去重移动一次；支持 Arc／Slide／single ArcTap 混选，其他类型不参与该操作。参考实现 只读参考 `E:\AffdataDev\Checks\AAMove`。
 - Legacy 环形菜单将 ArcTap 父菜单改为上一级“单Arctap”“Arctap”两项；Arc 的“更多类型”展开到 S/Si/So/B 同级，八种缓动按钮统一为当前字体下 SoSo 文本宽度加原有 24 单位内边距，取消早先 S/Si/So/B 单独加宽。仅环形 ShowAt 重排；New 竖向菜单结构保留。
 - 验证：6 项相关 EditMode 检查通过（`creation-menu-results.xml`），warn-as-error 编译通过；未打包，音效／粒子及菜单外观未做完整应用实机验收。
 
@@ -198,19 +198,19 @@ Esc 是固定“取消当前操作”：在黑线上点立得创建 ArcTap，即
 - New F3 对 Slide 左右曲线分别执行 S↔B、Si↔So。F4 为 (S,S)→(Si,Si)→(So,So)→(B,B)→(S,S) 四组合循环，其余组合无效；接入原属性命令，支持多选和撤销。曲线切换导致非法形状时沿用合法性约束，不提交该物件。
 - 已完成 Unity 编译（无 C# warning/error）及 10 项专项 EditMode 检查：四角合拢／拉开、头尾左右四种位置拖动、屏幕距离判定和曲线切换；结果 `E:\AffdataDev\Checks\slide-editing-results.xml`。本次仅修改源码，未打包，未进行完整应用手动交互／主题截图验收。
 
-## AA播放显示对齐（2026-11-08）
+## 播放显示与取景修正（2026-11-08）
 
-- 后续截图回归发现之前仅全viewport公式检查不足：用户实际对照AA 1.13.1（`C:\Arcade-Alpha_v1.13.1_b2026110800_202611081354`），不是只读1.12.2包。已读取1.13.1核对，编辑视口固定(.05,.05,.9,.9)，设计尺寸取整个输出。AE现在同样保留均匀5%相机边距，DesignResolution读取完整targetTexture或Screen尺寸，不再取工具栏裁切后的camera.pixelWidth/Height，避免编辑模式下FOV和取景范围随工具栏比例变化。新增回归用例后20/20通过，结果 `alpha-viewport-results.xml`；仍不把测试等同于所有内容同帧截图验收。
+- 后续截图回归发现之前仅全viewport公式检查不足：用户实际对照参考实现 1.13.1（`C:\Arcade-Alpha_v1.13.1_b2026110800_202611081354`），不是只读1.12.2包。已读取1.13.1核对，编辑视口固定(.05,.05,.9,.9)，设计尺寸取整个输出。AE现在同样保留均匀5%相机边距，DesignResolution读取完整targetTexture或Screen尺寸，不再取工具栏裁切后的camera.pixelWidth/Height，避免编辑模式下FOV和取景范围随工具栏比例变化。新增回归用例后20/20通过，结果 `alpha-viewport-results.xml`；仍不把测试等同于所有内容同帧截图验收。
 - 视口修正版已更新 `C:\AffdataEdit_custom`，成功日志 `Windows_2026-11-08_08-51-48.log`，66.1秒（含等待保存退出），安装程序集哈希一致。
 
-- 用户要求：已确认的显示差异对齐AA，**不更换长物件裁切**。AA当前参考包的Slide实现不完整，因此不据其占位代码改AE宽面Slide。
+- 用户要求：已确认的显示差异对齐参考实现，**不更换长物件裁切**。参考实现当前参考包的Slide实现不完整，因此不据其占位代码改AE宽面Slide。
 - Slide PURE按各自判定高度投影：地面维持world Y=0，普通天空用Arc y=1（world Y=5.5），高位／enwidened天空用Arc y=1.61（world Y=8.245），均复用长Arc的PURE上方偏移和动画。入口 `ArcHitTypeEffects.ShowSlide`，不再把天空Slide的跳字放到地面。
 - 公式入口 `Gameplay/Utility/ArcadeAlphaAppearance.cs`：Tap/ArcTap淡入90→80，Tap长度使用连续浮点且钳制非负，不再套共享Play工厂的厘米截断。Tap CPU/Resident投影/GPU shader保持同一淡入公式；ArcTap基准alpha240/255。
-- 实体Arc按AA段尾距离计算远处alpha：常规阈值85，零时长新样式80，10单位内由225/255到75/255；body/head/高度指示器使用AA对应opacity乘数。原有段几何、From/To裁切、Hold/Slide裁切及黑线专用更新路径保留。
-- 自动倾斜记录左右极值而非同侧Arc求和；按AA的EnwidenScale补偿、正向9.6/s／其他4.8/s跟随与.0001阈值。camera事件初始角度从AA的LookAt矩阵计算；天空线满扩展高度8.25，连接线随扩展淡化。
-- 背景Canvas调整到AA的1280×720宽度匹配，图片1280×960，宽屏Y偏移按设计尺寸计算；仅viewport改变时重设位置，无每帧对象分配。
-- 专项测试 `Assets/Tests/EditMode/ArcadeAlphaAppearanceTests.cs` 最终18/18通过（含宽屏背景切回16:9复位），源码编译无诊断；日志未检出C# warning/error或Shader error。结果与日志在 `E:\AffdataDev\Checks\alpha-appearance-results.xml` / `alpha-appearance-tests.log`。这是源码修改与针对性验证，不是AA/AE所有物件同帧截图全量验收；未因此自动发布到安装目录。
-- 用户随后要求打包，以上AA对齐和天空Slide PURE修复已发布到 `C:\AffdataEdit_custom`；成功日志 `Windows_2026-11-08_08-23-12.log`，含等待用户保存退出共124.1秒，安装程序集SHA256核对一致。前一次08-18-46构建成功但等待程序退出超时，未发布，不要把该旧包当最新交付。
+- 实体Arc按参考实现段尾距离计算远处alpha：常规阈值85，零时长新样式80，10单位内由225/255到75/255；body/head/高度指示器使用参考实现对应opacity乘数。原有段几何、From/To裁切、Hold/Slide裁切及黑线专用更新路径保留。
+- 自动倾斜记录左右极值而非同侧Arc求和；按参考实现的EnwidenScale补偿、正向9.6/s／其他4.8/s跟随与.0001阈值。camera事件初始角度从参考实现的LookAt矩阵计算；天空线满扩展高度8.25，连接线随扩展淡化。
+- 背景Canvas调整到参考实现的1280×720宽度匹配，图片1280×960，宽屏Y偏移按设计尺寸计算；仅viewport改变时重设位置，无每帧对象分配。
+- 专项测试 `Assets/Tests/EditMode/ArcadeAlphaAppearanceTests.cs` 最终18/18通过（含宽屏背景切回16:9复位），源码编译无诊断；日志未检出C# warning/error或Shader error。结果与日志在 `E:\AffdataDev\Checks\alpha-appearance-results.xml` / `alpha-appearance-tests.log`。这是源码修改与针对性验证，不是参考实现/AE所有物件同帧截图全量验收；未因此自动发布到安装目录。
+- 用户随后要求打包，以上参考实现对齐和天空Slide PURE修复已发布到 `C:\AffdataEdit_custom`；成功日志 `Windows_2026-11-08_08-23-12.log`，含等待用户保存退出共124.1秒，安装程序集SHA256核对一致。前一次08-18-46构建成功但等待程序退出超时，未发布，不要把该旧包当最新交付。
 
 ## 主题、设置、默认值与保存
 
@@ -247,10 +247,10 @@ Esc 是固定“取消当前操作”：在黑线上点立得创建 ArcTap，即
 - `E:\AffdataDev\Checks\Arcade.rsp` 是旧编译参数快照，不自动包含新增文件；快速 csc 检查必须补上新源文件。通常直接运行现有增量打包更可靠。
 - 最初讨论过的外置 Lua、整体本家渲染审查等没有在这份交接中逐项确认完成。以后先读当前实现和新的用户任务，不自动当成仍要补齐的工作。
 
-- 2026-11-08追加 AA 1.13.1实际GPU核查：Arc与Shadow片元着色器直接拒绝 abs(world Z)>90，CPU候选100不是最终可见距离。AE NoteIndirect 对Arc（含头）及Arc阴影加入同样逐像素90裁切，保留原长物件近端裁切实现。D3D11反汇编见 Checks/AlphaJudgementReference/aa113-arc-4.asm.txt 与 aa113-shadow-4.asm.txt。
-- 播放HUD：独立扩大暂停／信息组，采用 AA 1.5x 与1920x1080 Expand缩放，编辑工具栏布局保留。暂停图237x99，播放坐标(-117,-20)，对应AA legacy组(170-237)、隐藏HP侧栏-50；信息图向右偏30单位，均随组缩放，不能只把两幅图原地放大。背景新增 ArcBackgroundEdgeFill，仅在主体图像以外采样原图边缘做渐进模糊延伸；不创建大纹理副本／CPU模糊／额外RT，跟随换背景和源图颜色。
+- 2026-11-08追加 参考实现 1.13.1实际GPU核查：Arc与Shadow片元着色器直接拒绝 abs(world Z)>90，CPU候选100不是最终可见距离。AE NoteIndirect 对Arc（含头）及Arc阴影加入同样逐像素90裁切，保留原长物件近端裁切实现。D3D11反汇编见 Checks/AlphaJudgementReference/aa113-arc-4.asm.txt 与 aa113-shadow-4.asm.txt。
+- 播放HUD：独立扩大暂停／信息组，采用 参考实现 1.5x 与1920x1080 Expand缩放，编辑工具栏布局保留。暂停图237x99，播放坐标(-117,-20)，对应参考实现 legacy组(170-237)、隐藏HP侧栏-50；信息图向右偏30单位，均随组缩放，不能只把两幅图原地放大。背景新增 ArcBackgroundEdgeFill，仅在主体图像以外采样原图边缘做渐进模糊延伸；不创建大纹理副本／CPU模糊／额外RT，跟随换背景和源图颜色。
 
-- 本次验证：外部C#编译无诊断；AlphaAppearance 20项及播放状态回归1项通过。旧测试销毁EditMode对象时未取消LitMotion，虽断言通过但退出期有MissingReferenceException，已在测试清理显式调用OnDestroy并单独重跑，1/1且日志无异常。用户按物理Escape终止computer-use，已停止所有界面输入；最终包尚未完成实机同帧画面对照，不能宣称像素级一致。AA参考窗口已恢复谱面时间13945，未保存／更改谱面。
+- 本次验证：外部C#编译无诊断；AlphaAppearance 20项及播放状态回归1项通过。旧测试销毁EditMode对象时未取消LitMotion，虽断言通过但退出期有MissingReferenceException，已在测试清理显式调用OnDestroy并单独重跑，1/1且日志无异常。用户按物理Escape终止computer-use，已停止所有界面输入；最终包尚未完成实机同帧画面对照，不能宣称像素级一致。参考实现参考窗口已恢复谱面时间13945，未保存／更改谱面。
 - 当前修正已打包到 C:\AffdataEdit_custom；最终日志 Windows_2026-11-08_09-26-46.log，45.6秒，安装程序集SHA256与构建输出一致；构建成功且无编译／Shader警告错误。保留用户原有定制与安装目录数据。
 - 2026-11-08黑条回归：原补边挂在Background相机画布内，会被GameplayCamera的5%视口裁掉，无法填工具栏与视口间的缝。新增EditorCanvas第一层RawImage，整窗覆盖但shader只画GameplayCamera.rect之外，按原背景实际屏幕矩形换算并钳制到可见视口边缘采样，带渐进模糊；原相机内补边继续处理图片自身空隙。没有扩大GameplayCamera.rect或改变谱面透视。
 - 黑条截图原图2559x1527，左侧102..127列纯黑，与camera.rect.x=.05（约128像素）精确吻合。源码覆盖检查确认这些列进入新增outside-viewport分支，129列及画面中央不进入。构建Windows_2026-11-08_09-33-24.log成功，无C#及Shader编译警告错误；等待关闭定制版发布。此为截图位置与源码范围检查，尚非新包实机截图验收。
@@ -261,14 +261,14 @@ Esc 是固定“取消当前操作”：在黑线上点立得创建 ArcTap，即
 - HUD遮挡修正版最终已发布 C:\AffdataEdit_custom；Windows_2026-11-08_09-44-14.log，44.7秒，程序集哈希一致，无C#／Shader编译警告错误。使用FindAnyObjectByType定位既有显示层，避免Unity6.6已弃用FindFirstObjectByType警告；09-43-15那次构建因严格警告检查失败，没有发布。
 - 2026-11-08再纠正边缘物件被替换：camera.rect不是RT有效像素范围，按rect强制替换边缘会切掉实际绘制内容。合成shader改为先采样完整谱面RT，所有不透明像素原样保留，半透明内容以over合成到补边之上，仅透明空白露出背景。GameplayCamera清屏alpha设0，缩小视口期间渲染前清空RT，避免前一全屏帧在外圈残留；销毁恢复原清屏颜色。替代旧rect分区替换。边缘GPU回归1280x720与800x600通过，包含rect外不透明蓝色、纯黑、半透明蓝色物件，pixel断言与截图见Checks/border-alpha-check.log及border-alpha-*.png。旧中央纯色测试不足以证明边缘物件保留。
 - 边缘内容保留修正版已发布C:\AffdataEdit_custom，Windows_2026-11-08_09-50-28.log，构建成功且无C#／Shader编译警告错误，安装程序集哈希一致。尚未完成用户实际谱面同帧截图复核；GPU测试明确验证边界外物件像素保留。
-- 2026-11-08 AA同帧32594ms/4.9实机对照找到真实裁切原因：AA工具栏背景遮满相机5%裁切边；AE的四个BarView有-20 sizeDelta透明内缩，露出已被相机裁切的轨道矩形边界。撤回此前针对RT的补边材质、透明清屏及GL.Clear全部变更，仅保留原背景画布内局部补边；BarView取消20单位内缩，四边工具栏背景至少覆盖5%编辑画布，保留投影与相机rect。旧色块/alpha测试不代表实际物件未被相机裁切，不再作为此问题验收。
+- 2026-11-08 参考实现同帧32594ms/4.9实机对照找到真实裁切原因：参考实现工具栏背景遮满相机5%裁切边；AE的四个BarView有-20 sizeDelta透明内缩，露出已被相机裁切的轨道矩形边界。撤回此前针对RT的补边材质、透明清屏及GL.Clear全部变更，仅保留原背景画布内局部补边；BarView取消20单位内缩，四边工具栏背景至少覆盖5%编辑画布，保留投影与相机rect。旧色块/alpha测试不代表实际物件未被相机裁切，不再作为此问题验收。
 - 实机首次复核还发现View本身没有Image，只改View尺寸仍不够；最终给四个现有Bar Canvas各加一个首子Image作为不透明chrome底板，随原Bar一起收起，raycastTarget=false，颜色跟随Current.Chrome，覆盖到5%裁切边。不是在谱面或EditorCanvas上新增覆盖图层。
-- 最终Windows_2026-11-08_10-04-03.log构建47.9秒成功，无C#／Shader警告错误，程序集核对一致。实际打开新版空谱面窗口检查：原黑色间隙/矩形轨道边缘已被四边chrome完整盖住，HUD未遮挡。AA已实际切到32594ms/4.9用于对照。尝试通过UI加载谱面时打开按钮未触发对话框，未完成新包同谱面物件同帧复核，不把空谱面窗口检查说成全部验证通过。
+- 最终Windows_2026-11-08_10-04-03.log构建47.9秒成功，无C#／Shader警告错误，程序集核对一致。实际打开新版空谱面窗口检查：原黑色间隙/矩形轨道边缘已被四边chrome完整盖住，HUD未遮挡。参考实现已实际切到32594ms/4.9用于对照。尝试通过UI加载谱面时打开按钮未触发对话框，未完成新包同谱面物件同帧复核，不把空谱面窗口检查说成全部验证通过。
 
-- 2026-11-08用户再次否定整块chrome方案：移除FitToolbarBackgroundsToViewport/四边底板/强制Bar尺寸及View清零，恢复场景原UI尺寸与布局。现在GameplayViewRect仅记录AA取景，实际相机全viewport，projection的m00/m11按logical宽高缩放、m02/m12补偿中心，从而保留AA中央物件屏幕位置且把几何继续渲染到窄工具栏背后。背景图按logical宽高保留原主体比例，原局部edge fill只绘制图片外空白。PURE尺寸换算使用logical viewport高度。禁止再靠铺满白色侧栏遮裁切口。
-- 用户明确长期授权：后续打包时直接关闭C:\AffdataEdit_custom\AffdataEdit.exe，不保存、不询问；已修改原Tools/Build-Windows.ps1，只按完整ExecutablePath匹配停止该定制版，保留official/AA/Unity等其他进程。
-- 最终Windows_2026-11-08_10-16-11.log成功61.9秒，无C#／Shader编译警告错误，自动按授权关闭custom后发布，哈希一致。ProjectionContinuationCheck在1280x720/800x600真实相机渲染证明原AA屏幕坐标误差<.01px且旧viewport外几何能继续显示。实机通过曲封面打开本地文件夹E:\sinkdeepseek（LastWorkingDifficulty=2, LastWorkingTiming=32594），已在小窗口及最大化窗口检查同谱4.9/32594ms：恢复原窄工具栏与间距，四周无整块白底，右Arc/轨道持续延伸到工具栏下方，无原矩形断口。
-- 2026-11-08 HUD后续调整：难度框Difficult由(-92,-85)/83宽改为(-116,-85)/68宽，保留仅数字Rating语义并右对齐；Difficulties选择组从-260左移到-284（比AA的-306少挪），两组间8单位空隙，文本右端含panel偏移30后仍有余量。Name/Composer位置分别(-245,-122)、(-245,-152)，宽197，使右边界与难度对齐。播放HUD通过hudPlayerBlend做.25秒OutCubic位移与缩放，保留窗口尺寸适配。Q TogglePlayback不再被switchingMode拦截；模式动画不取消、只暂停播放状态。PlaybackComparisonPauseTests已添加切换锁为true的回归，1/1通过。
+- 2026-11-08用户再次否定整块chrome方案：移除FitToolbarBackgroundsToViewport/四边底板/强制Bar尺寸及View清零，恢复场景原UI尺寸与布局。现在GameplayViewRect仅记录参考实现取景，实际相机全viewport，projection的m00/m11按logical宽高缩放、m02/m12补偿中心，从而保留参考实现中央物件屏幕位置且把几何继续渲染到窄工具栏背后。背景图按logical宽高保留原主体比例，原局部edge fill只绘制图片外空白。PURE尺寸换算使用logical viewport高度。禁止再靠铺满白色侧栏遮裁切口。
+- 用户明确长期授权：后续打包时直接关闭C:\AffdataEdit_custom\AffdataEdit.exe，不保存、不询问；已修改原Tools/Build-Windows.ps1，只按完整ExecutablePath匹配停止该定制版，保留official/参考实现/Unity等其他进程。
+- 最终Windows_2026-11-08_10-16-11.log成功61.9秒，无C#／Shader编译警告错误，自动按授权关闭custom后发布，哈希一致。ProjectionContinuationCheck在1280x720/800x600真实相机渲染证明原参考实现屏幕坐标误差<.01px且旧viewport外几何能继续显示。实机通过曲封面打开本地文件夹E:\sinkdeepseek（LastWorkingDifficulty=2, LastWorkingTiming=32594），已在小窗口及最大化窗口检查同谱4.9/32594ms：恢复原窄工具栏与间距，四周无整块白底，右Arc/轨道持续延伸到工具栏下方，无原矩形断口。
+- 2026-11-08 HUD后续调整：难度框Difficult由(-92,-85)/83宽改为(-116,-85)/68宽，保留仅数字Rating语义并右对齐；Difficulties选择组从-260左移到-284（比参考实现的-306少挪），两组间8单位空隙，文本右端含panel偏移30后仍有余量。Name/Composer位置分别(-245,-122)、(-245,-152)，宽197，使右边界与难度对齐。播放HUD通过hudPlayerBlend做.25秒OutCubic位移与缩放，保留窗口尺寸适配。Q TogglePlayback不再被switchingMode拦截；模式动画不取消、只暂停播放状态。PlaybackComparisonPauseTests已添加切换锁为true的回归，1/1通过。
 - HUD修正已发布C:\AffdataEdit_custom；Windows_2026-11-08_10-33-12.log成功53.6秒，无C#／Shader编译警告错误，自动关闭custom，程序集哈希一致。实际加载E:\sinkdeepseek已保存Rating=10，在深色编辑、小窗口播放、最大化播放HUD里确认10完整可见，五个难度按钮适度左移，名称/曲师相对曲封位置正常。Q切换锁回归1/1通过；CUA合成Q在该InputSystem实例未触发（未据此宣称物理Q实机通过），状态逻辑测试明确验证switchingMode=true时能暂停且不会取消模式切换。
 - 实机检查结束已通过顶部时间框恢复32594ms并停留编辑模式；没有修改难度、名称、曲师或谱面物件，也没有主动保存谱面。HUD逻辑测试验证Q切换锁，实机检查验证10在小窗口/最大化播放均不截断。
 
@@ -284,8 +284,8 @@ Esc 是固定“取消当前操作”：在黑线上点立得创建 ArcTap，即
 - 普通中键：单 Arctap（直接选子 Tap 或选其1ms宿主）整体拖时间／位置，混选 Arc、Trace、Slide 时同一偏移批量移动；普通单个非宿主Arc／Slide保持原端点编辑。Alt中键位置移动共享目标解析，子Tap与宿主同时选中只移动一次。
 - 时间整体移动给宿主及内部实际Arctap各建一次撤销命令，保持短宿主时长及子Tap相对时间，保留Clone未带Arc引用的关联。普通Arc内单独选中的Tap仍受原宿主时间边界限制。
 - 最近可视端点定位使用该端点所属时间组，不再错误使用第一个目标组。位置移动时Slide仍仅X，Arc／Trace／单Tap宿主可XY。
-- CreateSelected圆形默认顺序改为从左顺时针：不创建、删除、网格、单Arctap、Arctap、退出、Arc、Hold、Tap、转Slide（按类型过滤）；AA1.13.1同一创建目录加删除适用于Arc／Trace／Hold／Tap／Arctap，AE额外保留转Slide。设置同步；普通选中和未选中的创建菜单不改，奇数不补槽，保留自定义排序。
-- 验证：single-tap-group-menu-results.xml 12/12专项通过，覆盖宿主／子Tap选择组合去重、整体时间偏移、位置不累积、Slide仅X、原单Slide四角拖动、播放撤销保留、环形按钮不重叠及新排序。Windows_2026-11-09_11-50-18.log构建52秒成功，无C#／Shader编译警告错误，已发布C:\AffdataEdit_custom；未做AA／AE逐类菜单实机同屏截图或完整鼠标拖动验收。
+- CreateSelected圆形默认顺序改为从左顺时针：不创建、删除、网格、单Arctap、Arctap、退出、Arc、Hold、Tap、转Slide（按类型过滤）；参考实现1.13.1同一创建目录加删除适用于Arc／Trace／Hold／Tap／Arctap，AE额外保留转Slide。设置同步；普通选中和未选中的创建菜单不改，奇数不补槽，保留自定义排序。
+- 验证：single-tap-group-menu-results.xml 12/12专项通过，覆盖宿主／子Tap选择组合去重、整体时间偏移、位置不累积、Slide仅X、原单Slide四角拖动、播放撤销保留、环形按钮不重叠及新排序。Windows_2026-11-09_11-50-18.log构建52秒成功，无C#／Shader编译警告错误，已发布C:\AffdataEdit_custom；未做参考实现／AE逐类菜单实机同屏截图或完整鼠标拖动验收。
 
 ## 2026-11-09 单 Arctap 水平镜像
 
