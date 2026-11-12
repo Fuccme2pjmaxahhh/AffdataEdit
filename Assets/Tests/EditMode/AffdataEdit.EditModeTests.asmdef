@@ -5,7 +5,8 @@
     "Unity.InputSystem",
     "Unity.ugui",
     "Unity.TextMeshPro",
-    "UniTask"
+    "UniTask",
+    "MoonSharp"
   ],
   "includePlatforms": [
     "Editor"

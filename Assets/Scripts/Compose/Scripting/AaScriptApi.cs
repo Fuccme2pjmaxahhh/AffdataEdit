@@ -40,6 +40,7 @@ namespace Arcade.Compose.Scripting.Aa
             globals["NoteEvent"] = new NoteEventAPI();
             globals["TimingManager"] = new TimingManagerAPI();
             globals["Toast"] = new ToastAPI();
+            globals["Dialog"] = new DialogAPI();
             globals["Random"] = new RandomAPI();
             globals["Data"] = new DataAPI();
             globals["Mathf"] = UserData.CreateStatic(typeof(Mathf));
@@ -415,6 +416,12 @@ namespace Arcade.Compose.Scripting.Aa
         public int CurrentTimingGroupID => AdeScriptSession.Current is AdeScriptSession s
             ? s.IdOf(s.CurrentGroup) : AdeTimingEditor.Instance.currentTimingGroup?.Id ?? 0;
         public int TimingGroupCount => AdeScriptSession.Require().GroupCount;
+    }
+
+    public class DialogAPI
+    {
+        public void Show(string title, string content, string buttonContent)
+            => Arcade.Compose.Dialog.AdeBasicSingleDialogContent.Instance.Show(content, title, buttonContent);
     }
 
     public class ToastAPI
