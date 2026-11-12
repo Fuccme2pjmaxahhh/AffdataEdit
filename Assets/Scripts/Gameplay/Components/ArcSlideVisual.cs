@@ -13,7 +13,7 @@ namespace Arcade.Gameplay
         public const float RenderDistance = 100f;
         public static bool IsWithinRenderDistance(float worldZ) => Mathf.Abs(worldZ) <= RenderDistance;
         private static readonly Vector3 BracketScale = Vector3.one * (8.5f / 1.62f);
-        private readonly ArcSlide note;
+        private ArcSlide note;
         private readonly Mesh mesh;
         private bool bodyVisible, shadowVisible;
         internal bool IsVisible => bodyVisible || shadowVisible || bracketVisible[0] || bracketVisible[1];
@@ -29,10 +29,26 @@ namespace Arcade.Gameplay
         private bool lastConsumed;
         public ArcSlideVisual(ArcSlide slide)
         {
-            note = slide;
             mesh = new Mesh { name = "Slide ribbon", indexFormat = IndexFormat.UInt32 };
+            Bind(slide);
         }
-        public void Dispose() => Object.Destroy(mesh);
+        internal void Bind(ArcSlide slide)
+        {
+            note = slide;
+            lastStart = int.MinValue; signature = 0; lastConsumed = false;
+            bodyVisible = shadowVisible = bracketVisible[0] = bracketVisible[1] = false;
+        }
+        internal void Unbind()
+        {
+            note = null;
+            bodyVisible = shadowVisible = bracketVisible[0] = bracketVisible[1] = false;
+        }
+        public void Dispose()
+        {
+            note = null;
+            if (Application.isPlaying) Object.Destroy(mesh);
+            else Object.DestroyImmediate(mesh);
+        }
         public void Invalidate() => lastStart = int.MinValue;
         public void Present(int now, bool consume)
         {

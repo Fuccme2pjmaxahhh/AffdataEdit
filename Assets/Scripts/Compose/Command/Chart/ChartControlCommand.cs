@@ -11,9 +11,10 @@ using UnityEngine;
 namespace Arcade.Compose.Command
 {
     // A null before/after means insertion/deletion. Keep the event identity across undo.
-    public sealed class ChartControlCommand : ICommand
+    public sealed class ChartControlCommand : ICommand, ICommandMemoryCost
     {
         private readonly ArcEvent target, before, after;
+        long ICommandMemoryCost.EstimatedBytes => 128 + CommandMemory.Estimate(before) + CommandMemory.Estimate(after);
         private readonly int originalIndex;
         public string Name { get; }
 
@@ -55,10 +56,11 @@ namespace Arcade.Compose.Command
         }
     }
 
-    public sealed class EditTimingGroupAttributes : ICommand
+    public sealed class EditTimingGroupAttributes : ICommand, ICommandMemoryCost
     {
         private readonly ArcTimingGroup group;
         private readonly string before, after;
+        long ICommandMemoryCost.EstimatedBytes => 128 + 2L * ((before?.Length ?? 0) + (after?.Length ?? 0));
         public string Name => "修改时间组属性";
         public EditTimingGroupAttributes(ArcTimingGroup group, string attributes)
         { this.group = group; before = group.Attributes; after = attributes; }

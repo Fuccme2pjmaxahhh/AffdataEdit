@@ -333,17 +333,21 @@ namespace Arcade.Compose.Dialog
                 float width = Mathf.Min(760, ArcadeComposeManager.Instance.EditorCanvas.rect.width - 100);
                 if (!Mathf.Approximately(skinView.rect.width, width)) skinView.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
             }
-            foreach (var container in new[] { InternalBackgroundContainer, ExternalBackgroundContainer, customBackgroundContainer })
-            {
-                if (!container) continue;
-                var grid = container.GetComponent<GridLayoutGroup>();
-                if (!grid) continue;
-                grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount; grid.constraintCount = 3;
-                float cellWidth = Mathf.Max(1, (container.rect.width - grid.padding.horizontal - grid.spacing.x * 2) / 3);
-                var cell = new Vector2(cellWidth, 156);
-                if (grid.cellSize != cell) grid.cellSize = cell;
-            }
+            UpdateBackgroundGrid(InternalBackgroundContainer);
+            UpdateBackgroundGrid(ExternalBackgroundContainer);
+            UpdateBackgroundGrid(customBackgroundContainer);
 		}
+
+        private static void UpdateBackgroundGrid(RectTransform container)
+        {
+            if (!container) return;
+            var grid = container.GetComponent<GridLayoutGroup>();
+            if (!grid) return;
+            grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount; grid.constraintCount = 3;
+            float cellWidth = Mathf.Max(1, (container.rect.width - grid.padding.horizontal - grid.spacing.x * 2) / 3);
+            var cell = new Vector2(cellWidth, 156);
+            if (grid.cellSize != cell) grid.cellSize = cell;
+        }
 
 		private void UpdateTabs()
 		{
@@ -494,14 +498,7 @@ namespace Arcade.Compose.Dialog
 
 		private void ApplyBackground()
 		{
-			if (preference.IsExternalBackground)
-			{
-				ArcSkinManager.Instance.SetBackground(AdeSkinHost.Instance.ExternalBackgrounds[preference.SelectedBackground].value);
-			}
-			else
-			{
-				ArcSkinManager.Instance.SetBackground(AdeSkinHost.Instance.skinData.BackgroundDatas[preference.SelectedBackground].background.value);
-			}
+			AdeSkinHost.Instance.ApplyBackground(preference.SelectedBackground, preference.IsExternalBackground);
 		}
 		private void ApplySimpleSkin()
 		{
@@ -530,6 +527,7 @@ namespace Arcade.Compose.Dialog
 		{
 			if (background != null)
 			{
+				AdeSkinHost.Instance.CancelBackgroundSelection();
 				ArcSkinManager.Instance.SetBackground(background);
 			}
 			else

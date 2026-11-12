@@ -56,6 +56,9 @@ namespace Arcade.Compose.Command
 		private LinkedList<ICommand> undo = new LinkedList<ICommand>();
 		private LinkedList<ICommand> redo = new LinkedList<ICommand>();
 		private ICommand preparing = null;
+        internal const long HistoryMemoryLimitBytes = 128L * 1024 * 1024;
+        private readonly Dictionary<ICommand, (long Cost, int References)> memoryCosts = new Dictionary<ICommand, (long, int)>();
+        internal long HistoryMemoryBytes { get; private set; }
 
 		private void Update()
 		{
@@ -81,11 +84,9 @@ namespace Arcade.Compose.Command
 			onCommandExecuted(command, false);
 			Debug.Log($"Add: {command.Name}");
 			undo.AddLast(command);
-			if (undo.Count > bufferSize)
-			{
-				undo.RemoveFirst();
-			}
-			redo.Clear();
+            Remember(command);
+            ClearRedo();
+            TrimHistory();
 		}
 		public void Undo()
 		{
@@ -127,22 +128,13 @@ namespace Arcade.Compose.Command
 			Cancel();
 			undo.Clear();
 			redo.Clear();
+            memoryCosts.Clear(); HistoryMemoryBytes = 0;
 		}
 
 		public void SetBufferSize(uint size)
 		{
 			bufferSize = size;
-			while (undo.Count + redo.Count > bufferSize)
-			{
-				if (redo.Count > 0)
-				{
-					redo.RemoveFirst();
-				}
-				else
-				{
-					undo.RemoveFirst();
-				}
-			}
+            TrimHistory();
 		}
 		public void Prepare(ICommand command)
 		{
@@ -159,11 +151,9 @@ namespace Arcade.Compose.Command
 			{
 				Debug.Log($"Add: {preparing.Name}");
 				undo.AddLast(preparing);
-				if (undo.Count > bufferSize)
-				{
-					undo.RemoveFirst();
-				}
-				redo.Clear();
+                Remember(preparing);
+                ClearRedo();
+                TrimHistory();
 				onCommandExecuted(preparing, false);
 				preparing = null;
 			}
@@ -176,6 +166,41 @@ namespace Arcade.Compose.Command
 				preparing = null;
 			}
 		}
+        private void Remember(ICommand command)
+        {
+            long cost = Math.Max(0, CommandMemory.Estimate(command));
+            if (memoryCosts.TryGetValue(command, out var entry))
+            {
+                cost = entry.Cost;
+                memoryCosts[command] = (entry.Cost, entry.References + 1);
+            }
+            else memoryCosts.Add(command, (cost, 1));
+            HistoryMemoryBytes += cost;
+        }
+        private void Forget(ICommand command)
+        {
+            if (!memoryCosts.TryGetValue(command, out var entry)) return;
+            if (entry.References > 1) memoryCosts[command] = (entry.Cost, entry.References - 1);
+            else memoryCosts.Remove(command);
+            HistoryMemoryBytes -= entry.Cost;
+        }
+        private void ClearRedo()
+        {
+            foreach (var command in redo) Forget(command);
+            redo.Clear();
+        }
+        private void TrimHistory()
+        {
+            // Preserve the newest operation even if a single large import exceeds the budget,
+            // so every committed edit remains undoable. A user-selected depth of zero still wins.
+            while (undo.Count + redo.Count > bufferSize
+                || HistoryMemoryBytes > HistoryMemoryLimitBytes && undo.Count + redo.Count > 1)
+            {
+                var list = redo.Count > 0 ? redo : undo;
+                Forget(list.First.Value);
+                list.RemoveFirst();
+            }
+        }
 	}
 }
 

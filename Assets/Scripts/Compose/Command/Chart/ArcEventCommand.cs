@@ -6,12 +6,13 @@ using UnityEngine;
 
 namespace Arcade.Compose.Command
 {
-    public sealed class ConvertArcToSlideCommand : ICommand
+    public sealed class ConvertArcToSlideCommand : ICommand, ICommandMemoryCost
     {
         private readonly ArcNote original;
         private readonly ArcSlide[] slides;
         private readonly BatchCommand changes;
         private readonly List<ArcArcTap> selectedArcTaps = new List<ArcArcTap>();
+        long ICommandMemoryCost.EstimatedBytes => 128 + 8L * selectedArcTaps.Capacity + CommandMemory.Estimate(changes);
         public string Name => "转换为 Slide";
 
         private ConvertArcToSlideCommand(ArcNote source, ArcSlide[] converted)
@@ -87,9 +88,10 @@ namespace Arcade.Compose.Command
         }
     }
 
-	public class AddArcEventCommand : ICommand
+	public class AddArcEventCommand : ICommand, ICommandMemoryCost
 	{
 		private readonly ArcEvent @event = null;
+        long ICommandMemoryCost.EstimatedBytes => 64 + CommandMemory.Estimate(@event);
 		public AddArcEventCommand(ArcEvent note)
 		{
 			this.@event = note;
@@ -147,9 +149,10 @@ namespace Arcade.Compose.Command
 			}
 		}
 	}
-	public class RemoveArcEventCommand : ICommand
+	public class RemoveArcEventCommand : ICommand, ICommandMemoryCost
 	{
 		private readonly ArcEvent @event = null;
+        long ICommandMemoryCost.EstimatedBytes => 64 + CommandMemory.Estimate(@event);
 		public RemoveArcEventCommand(ArcEvent note)
 		{
 			this.@event = note;
@@ -208,10 +211,11 @@ namespace Arcade.Compose.Command
 			}
 		}
 	}
-	public class EditArcEventCommand : ICommand
+	public class EditArcEventCommand : ICommand, ICommandMemoryCost
 	{
 		private readonly ArcEvent note = null;
 		private readonly ArcEvent oldValues, newValues;
+        long ICommandMemoryCost.EstimatedBytes => 128 + CommandMemory.Estimate(oldValues) + CommandMemory.Estimate(newValues);
         private readonly bool preservePlaybackJudgement;
 		public EditArcEventCommand(ArcEvent note, ArcEvent newValues, bool preservePlaybackJudgement = false)
 		{
@@ -255,10 +259,11 @@ namespace Arcade.Compose.Command
         }
 	}
 
-	public class AddArcTapCommand : ICommand
+	public class AddArcTapCommand : ICommand, ICommandMemoryCost
 	{
 		private readonly ArcArc arc;
 		private readonly ArcArcTap arctap;
+        long ICommandMemoryCost.EstimatedBytes => 64 + CommandMemory.Estimate(arctap);
 		public AddArcTapCommand(ArcArc arc, ArcArcTap arctap)
 		{
 			this.arc = arc;
@@ -281,10 +286,11 @@ namespace Arcade.Compose.Command
 			arc.RemoveArcTap(arctap);
 		}
 	}
-	public class RemoveArcTapCommand : ICommand
+	public class RemoveArcTapCommand : ICommand, ICommandMemoryCost
 	{
 		private readonly ArcArc arc;
 		private readonly ArcArcTap arctap;
+        long ICommandMemoryCost.EstimatedBytes => 64 + CommandMemory.Estimate(arctap);
 		public RemoveArcTapCommand(ArcArc arc, ArcArcTap arctap)
 		{
 			this.arc = arc;

@@ -20,6 +20,7 @@ namespace Arcade.Gameplay
 
         private readonly Stack<Instance> available = new Stack<Instance>();
         private readonly List<Instance> instances = new List<Instance>();
+        private const int MaxIdleInstances = 32;
 
         public static ArcLongNoteParticlePool Get()
         {
@@ -73,7 +74,25 @@ namespace Arcade.Gameplay
         {
             instance.Particles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
             instance.Particles.gameObject.SetActive(false);
-            available.Push(instance);
+            // Retain the current chart's working set during playback; repeated dense bursts
+            // should reuse their particles instead of allocating/destroying them each time.
+            if (available.Count < MaxIdleInstances || ArcGameplayManager.Instance && ArcGameplayManager.Instance.IsPlaying)
+                available.Push(instance);
+            else DestroyInstance(instance);
+        }
+
+        private void DestroyInstance(Instance instance)
+        {
+            instances.Remove(instance);
+            if (instance.Material) Destroy(instance.Material);
+            if (instance.Particles) Destroy(instance.Particles.gameObject);
+        }
+
+        internal static void TrimIdle(int retainedCount)
+        {
+            if (!current) return;
+            while (current.available.Count > retainedCount)
+                current.DestroyInstance(current.available.Pop());
         }
 
         private void OnDestroy()

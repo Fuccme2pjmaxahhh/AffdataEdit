@@ -48,6 +48,11 @@ namespace Arcade.Gameplay
             public bool Selected;
             public readonly MaterialPropertyBlock Properties = new MaterialPropertyBlock();
             public readonly MaterialPropertyBlock SelectionProperties = new MaterialPropertyBlock();
+            public void Reset()
+            {
+                Item = default; Material = null; Selected = false;
+                Properties.Clear(); SelectionProperties.Clear();
+            }
         }
         private readonly List<Item> items = new List<Item>();
         private readonly List<GraphicsBuffer.IndirectDrawIndexedArgs> commands = new List<GraphicsBuffer.IndirectDrawIndexedArgs>();
@@ -66,6 +71,7 @@ namespace Arcade.Gameplay
         private Color connectionColor;
         private readonly Dictionary<ArcArcTap, Vector2> connectionPositions = new Dictionary<ArcArcTap, Vector2>();
         private int frame = -1;
+        private int activeDraws;
         public int VisibleInstanceCount => visibleItemCount;
         public int DrawCount => commands.Count;
         private static readonly int NotesId = Shader.PropertyToID("_Notes"), OffsetId = Shader.PropertyToID("_NoteOffset"),
@@ -84,7 +90,7 @@ namespace Arcade.Gameplay
                 pickingChart = ArcGameplayManager.Instance.Chart;
             }
             cameraForFrame = ArcCameraManager.Instance ? ArcCameraManager.Instance.GameplayCamera : null;
-            if (!cameraForFrame || !ArcGameplayManager.Instance.IsLoaded) return;
+            if (!cameraForFrame || !ArcGameplayManager.Instance.IsLoaded) { TrimInactiveDraws(0); return; }
             GeometryUtility.CalculateFrustumPlanes(cameraForFrame, frustum);
             cameraPosition = cameraForFrame.transform.position;
             cameraForward = cameraForFrame.transform.forward;
@@ -302,7 +308,7 @@ namespace Arcade.Gameplay
         private void Upload()
         {
 
-            if (items.Count == 0) return;
+            if (items.Count == 0) { TrimInactiveDraws(0); return; }
             // Sort compact keys, keeping matrices and instance data out of the sort's copies.
             SortVisibleItems();
             // Keep transparent order: adjacent compatible items can share a draw even across sort orders.
@@ -326,6 +332,7 @@ namespace Arcade.Gameplay
                 draw.SelectionProperties.SetInt(OffsetId, start);
                 start = end;
             }
+            TrimInactiveDraws(commands.Count);
             if (visibleItemCount == 0) return;
             EnsureBuffer(ref instanceBuffer, GraphicsBuffer.Target.Structured, visibleItemCount, Marshal.SizeOf<NoteInstance>());
             EnsureBuffer(ref commandBuffer, GraphicsBuffer.Target.IndirectArguments, commands.Count, GraphicsBuffer.IndirectDrawIndexedArgs.size);
@@ -360,6 +367,12 @@ namespace Arcade.Gameplay
         {
             properties.SetBuffer(NotesId, instanceBuffer); properties.SetTexture(TextureId, texture);
             properties.SetFloat(SelectionId, selection ? 1 : 0);
+        }
+        private void TrimInactiveDraws(int count)
+        {
+            // Only the unused suffix needs clearing: active draws are overwritten by Upload.
+            for (int i = count; i < activeDraws; i++) draws[i].Reset();
+            activeDraws = count;
         }
         private static void EnsureBuffer(ref GraphicsBuffer buffer, GraphicsBuffer.Target target, int count, int stride)
         {
@@ -400,12 +413,24 @@ namespace Arcade.Gameplay
         }
         private void OnDestroy()
         {
-            instanceBuffer?.Dispose(); commandBuffer?.Dispose();
-            DisposeFrameBuffers();
-            DisposeResidentTaps();
+            ReleaseChartMemory();
             foreach (var material in materials.Values) Destroy(material);
             ArcNoteMeshes.Release();
             if (Instance == this) Instance = null;
+        }
+        internal void ReleaseChartMemory()
+        {
+            foreach (var draw in draws) draw.Reset();
+            draws.Clear(); draws.TrimExcess(); activeDraws = 0;
+            items.Clear(); items.TrimExcess(); commands.Clear(); commands.TrimExcess();
+            meshBounds.Clear(); sortingLayers.Clear(); connectionPositions.Clear();
+            spriteStyles.Clear(); materialStyles.Clear(); spriteGeometry.Clear();
+            pickingMeshes.Clear(); stalePickingMeshes.Clear(); pickingHits.Clear(); singlePickingResults.Clear();
+            pickingChart = null; cameraForFrame = null; visibleItemCount = 0; frame = -1;
+            instanceBuffer?.Dispose(); commandBuffer?.Dispose();
+            instanceBuffer = commandBuffer = null;
+            DisposeFrameBuffers(); DisposeResidentTaps();
+            frameInputs = Array.Empty<FrameInput>(); sortKeys = Array.Empty<SortKey>();
         }
     }
 }

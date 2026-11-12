@@ -59,5 +59,19 @@ namespace Arcade.Util.Pooling
 				modifier(component);
 			}
 		}
+		public void TrimAvailable(int retainedCount)
+		{
+			int retained = 0;
+			for (int i = pool.Count - 1; i >= 0; i--)
+			{
+				var component = pool[i];
+				if (component && !component.Available) continue;
+				if (component && retained++ < retainedCount) continue;
+				if (component) GameObject.Destroy(component.gameObject);
+				pool.RemoveAt(i);
+			}
+			nextSearch = 0;
+			pool.TrimExcess();
+		}
 	}
 }
