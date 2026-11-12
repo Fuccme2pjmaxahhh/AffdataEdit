@@ -4,7 +4,9 @@ The editor uses BASS 2.4 and BASS_FX for all playback. Unity Audio is disabled i
 
 ## Sources
 
-Native libraries are copied from AffdataPlay's `Assets/Plugins/Un4seen.Bass`, with import settings restricted to their matching platform: macOS Intel/Apple Silicon, Windows x64, Linux x64. The narrow C# ABI follows AffdataPlay's ManagedBass bindings. BASS and BASS_FX retain their upstream licenses; this project's license does not relicense these libraries.
+The original BASS, BASS_FX and BASSOPUS libraries were copied from AffdataPlay's `Assets/Plugins/Un4seen.Bass`, with import settings restricted to their matching platform: macOS Intel/Apple Silicon, Windows x64, Linux x64. The narrow C# ABI follows AffdataPlay's ManagedBass bindings. The Windows x64 FLAC cache support additionally uses official Un4seen binaries: [BASSenc 2.4.17](https://www.un4seen.com/files/bassenc24.zip), [BASSenc_FLAC 2.4.5](https://www.un4seen.com/files/bassenc_flac24.zip) and [BASSFLAC](https://www.un4seen.com/files/bassflac24.zip) (DLL file version 2.4.6). Each matches the `x64/` DLL in its linked archive.
+
+These libraries retain their upstream licenses; this project's license does not relicense them. BASSenc, BASSenc_FLAC and BASSFLAC are free to use with BASS under their respective terms; BASS has its own license. The FLAC add-ons include libFLAC 1.5.0. Their upstream license and credit text, the libFLAC notice, and the Signalsmith licenses used by [AffStretch](../Native/AffStretch/README.md) are shipped in [`Assets/StreamingAssets/ThirdPartyNotices.txt`](../Assets/StreamingAssets/ThirdPartyNotices.txt).
 
 ## Playback
 

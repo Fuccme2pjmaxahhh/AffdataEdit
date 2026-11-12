@@ -9,8 +9,27 @@ namespace Arcade.Audio
         private string filePath;
         private byte[] externalData;
         private float? duration;
-        internal byte[] Bytes => externalData != null && externalData.Length > 0
-            ? externalData : (externalData = File.ReadAllBytes(filePath));
+        private long fileSize, modifiedTicks;
+        internal string FilePath => filePath;
+        internal bool IsOpusFile { get; private set; }
+        internal byte[] Bytes
+        {
+            get
+            {
+                if (externalData == null)
+                {
+                    byte[] data = File.ReadAllBytes(filePath);
+                    externalData = IsOpusFile ? DecodeOpus(data) : data;
+                }
+                return externalData;
+            }
+        }
+        internal bool MatchesFile(string path)
+        {
+            if (filePath == null || !string.Equals(filePath, Path.GetFullPath(path), System.StringComparison.OrdinalIgnoreCase)) return false;
+            var info = new FileInfo(path);
+            return info.Exists && info.Length == fileSize && info.LastWriteTimeUtc.Ticks == modifiedTicks;
+        }
         public float length
         {
             get
@@ -25,11 +44,16 @@ namespace Arcade.Audio
             if (!File.Exists(path)) return null;
             var clip = CreateInstance<BassClip>();
             clip.name = path;
-            clip.filePath = path;
-            clip.externalData = File.ReadAllBytes(path);
+            clip.filePath = Path.GetFullPath(path);
             try
             {
-                if (IsOpus(clip.externalData)) clip.externalData = DecodeOpus(clip.externalData);
+                var info = new FileInfo(path);
+                clip.fileSize = info.Length;
+                clip.modifiedTicks = info.LastWriteTimeUtc.Ticks;
+                // Music stays file-backed, including Opus; only short sample playback asks for Bytes.
+                var header = new byte[36];
+                using (var stream = File.OpenRead(path)) stream.Read(header, 0, header.Length);
+                clip.IsOpusFile = IsOpus(header);
                 _ = clip.length;
                 return clip;
             }
@@ -43,31 +67,32 @@ namespace Arcade.Audio
             return clip;
         }
         // A separate decode stream keeps spectrum reads independent of playback and tempo.
-        internal float[] ReadSpectrumSamples(out int frequency)
+        internal int ReadSpectrumSamples(System.Action<int, int> begin, System.Action<float[], int, int> write)
         {
             using (var voice = new BassVoice(this, false))
             {
                 BassNative.Check(BassNative.BASS_ChannelGetInfo(voice.Handle, out BassNative.ChannelInfo info), "spectrum info");
-                frequency = info.Frequency;
                 long bytes = BassNative.BASS_ChannelGetLength(voice.Handle, 0);
                 BassNative.Check(bytes >= 0, "spectrum length");
-                var samples = new float[checked((int)(bytes / sizeof(float) / info.Channels))];
+                int expected = checked((int)(bytes / sizeof(float) / info.Channels));
+                begin(info.Frequency, expected);
                 var buffer = new float[4096 * info.Channels];
+                var mono = new float[4096];
                 int offset = 0;
-                while (offset < samples.Length)
+                while (offset < expected)
                 {
-                    int count = System.Math.Min(buffer.Length, (samples.Length - offset) * info.Channels);
+                    int count = System.Math.Min(buffer.Length, (expected - offset) * info.Channels);
                     int read = BassNative.BASS_ChannelGetData(voice.Handle, buffer, count * sizeof(float));
-                    if (read < 0 && BassNative.BASS_ErrorGetCode() == 38) break; // BASS_ERROR_ENDED
+                    if (read < 0 && BassNative.BASS_ErrorGetCode() == 45) break; // BASS_ERROR_ENDED
                     BassNative.Check(read > 0, "spectrum decode");
                     int frames = read / sizeof(float) / info.Channels;
                     BassNative.Check(frames > 0, "spectrum frames");
                     // Alpha analyzes the first channel without averaging stereo channels.
-                    for (int i = 0; i < frames; i++) samples[offset + i] = buffer[i * info.Channels];
+                    for (int i = 0; i < frames; i++) mono[i] = buffer[i * info.Channels];
+                    write(mono, offset, frames);
                     offset += frames;
                 }
-                if (offset != samples.Length) System.Array.Resize(ref samples, offset);
-                return samples;
+                return offset;
             }
         }
         private static byte[] Wav(byte[] pcm, int channels, int frequency)
@@ -115,6 +140,6 @@ namespace Arcade.Audio
                 memory.Free();
             }
         }
-        private void OnDestroy() { BassAudio.ReleaseSample(this); }
+        private void OnDestroy() { BassAudio.ReleaseSample(this); externalData = null; }
     }
 }
