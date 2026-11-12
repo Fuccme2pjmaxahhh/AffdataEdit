@@ -1253,6 +1253,7 @@ namespace Arcade.Gameplay.Chart
         private bool selected;
         internal float RenderingAlpha = 225 / 255f;
         internal bool RenderingHighlight;
+        internal int RenderingGroupBeginTiming;
 
         protected override void ReleaseVisual()
         {

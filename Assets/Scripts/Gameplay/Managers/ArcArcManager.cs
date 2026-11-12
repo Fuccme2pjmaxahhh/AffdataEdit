@@ -47,6 +47,7 @@ namespace Arcade.Gameplay
         private readonly List<ArcArcTap> soundCrossedArcTaps = new List<ArcArcTap>();
         internal void ResetJudgement() { judgement.Reset(); soundJudgement.Reset(); }
         private readonly HashSet<ArcArc> candidateArcs = new HashSet<ArcArc>();
+        private readonly Dictionary<int, ArcArc> hiddenEffectOwners = new Dictionary<int, ArcArc>();
 
 		public GameObject ArcNotePrefab, ArcTapPrefab, SfxArcTapPrefab;
 		public Transform ArcLayer;
@@ -83,11 +84,15 @@ namespace Arcade.Gameplay
             ArcJudgePosRight = Mathf.Max(ArcJudgePosRight, worldX);
         }
 
+        internal static bool ShouldEnableArcEffect(ArcArc arc, int currentTiming)
+            => !arc.IsVoid && !arc.NoInput() && arc.Judging && currentTiming <= arc.EndTiming
+                && (arc.RenderHead ? currentTiming > arc.Timing : currentTiming >= arc.Timing);
+
 		public void Clean()
 		{
             RenderingArcs.Clear();
             RenderingArcTaps.Clear();
-            renderIndex.Clear(); arcTapIndex.Clear(); allArcTaps.Clear(); candidateArcs.Clear();
+            renderIndex.Clear(); arcTapIndex.Clear(); allArcTaps.Clear(); candidateArcs.Clear(); hiddenEffectOwners.Clear();
             renderCandidates.Clear(); arcTapCandidates.Clear(); flaggedArcs.Clear(); arcTapVersion = -1; judgement.Clear(); crossedArcTaps.Clear(); soundJudgement.Clear(); soundCrossedArcTaps.Clear();
 			foreach (var t in Arcs)
 			{
@@ -154,7 +159,7 @@ namespace Arcade.Gameplay
         private static bool Connected(ArcArc a, ArcArc b) => a != b
             && !a.IsVariousSizedArctap && !b.IsVariousSizedArctap && a.IsVoid == b.IsVoid
             && Math.Abs((long)a.EndTiming - b.Timing) <= 9
-            && Mathf.Abs(a.XEnd - b.XStart) < .1f && Mathf.Abs(a.YEnd - b.YStart) < .01f;
+            && Mathf.Abs(a.XEnd - b.XStart) < .1f && Mathf.Abs(a.YEnd - b.YStart) < .00001f;
 
 		internal static void CalculateArcGroups(List<ArcArc> arcs)
 		{
@@ -162,22 +167,30 @@ namespace Arcade.Gameplay
 			int[] byStartTiming = new int[count];
 			// A root stores the negative group size; other entries store their parent index.
 			int[] parents = new int[count];
+            // Appearance groups retain each branch's origin when branches meet later.
+            // Cache only their scalar origins, without duplicate member lists or changing judgement groups.
+            int[] appearanceGroups = new int[count], appearanceBegin = new int[count];
+            int appearanceGroupCount = 0;
 			for (int i = 0; i < count; i++)
 			{
 				byStartTiming[i] = i;
 				parents[i] = -1;
+                appearanceGroups[i] = -1;
 				arcs[i].RenderHead = true;
                 arcs[i].RenderEndTiming = arcs[i].EndTiming;
 			}
 			Array.Sort(byStartTiming, (a, b) =>
 			{
 				int timingOrder = arcs[a].Timing.CompareTo(arcs[b].Timing);
-				return timingOrder != 0 ? timingOrder : a.CompareTo(b);
+                if (timingOrder != 0) return timingOrder;
+                int endOrder = arcs[a].EndTiming.CompareTo(arcs[b].EndTiming);
+				return endOrder != 0 ? endOrder : a.CompareTo(b);
 			});
 
 			for (int i = 0; i < count; i++)
 			{
-				ArcArc a = arcs[i];
+				int currentIndex = byStartTiming[i];
+				ArcArc a = arcs[currentIndex];
 				if (a.IsVariousSizedArctap) continue;
 				long firstTiming = (long)a.EndTiming - 9;
 				long lastTiming = (long)a.EndTiming + 9;
@@ -189,17 +202,29 @@ namespace Arcade.Gameplay
 					else high = middle;
 				}
 
-				for (int j = low; j < count; j++)
+				for (int j = Math.Max(low, i + 1); j < count; j++)
 				{
 					int nextIndex = byStartTiming[j];
 					ArcArc b = arcs[nextIndex];
 					if (b.Timing > lastTiming) break;
 					if (a == b || b.IsVariousSizedArctap) continue;
-					if (a.IsVoid == b.IsVoid && Mathf.Abs(a.XEnd - b.XStart) < 0.1f && Mathf.Abs(a.YEnd - b.YStart) < 0.01f)
+					if (a.IsVoid == b.IsVoid && Mathf.Abs(a.XEnd - b.XStart) < 0.1f && Mathf.Abs(a.YEnd - b.YStart) < .00001f)
 					{
 						b.RenderHead = false;
                         a.RenderEndTiming = Mathf.Max(a.RenderEndTiming, b.Timing);
-						int rootA = FindArcGroupRoot(parents, i);
+                        int aBegin = Math.Min(a.Timing, a.EndTiming), bBegin = Math.Min(b.Timing, b.EndTiming);
+                        int aGroup = appearanceGroups[currentIndex];
+                        if (aGroup < 0)
+                        {
+                            aGroup = appearanceGroupCount++;
+                            appearanceGroups[currentIndex] = aGroup;
+                            appearanceBegin[aGroup] = Math.Min(aBegin, bBegin);
+                        }
+                        else appearanceBegin[aGroup] = Math.Min(appearanceBegin[aGroup], bBegin);
+                        int bGroup = appearanceGroups[nextIndex];
+                        if (bGroup < 0) appearanceGroups[nextIndex] = aGroup;
+                        else appearanceBegin[bGroup] = Math.Min(appearanceBegin[bGroup], aBegin);
+						int rootA = FindArcGroupRoot(parents, currentIndex);
 						int rootB = FindArcGroupRoot(parents, nextIndex);
 						if (rootA == rootB) continue;
 						if (parents[rootA] > parents[rootB])
@@ -222,8 +247,14 @@ namespace Arcade.Gameplay
 				if (groups[root] == null) groups[root] = new List<ArcArc>(-parents[root]);
 				arcs[index].ArcGroup = groups[root];
 				groups[root].Add(arcs[index]);
+                int appearance = appearanceGroups[index];
+                arcs[index].RenderingGroupBeginTiming = appearance < 0
+                    ? Math.Min(arcs[index].Timing, arcs[index].EndTiming) : appearanceBegin[appearance];
 			}
 		}
+
+        internal static float NonJudgingArcAlpha(ArcArc arc, int timing)
+            => arc.ArcGroup.Count > 1 && timing > arc.RenderingGroupBeginTiming ? .65f : 1f;
 
 		private static int FindArcGroupRoot(int[] parents, int index)
 		{
@@ -279,6 +310,20 @@ namespace Arcade.Gameplay
             RenderingArcTaps.Clear();
 			ArcTimingManager timingManager = ArcTimingManager.Instance;
 			int currentTiming = ArcGameplayManager.Instance.ChartTiming;
+            // Hidden geometry needs at most one pooled visual per color, for its final hit point.
+            // Qualify against the same bounds as the main loop and reuse these position results.
+            hiddenEffectOwners.Clear();
+            foreach (var t in renderCandidates)
+            {
+                if (!t.GroupHide() || t.Judged || !ShouldEnableArcEffect(t, currentTiming)
+                    || !timingManager.ShouldTryRender(t.Timing, t.TimingGroup, t.EndTiming - t.Timing)) continue;
+                t.Position = timingManager.CalculatePositionByTiming(t.Timing, t.TimingGroup);
+                t.EndPosition = timingManager.CalculatePositionByTiming(t.EndTiming, t.TimingGroup);
+                if (Mathf.Min(t.Position, t.EndPosition) > 100000 || Mathf.Max(t.Position, t.EndPosition) < -100000) continue;
+                if (!hiddenEffectOwners.TryGetValue(t.Color, out var previous)
+                    || t.Timing > previous.Timing || (t.Timing == previous.Timing && t.EndTiming >= previous.EndTiming))
+                    hiddenEffectOwners[t.Color] = t;
+            }
 
             RefreshArcTaps();
             arcTapIndex.Query(allArcTaps, arcTapCandidates);
@@ -286,13 +331,18 @@ namespace Arcade.Gameplay
             foreach (var t in renderCandidates)
             {
 				int duration = t.EndTiming - t.Timing;
-				if (!timingManager.ShouldTryRender(t.Timing, t.TimingGroup, duration, !t.IsVoid) || (t.Judged && !t.IsVoid) || t.GroupHide())
+                bool hidden = t.GroupHide();
+				if (!timingManager.ShouldTryRender(t.Timing, t.TimingGroup, duration, !t.IsVoid) || (t.Judged && !t.IsVoid)
+                    || (hidden && (!hiddenEffectOwners.TryGetValue(t.Color, out var hiddenOwner) || hiddenOwner != t)))
 				{
 					t.Enable = false;
 					continue;
 				}
-				t.Position = timingManager.CalculatePositionByTiming(t.Timing, t.TimingGroup);
-				t.EndPosition = timingManager.CalculatePositionByTiming(t.EndTiming, t.TimingGroup);
+                if (!hidden)
+                {
+				    t.Position = timingManager.CalculatePositionByTiming(t.Timing, t.TimingGroup);
+				    t.EndPosition = timingManager.CalculatePositionByTiming(t.EndTiming, t.TimingGroup);
+                }
                 // Trace geometry keeps the start timing's speed unless cross-timing is enabled.
                 // Cull against that geometry, including the extension to its successor.
                 if (t.IsVoid && !ArcArcRenderer.AllowCrossTiming)
@@ -307,7 +357,7 @@ namespace Arcade.Gameplay
 				t.arcRenderer.RootZ = -t.Position / 1000f;
 				if (!t.IsVoid)
 				{
-					t.arcRenderer.EnableEffect = currentTiming > t.Timing && currentTiming <= t.EndTiming && !t.IsVoid && t.Judging;
+					t.arcRenderer.EnableEffect = ShouldEnableArcEffect(t, currentTiming);
                     if (!t.Flag) foreach (var a in t.ArcGroup)
 					{
 						if (!a.Flag)
@@ -324,10 +374,7 @@ namespace Arcade.Gameplay
 							}
 							else
 							{
-								if (t.ArcGroup.Count != 1 && currentTiming > t.Timing)
-								{
-									alpha = 0.65f;
-								}
+                                alpha = NonJudgingArcAlpha(a, currentTiming);
 								a.RenderingHighlight = false;
 							}
 							a.RenderingAlpha = alpha * (225 / 255f);
@@ -349,8 +396,8 @@ namespace Arcade.Gameplay
                     t.arcRenderer.Highlight = t.RenderingHighlight;
                     t.arcRenderer.Alpha = t.RenderingAlpha;
                 }
-				t.arcRenderer.UpdateArc();
-                if (!t.IsVoid && t.Judging)
+                if (!hidden) t.arcRenderer.UpdateArc();
+                if (!hidden && !t.IsVoid && !t.NoInput() && t.Judging)
                     ArcEffectManager.Instance.ShowLongNoteHitType(t, t.arcRenderer.JudgePosition);
                 RenderingArcs.Add(t);
 			}

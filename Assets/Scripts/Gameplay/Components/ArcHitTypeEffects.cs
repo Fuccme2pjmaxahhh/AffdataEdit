@@ -10,6 +10,57 @@ namespace Arcade.Gameplay
     [DefaultExecutionOrder(31000)]
     internal sealed class ArcHitTypeEffects : MonoBehaviour
     {
+        // All current hit types are Pure, so the half-unit position identifies a frame's quota.
+        // Fixed storage also bounds work when a chart requests many distinct hit positions.
+        private sealed class PureHitLimiter
+        {
+            private const int Capacity = 1024, MaxHitsPerPosition = 10;
+            private readonly long[] keys = new long[Capacity];
+            private readonly int[] frames = new int[Capacity];
+            private readonly byte[] counts = new byte[Capacity];
+            private int lastFrame = -1;
+            private bool full;
+
+            public PureHitLimiter()
+            {
+                for (int i = 0; i < Capacity; i++) frames[i] = -1;
+            }
+
+            public bool Allow(int frame, float x, float y)
+            {
+                if (frame != lastFrame)
+                {
+                    lastFrame = frame;
+                    full = false;
+                }
+                if (full) return false;
+                int cellX = Mathf.FloorToInt(x * 2f + .5f);
+                int cellY = Mathf.FloorToInt(y * 2f + .5f);
+                long key = ((long)cellX << 32) | (uint)cellY;
+                int hash = unchecked((cellX * 73856093) ^ (cellY * 19349663));
+                int slot = (hash & int.MaxValue) % Capacity;
+                for (int probe = 0; probe < Capacity; probe++)
+                {
+                    if (frames[slot] != frame)
+                    {
+                        frames[slot] = frame;
+                        keys[slot] = key;
+                        counts[slot] = 1;
+                        return true;
+                    }
+                    if (keys[slot] == key)
+                    {
+                        if (counts[slot] >= MaxHitsPerPosition) return false;
+                        counts[slot]++;
+                        return true;
+                    }
+                    slot = (slot + 1) % Capacity;
+                }
+                full = true;
+                return false;
+            }
+        }
+
         private struct Hit
         {
             public Image Image;
@@ -19,6 +70,7 @@ namespace Arcade.Gameplay
 
         private readonly List<Hit> active = new List<Hit>();
         private readonly Stack<Image> idle = new Stack<Image>();
+        private readonly PureHitLimiter hitLimiter = new PureHitLimiter();
         private const int MaxIdleImages = 64;
         private RectTransform root;
         private Sprite pure;
@@ -61,7 +113,7 @@ namespace Arcade.Gameplay
 
         internal void ShowPure(Vector3 position, bool longNote = false)
         {
-            if (!CanSpawn) return;
+            if (!CanSpawn || !hitLimiter.Allow(Time.frameCount, position.x, position.y)) return;
             var camera = ArcCameraManager.Instance.GameplayCamera;
             Vector3 viewport = camera.WorldToViewportPoint(position);
             if (viewport.z <= 0 || viewport.x < 0 || viewport.x > 1 || viewport.y < 0 || viewport.y > 1) return;
