@@ -9,6 +9,8 @@
 只提供最新版本。各平台构建成功后上传 R2，并获取独立更新器的最新 Release，校验 SHA-256
 后单独发布到 R2 的 `updater/<平台>/`。构建失败保留上一版。
 
+显示版本使用 UTC 构建日期，格式为 `yyyy.MM.dd`（例如 `2026.11.12`），由 Windows 和 macOS 的构建方法自动填写。更新清单继续使用完整 commit SHA 作为构建身份，同一天的多次发布也能正常检测和更新。
+
 ## GitHub 配置
 
 主仓库 Actions Variables：
