@@ -14,6 +14,25 @@ using UnityEngine;
 
 public class AffCoordinatePrecisionTests
 {
+    private GameObject gameRoot;
+    private Arcade.Gameplay.ArcGameplayManager previousGame;
+
+    [SetUp]
+    public void SetUp()
+    {
+        previousGame = Arcade.Gameplay.ArcGameplayManager.Instance;
+        gameRoot = new GameObject("Chart serialization clock"); gameRoot.SetActive(false);
+        typeof(Arcade.Gameplay.ArcGameplayManager).GetProperty("Instance")
+            .SetValue(null, gameRoot.AddComponent<Arcade.Gameplay.ArcGameplayManager>());
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        Object.DestroyImmediate(gameRoot);
+        typeof(Arcade.Gameplay.ArcGameplayManager).GetProperty("Instance").SetValue(null, previousGame);
+    }
+
     [TestCase(.125f, false, "0.125")]
     [TestCase(.125f, true, "0.13")]
     [TestCase(-.125f, true, "-0.13")]
