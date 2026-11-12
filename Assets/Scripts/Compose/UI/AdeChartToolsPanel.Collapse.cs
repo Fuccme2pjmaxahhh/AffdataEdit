@@ -69,7 +69,7 @@ namespace Arcade.Compose
             if (!groupLayoutDirty && !(editCollapsed && !Mathf.Approximately(viewport, groupViewportHeight))) return;
             groupLayoutDirty = false;
             groupViewportHeight = viewport;
-            float target = GroupListDefaultHeight;
+            float target = Mathf.Min(groups.Count, 4) * (ControlHeight + 4) - 4;
             if (editCollapsed)
             {
                 LayoutRebuilder.ForceRebuildLayoutImmediate(pages[0]);

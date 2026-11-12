@@ -260,8 +260,9 @@ namespace Arcade.Compose
             {
                 var row = timingRows[i]; row.Root.gameObject.SetActive(i < count);
                 if (i >= count) continue;
+                bool sameTiming = row.Timing == timings[i];
                 row.Timing = timings[i];
-                SetTimingFields(row);
+                SetTimingFields(row, sameTiming);
                 row.Remove.interactable = count > 1;
                 Style(row.Remove);
             }
@@ -284,11 +285,11 @@ namespace Arcade.Compose
             LayoutRebuilder.ForceRebuildLayoutImmediate(pages[0]);
         }
 
-        private static void SetTimingFields(TimingRow row)
+        private static void SetTimingFields(TimingRow row, bool preserveInput = true)
         {
-            row.Time.SetTextWithoutNotify(row.Timing.Timing.ToString(CultureInfo.InvariantCulture));
-            row.Bpm.SetTextWithoutNotify(row.Timing.Bpm.ToString("0.###", CultureInfo.InvariantCulture));
-            row.Beats.SetTextWithoutNotify(ChartControlText.Number(row.Timing.BeatsPerLine));
+            if (!preserveInput || !row.Time.isFocused) row.Time.SetTextWithoutNotify(row.Timing.Timing.ToString(CultureInfo.InvariantCulture));
+            if (!preserveInput || !row.Bpm.isFocused) row.Bpm.SetTextWithoutNotify(row.Timing.Bpm.ToString("0.###", CultureInfo.InvariantCulture));
+            if (!preserveInput || !row.Beats.isFocused) row.Beats.SetTextWithoutNotify(ChartControlText.Number(row.Timing.BeatsPerLine));
         }
 
         private void ApplyTiming(TimingRow row, TMP_InputField field)
@@ -301,11 +302,11 @@ namespace Arcade.Compose
                 next.Bpm = (float)Math.Round(bpm, 3, MidpointRounding.AwayFromZero);
             else if (field == row.Beats && ChartControlText.Float(field.text, out float beats) && beats >= 0)
                 next.BeatsPerLine = beats;
-            else { SetTimingFields(row); return; }
+            else { SetTimingFields(row, false); return; }
             if (next.Timing == row.Timing.Timing && next.Bpm == row.Timing.Bpm && next.BeatsPerLine == row.Timing.BeatsPerLine)
-            { SetTimingFields(row); return; }
+            { SetTimingFields(row, false); return; }
             AdeCommandManager.Instance.Add(new EditTimingEvent(lastGroup, row.Timing, next));
-            SetTimingFields(row);
+            SetTimingFields(row, false);
             ClearMessage();
         }
 
