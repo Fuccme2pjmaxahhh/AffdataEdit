@@ -43,8 +43,8 @@ namespace Arcade.Audio
             playbackSpeed = 1;
         }
 
-        // Next to AffdataEdit.exe so it survives rebuilds and stays out of chart folders.
-        private static string Folder => folder ?? (folder = Path.GetFullPath(Application.isEditor
+        // Windows keeps the cache next to the executable. macOS must not write into a signed app bundle.
+        private static string Folder => folder ?? (folder = Path.GetFullPath(Application.isEditor || Application.platform == RuntimePlatform.OSXPlayer
             ? Path.Combine(Application.temporaryCachePath, "SlowAudio")
             : Path.Combine(Path.GetDirectoryName(Application.dataPath), "Cache", "SlowAudio")));
         internal static string CacheFolder => Folder;
