@@ -41,8 +41,8 @@ public class ArcColorCycleTests
     [TestCase(3, 4, new[] { 0, 1, 0, 1 })]
     [TestCase(4, 0, new[] { 2, 2, 2 })]
     [TestCase(16, 0, new[] { 4, 4, 4 })]
-    [TestCase(0, 4, new[] { 0, 1, 2, 3, 4 })]
-    [TestCase(32, 4, new[] { 0, 1, 2, 3, 4 })]
+    [TestCase(0, 4, new[] { 0, 1, 2, 3, 0 })]
+    [TestCase(32, 4, new[] { 0, 1, 2, 3, 0 })]
     [TestCase(34, 4, new[] { 1, 1, 1 })]
     public void HotkeyCyclesOnlyEnabledColorsAndWraps(int mask, int start, int[] expected)
     {
@@ -65,10 +65,10 @@ public class ArcColorCycleTests
     }
 
     [Test]
-    public void OlderSettingsKeepFiveColorsAndCustomChoicesSurviveReload()
+    public void DefaultExcludesBlackAndCustomChoicesSurviveReload()
     {
         compose.ArcadePreference = JsonConvert.DeserializeObject<ArcadePreference>("{\"Velocity\":165}");
-        Assert.AreEqual(31, compose.ArcadePreference.GetArcColorCycleMask());
+        Assert.AreEqual(15, compose.ArcadePreference.GetArcColorCycleMask());
         compose.ArcadePreference.ArcColorCycleMask = 5; // Blue and green.
         compose.ArcadePreference = JsonConvert.DeserializeObject<ArcadePreference>(JsonConvert.SerializeObject(compose.ArcadePreference));
         create.SwitchColor(); Assert.AreEqual(2, create.ArcColor);
