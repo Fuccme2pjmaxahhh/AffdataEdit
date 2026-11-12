@@ -36,14 +36,14 @@ public class AffCoordinatePrecisionTests
     [TestCase(.125f, false, "0.125")]
     [TestCase(.125f, true, "0.13")]
     [TestCase(-.125f, true, "-0.13")]
-    [TestCase(.5f, false, "0.5")]
-    [TestCase(.5f, true, "0.5")]
-    [TestCase(1f, false, "1")]
-    [TestCase(0f, true, "0")]
-    [TestCase(-.0004f, false, "0")]
-    [TestCase(-.004f, true, "0")]
+    [TestCase(.5f, false, "0.500")]
+    [TestCase(.5f, true, "0.50")]
+    [TestCase(1f, false, "1.000")]
+    [TestCase(0f, true, "0.00")]
+    [TestCase(-.0004f, false, "0.000")]
+    [TestCase(-.004f, true, "0.00")]
     [TestCase(1.625f, true, "1.63")]
-    public void CoordinatesUseSelectedPrecisionAndTrimZeros(float value, bool lowPrecision, string expected)
+    public void CoordinatesKeepTheSelectedDecimalPlaces(float value, bool lowPrecision, string expected)
     {
         var previous = CultureInfo.CurrentCulture;
         try
@@ -80,8 +80,11 @@ public class AffCoordinatePrecisionTests
             string text = Encoding.UTF8.GetString(stream.ToArray());
             string start = lowPrecision ? "0.13" : "0.125";
             string end = lowPrecision ? "1.63" : "1.625";
-            StringAssert.Contains($"arc(1000,2000,{start},0.5,s,0.5,1,0,none,false)", text);
-            StringAssert.Contains($"slide(1000,2000,{start},0.5,{end},0.05,0,0,1)", text);
+            string half = lowPrecision ? "0.50" : "0.500";
+            string one = lowPrecision ? "1.00" : "1.000";
+            string width = lowPrecision ? "0.05" : "0.050";
+            StringAssert.Contains($"arc(1000,2000,{start},{half},s,{half},{one},0,none,false)", text);
+            StringAssert.Contains($"slide(1000,2000,{start},{half},{end},{width},0,0,1)", text);
             var raw = AffParser.Parse(text);
             Assert.That(raw.error, Is.Empty, text);
             Assert.That(raw.recoverableError, Is.Empty, text);
@@ -111,8 +114,8 @@ public class AffCoordinatePrecisionTests
         StringAssert.Contains(",4.00)", ArcaeaFileFormat.FormatItem(tap, true));
     }
 
-    [TestCase(false, .125f, "0.125,0.5")]
-    [TestCase(true, .13f, "0.13,0.5")]
+    [TestCase(false, .125f, "0.125,0.500")]
+    [TestCase(true, .13f, "0.13,0.50")]
     public void ArcInputAndSlideEditingUseTheSelectedPrecision(bool lowPrecision, float expectedX, string expectedRange)
     {
         var previousCompose = ArcadeComposeManager.Instance;
