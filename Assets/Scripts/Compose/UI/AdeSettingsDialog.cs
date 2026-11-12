@@ -409,6 +409,7 @@ namespace Arcade.Compose
             }
             BuildAppearance();
             BuildStorage();
+            BuildArcColorSettings();
             BuildSpectrumReset();
             BuildGridEditor();
             BuildAbout();
@@ -473,6 +474,7 @@ namespace Arcade.Compose
             hotkeyPresetRow.SetAsFirstSibling();
             accountAction.transform.parent.SetAsLastSibling();
             contextEditorRoot.SetAsLastSibling();
+            arcColorSettings.SetAsLastSibling();
             // Spectrum has its own page; keep the slow-audio cache entry on Audio.
             foreach (string name in new[] { "SpectrumLogScale", "SpectrumIntensityMode", "SpectrumBrightness", "ShowSpectrum" })
                 rows.FirstOrDefault(r => r.Row.name == name)?.Row.SetAsFirstSibling();
@@ -563,6 +565,7 @@ namespace Arcade.Compose
             dragModeDropdown?.SetValueWithoutNotify((int)Editing.AdeDragEdit.Instance.Mode);
             StyleAppearance();
             StyleStorage();
+            StyleArcColorSettings();
             StyleAbout();
             StyleHotkeyGroups();
             StyleHotkeyPreset();

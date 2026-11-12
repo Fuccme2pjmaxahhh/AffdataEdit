@@ -283,7 +283,14 @@ namespace Arcade.Compose.Operation
 		{
 			if (!AdeOperationManager.Instance.HasOngoingOperation)
 			{
-				currentArcColor = currentArcColor == ArcColors.BlackId ? ArcColors.BlueId : currentArcColor + 1;
+                int mask = ArcadeComposeManager.Instance.ArcadePreference.GetArcColorCycleMask();
+                for (int step = 1; step <= ArcColorNames.Length; step++)
+                {
+                    int color = (currentArcColor + step) % ArcColorNames.Length;
+                    if ((mask & (1 << color)) == 0) continue;
+                    currentArcColor = color;
+                    break;
+                }
 			}
 		}
 		public void SetArcColor(int color)

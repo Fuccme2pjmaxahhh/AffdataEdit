@@ -34,6 +34,13 @@ namespace Arcade.Compose
         public bool EnableTapWidthEditing = false;
 		public bool ShowSpectrum = false;
 		public bool ShowJudgementDetails = false;
+        public const int AllArcColors = 0b11111; // Bits follow the blue/red/green/gray/black color IDs.
+        public int ArcColorCycleMask = AllArcColors;
+        public int GetArcColorCycleMask()
+        {
+            int mask = ArcColorCycleMask & AllArcColors;
+            return mask == 0 ? AllArcColors : mask;
+        }
 		public float SpectrumOpacity = 0.5f;
 		// Spectrum frequency axis: false = linear (default), true = log (sliding bass lines show as curves).
 		public bool SpectrumLogScale = false;
