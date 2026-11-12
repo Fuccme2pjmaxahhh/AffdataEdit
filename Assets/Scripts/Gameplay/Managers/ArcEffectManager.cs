@@ -59,6 +59,7 @@ namespace Arcade.Gameplay
 		{
 			public ArcLongNoteEffect Effect;
 			public readonly List<ArcArcVisual> Owners = new List<ArcArcVisual>();
+            public int ReportFrame = -1;
 		}
 		private readonly Dictionary<int, ArcEffect> arcEffects = new Dictionary<int, ArcEffect>();
 
@@ -133,8 +134,8 @@ namespace Arcade.Gameplay
             ArcLongNoteParticlePool.TrimIdle(8);
         }
 
-		// Arc renderers report their judging state; the color's particle follows the most
-		// recent judging arc of that color and keeps emitting while any of them judges.
+		// Select the last active Arc in timing/end order without sorting visible notes.
+		// Ownership still controls the shared color's pooled lifetime.
 		internal void SetArcEffect(ArcArcVisual renderer, int color, bool enable)
 		{
 			if (!arcEffects.TryGetValue(color, out var state))
@@ -144,11 +145,26 @@ namespace Arcade.Gameplay
 			}
 			var skin = ArcArcManager.Instance.ArcSkin.JudgeEffect;
 			bool registered = state.Owners.Contains(renderer);
-            if (registered == enable && (!enable || (state.Effect && state.Effect.Active))) return;
+            if (registered == enable)
+            {
+                if (!enable) return;
+                if (state.Effect && state.Effect.Active)
+                {
+                    FollowArcReport(state, renderer);
+                    return;
+                }
+            }
 			if (enable && !registered) state.Owners.Add(renderer);
 			else if (!enable) state.Owners.Remove(renderer);
 			if (!state.Effect) state.Effect = CreateLongNoteAnchor($"Arc hit {color}", skin);
-			ArcArcVisual current = state.Owners.Count > 0 ? state.Owners[state.Owners.Count - 1] : null;
+            if (enable) FollowArcReport(state, renderer);
+			ArcArcVisual current = state.Effect.FollowTarget;
+            if (!enable && current == renderer)
+            {
+                current = null;
+                foreach (var owner in state.Owners)
+                    if (current == null || IsLaterArc(owner.Arc, current.Arc)) current = owner;
+            }
 			var effect = state.Effect;
 			if (current != null)
 			{
@@ -164,6 +180,17 @@ namespace Arcade.Gameplay
 				effect.SetEmission(false);
 			}
 		}
+
+        private static void FollowArcReport(ArcEffect state, ArcArcVisual renderer)
+        {
+            var current = state.Effect.FollowTarget;
+            if (state.ReportFrame != Time.frameCount || current == null || IsLaterArc(renderer.Arc, current.Arc))
+                state.Effect.FollowTarget = renderer;
+            state.ReportFrame = Time.frameCount;
+        }
+
+        private static bool IsLaterArc(ArcArc arc, ArcArc previous)
+            => arc.Timing > previous.Timing || (arc.Timing == previous.Timing && arc.EndTiming >= previous.EndTiming);
 
         // Alpha deduplicates the two standard hit sounds independently within 10 ms.
         private const double HitSoundDeduplicationSeconds = 0.010;

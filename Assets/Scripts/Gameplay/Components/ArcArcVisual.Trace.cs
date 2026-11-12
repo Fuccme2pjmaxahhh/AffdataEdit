@@ -168,6 +168,12 @@ namespace Arcade.Gameplay
 
         private void UpdateTraceCap(int now, ArcTimingManager timing)
         {
+            if (arc.IsVariousSizedArctap || arc.HiddenSegments)
+            {
+                arcCapEnable = false;
+                traceCapFade = -1;
+                return;
+            }
             if (now > arc.EndTiming)
             {
                 // Connected successors take over the cap; only chain endpoints fade out.
@@ -193,9 +199,9 @@ namespace Arcade.Gameplay
             float size = .21f + .5f * (1 - progress);
             Sprite sprite = Skin.ArcCapRenderer.sprite;
             arcCapEnable = true;
-            arcCapColor = Color.white;
+            arcCapColor = ArcCapTint;
             arcCapColor.a = (int)(progress * 255f * .5f) / 255f;
-            arcCapScale = new Vector3(size * 256 / sprite.rect.width, size * 256 / sprite.rect.height, 1);
+            arcCapScale = new Vector3(size * ArcCapSpriteSize / sprite.rect.width, size * ArcCapSpriteSize / sprite.rect.height, 1);
             arcCapPosition = Parent.MultiplyPoint3x4(new Vector3(traceJudgePoint.x, traceJudgePoint.y, -RootZ));
             arcCapOrder = -1;
             JudgePosition = arcCapPosition;

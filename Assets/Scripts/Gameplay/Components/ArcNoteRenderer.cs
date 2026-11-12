@@ -62,7 +62,7 @@ namespace Arcade.Gameplay
         private readonly Dictionary<Mesh, Bounds> meshBounds = new Dictionary<Mesh, Bounds>();
         private readonly Dictionary<string, (int id, int value)> sortingLayers = new Dictionary<string, (int, int)>();
         private Vector3 cameraPosition, cameraForward;
-        private bool orthographic;
+        private bool orthographic, viewOnBack;
         private GraphicsBuffer instanceBuffer, commandBuffer;
         private Camera cameraForFrame;
         private Texture whiteTexture;
@@ -95,6 +95,8 @@ namespace Arcade.Gameplay
             cameraPosition = cameraForFrame.transform.position;
             cameraForward = cameraForFrame.transform.forward;
             orthographic = cameraForFrame.orthographic;
+            float cameraYaw = cameraForFrame.transform.eulerAngles.y;
+            viewOnBack = cameraYaw < 90f || cameraYaw > 270f;
             whiteTexture = Texture2D.whiteTexture;
             connectionMesh = ArcNoteMeshes.Connection;
             undoTapSkin = Matrix4x4.Scale(new Vector3(-1f / ArcTapNoteManager.Instance.WidthScale, 1, 1));
@@ -245,7 +247,9 @@ namespace Arcade.Gameplay
             data.LowColor = arc.HeadLowColor;
             data.ClipHeight.z = data.ClipHeight.w = arc.Arc.YStart;
             data.Options.y = arc.Arc.IsVoid ? 1 : ArcOpacityMultiplier * ArcOpacityMultiplier;
-            Submit(ArcNoteMeshes.Head, texture, data, "ArcTap", 1, note: arc.Arc);
+            float worldZ = data.Transform.m23;
+            if (viewOnBack) worldZ = -worldZ;
+            Submit(ArcNoteMeshes.Head, texture, data, "ArcTap", (int)(worldZ * 200f) + 2, note: arc.Arc);
         }
 
         internal void SubmitSlide(Mesh mesh, Matrix4x4 matrix, int mode, Color color, Vector4 slide, Vector4 overlap,

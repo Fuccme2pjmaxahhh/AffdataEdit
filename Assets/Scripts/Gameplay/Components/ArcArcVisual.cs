@@ -12,6 +12,8 @@ namespace Arcade.Gameplay
 	internal sealed partial class ArcArcVisual
 	{
 		private static ArcArcRenderer Skin => ArcArcManager.Instance.ArcSkin;
+		private const float ArcCapSpriteSize = 252f;
+		private Color ArcCapTint => arc.Designant ? ArcArcManager.Instance.ArcDesignant : Color.white;
 
 		// Local z of the Arc's start under ArcLayer; ArcArcManager sets it every frame.
 		internal float RootZ;
@@ -125,6 +127,7 @@ namespace Arcade.Gameplay
 			get => effect;
 			set
 			{
+				value = value && arc != null && !arc.IsVoid && !arc.NoInput();
 				// Unregister the old color before this visual is rebound or edited.
 				if (effect && (!value || arc == null || effectColor != arc.Color))
 					ArcEffectManager.Instance.SetArcEffect(this, effectColor, false);
@@ -189,7 +192,7 @@ namespace Arcade.Gameplay
 
 		internal void Submit(ArcNoteRenderer renderer)
 		{
-			if (!enable) return;
+			if (!enable || arc.GroupHide()) return;
 			var skin = Skin;
 			var parent = Parent;
 			var gold = skin.TraceBodyGoldTexture;
@@ -477,48 +480,82 @@ namespace Arcade.Gameplay
 		private void UpdateArcCap()
 		{
 			int currentTiming = ArcGameplayManager.Instance.ChartTiming;
-			if (arc.IsVariousSizedArctap)
+			if (arc.IsVariousSizedArctap || arc.HiddenSegments)
 			{
 				arcCapEnable = false;
 				return;
 			}
 			Sprite sprite = Skin.ArcCapRenderer.sprite;
-			Vector3 arcCapScaleFactor = new Vector3(256 / sprite.rect.width, 256 / sprite.rect.height, 1);
+			Vector3 arcCapScaleFactor = new Vector3(ArcCapSpriteSize / sprite.rect.width, ArcCapSpriteSize / sprite.rect.height, 1);
 			if (arc.Timing < currentTiming && arc.EndTiming >= currentTiming)
 			{
+				// A passed start can still be ahead of the judgement plane after a timing change.
+				float progress = Mathf.Clamp01(1 - Mathf.Max(arc.Position, 0) / 100000f);
+				float size = (arc.IsVoid ? 0.21f : 0.35f) + 0.5f * (1 - progress);
 				arcCapEnable = true;
-				arcCapColor = new Color(1, 1, 1, arc.IsVoid ? 0.5f : 1f);
-				arcCapScale = Vector3.Scale(new Vector3(arc.IsVoid ? 0.21f : 0.35f, arc.IsVoid ? 0.21f : 0.35f), arcCapScaleFactor);
+				arcCapColor = ArcCapTint;
+				arcCapColor.a = progress * (arc.IsVoid ? 0.5f : 1f);
+				arcCapScale = Vector3.Scale(new Vector3(size, size), arcCapScaleFactor);
 				arcCapOrder = -1;
-				foreach (var s in segments)
+				if (TryGetArcJudgePoint(currentTiming, out Vector3 point))
 				{
-					if (s.FromTiming < currentTiming && s.ToTiming >= currentTiming)
-					{
-						float t = (s.FromPos.z - arc.Position / 1000f) / (s.FromPos.z - s.ToPos.z);
-						if (float.IsNaN(t)) t = ((float)(currentTiming - s.FromTiming)) / ((float)(s.ToTiming - s.FromTiming));
-						arcCapPosition = new Vector3(s.FromPos.x + (s.ToPos.x - s.FromPos.x) * t, s.FromPos.y + (s.ToPos.y - s.FromPos.y) * t);
-						JudgePosition = ArcEffectManager.Instance.EffectPlane.GetPositionOnPlane(arcCapPosition);
-						if (!arc.IsVoid) ArcArcManager.Instance.RecordJudgePosition(arcCapPosition.x);
-						break;
-					}
+					arcCapPosition = point;
+					JudgePosition = ArcEffectManager.Instance.EffectPlane.GetPositionOnPlane(point);
+					if (!arc.IsVoid) ArcArcManager.Instance.RecordJudgePosition(point.x);
 				}
 			}
 			else if (arc.Timing >= currentTiming && arc.RenderHead && !arc.IsVoid)
 			{
-				float p = 1 - Mathf.Abs(arc.Position) / 100000;
+				float p = 1 - arc.Position / 100000f;
+				if (p > 1)
+				{
+					arcCapEnable = false;
+					return;
+				}
+				p = Mathf.Clamp01(p);
 				float scale = 0.35f + 0.5f * (1 - p);
 				arcCapEnable = true;
-				arcCapColor = new Color(1, 1, 1, p);
+				arcCapColor = ArcCapTint;
+				arcCapColor.a = p;
 				arcCapScale = Vector3.Scale(new Vector3(scale, scale), arcCapScaleFactor);
 				arcCapPosition = new Vector3(ArcAlgorithm.ArcXToWorld(arc.XStart), ArcAlgorithm.ArcYToWorld(arc.YStart));
 				JudgePosition = arcCapPosition;
-				//TODO: arccap position should be decided by z instead of time
 				arcCapOrder = arc.Position < 0 ? -1 : 2;
 			}
 			else
 			{
 				arcCapEnable = false;
 			}
+		}
+
+		// Hidden Arc bodies retain only the final shared particle owner's judgement position.
+		internal void UpdateJudgePosition()
+		{
+			if (arc == null || arc.IsVoid || arc.NoInput()) return;
+			int currentTiming = ArcGameplayManager.Instance.ChartTiming;
+			if (currentTiming < arc.Timing || currentTiming > arc.EndTiming) return;
+			if (TryGetArcJudgePoint(currentTiming, out Vector3 point))
+				JudgePosition = ArcEffectManager.Instance.EffectPlane.GetPositionOnPlane(point);
+		}
+
+		private bool TryGetArcJudgePoint(int currentTiming, out Vector3 point)
+		{
+			if (currentTiming == arc.Timing)
+			{
+				point = new Vector3(ArcAlgorithm.ArcXToWorld(arc.XStart), ArcAlgorithm.ArcYToWorld(arc.YStart));
+				return true;
+			}
+			foreach (var segment in segments)
+			{
+				if (segment.FromTiming >= currentTiming || segment.ToTiming < currentTiming) continue;
+				float progress = (segment.FromPos.z - arc.Position / 1000f) / (segment.FromPos.z - segment.ToPos.z);
+				if (float.IsNaN(progress)) progress = (currentTiming - segment.FromTiming) / (segment.ToTiming - segment.FromTiming);
+				point = new Vector3(segment.FromPos.x + (segment.ToPos.x - segment.FromPos.x) * progress,
+					segment.FromPos.y + (segment.ToPos.y - segment.FromPos.y) * progress);
+				return true;
+			}
+			point = default;
+			return false;
 		}
 	}
 }

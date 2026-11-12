@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using Arcade.Gameplay.Chart;
 
 namespace Arcade.Gameplay
 {
@@ -95,7 +96,13 @@ namespace Arcade.Gameplay
             }
             // The Arc renderer updates the hit position during Update. Position first,
             // then prewarm/emit, so no particles are born at the prefab's old location.
-            if (FollowTarget != null) transform.position = FollowTarget.JudgePosition;
+            if (FollowTarget != null)
+            {
+                var arc = FollowTarget.Arc;
+                if (arc.GroupHide() || (!arc.RenderHead && ArcGameplayManager.Instance.ChartTiming == arc.Timing))
+                    FollowTarget.UpdateJudgePosition();
+                transform.position = FollowTarget.JudgePosition;
+            }
             UpdateSimulationSpace();
             if (!emitting)
             {
