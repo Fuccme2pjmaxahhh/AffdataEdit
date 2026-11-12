@@ -120,6 +120,44 @@ public class MemoryAudioLifecycleTests
     }
 
     [Test]
+    public void ClearingCacheCancelsQueuedRendersAndPreservesOtherFiles()
+    {
+        var clip = Load();
+        var cache = typeof(BassClip).Assembly.GetType("Arcade.Audio.SlowAudioCache", true);
+        const BindingFlags flags = BindingFlags.Static | BindingFlags.NonPublic;
+        var folderField = cache.GetField("folder", flags);
+        object previousFolder = folderField.GetValue(null);
+        string cacheFolder = Path.Combine(folder, "SlowAudio");
+        Directory.CreateDirectory(cacheFolder);
+        Directory.CreateDirectory(Path.Combine(cacheFolder, "keep"));
+        File.WriteAllText(Path.Combine(cacheFolder, "song.flac"), "cached");
+        File.WriteAllText(Path.Combine(cacheFolder, "song.flac.part"), "unfinished");
+        File.WriteAllText(Path.Combine(cacheFolder, "settings.json"), "keep");
+        File.WriteAllText(Path.Combine(cacheFolder, "keep", "song.flac"), "keep");
+        try
+        {
+            folderField.SetValue(null, cacheFolder);
+            cache.GetMethod("BeginSong", flags).Invoke(null, new object[] { clip });
+            cache.GetMethod("SetPlaybackState", flags).Invoke(null, new object[] { true, 1f });
+            var render = (System.Threading.Tasks.Task<string>)cache.GetMethod("Request", flags)
+                .Invoke(null, new object[] { clip, .5f });
+            Assert.AreEqual(2, cache.GetMethod("Clear", flags).Invoke(null, null));
+            Assert.IsTrue(render.IsCompleted);
+            Assert.IsNull(render.Result);
+            Assert.IsFalse(File.Exists(Path.Combine(cacheFolder, "song.flac")));
+            Assert.IsFalse(File.Exists(Path.Combine(cacheFolder, "song.flac.part")));
+            Assert.IsTrue(File.Exists(Path.Combine(cacheFolder, "settings.json")));
+            Assert.IsTrue(File.Exists(Path.Combine(cacheFolder, "keep", "song.flac")));
+            Assert.AreEqual(0, cache.GetMethod("Clear", flags).Invoke(null, null));
+        }
+        finally
+        {
+            cache.GetMethod("Shutdown", flags).Invoke(null, null);
+            folderField.SetValue(null, previousFolder);
+        }
+    }
+
+    [Test]
     public void ShutdownCancelsQueuedSlowRendersBeforeDeviceRelease()
     {
         var clip = Load();

@@ -86,7 +86,7 @@ public class MemoryChartLifecycleTests
         if (sky)
         {
             var manager = Inactive<ArcArcManager>(); Singleton(manager);
-            var note = new ArcArc { Timing = 1000, EndTiming = 1100, Judged = true };
+            var note = new ArcArc { Timing = 1000, EndTiming = 1100, Judged = true, LineType = ArcLineType.FalseNotVoid };
             manager.Arcs.Add(note);
             Call(manager, "JudgeArcs");
             Assert.IsTrue(note.AudioPlayed, "The music clock must still consume the pending head.");

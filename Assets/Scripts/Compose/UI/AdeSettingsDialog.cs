@@ -476,7 +476,7 @@ namespace Arcade.Compose
             // Spectrum has its own page; keep the slow-audio cache entry on Audio.
             foreach (string name in new[] { "SpectrumLogScale", "SpectrumIntensityMode", "SpectrumBrightness", "ShowSpectrum" })
                 rows.FirstOrDefault(r => r.Row.name == name)?.Row.SetAsFirstSibling();
-            foreach (var entry in slowAudioCacheEntry) entry.SetAsLastSibling();
+            slowAudioCacheEntry.SetAsLastSibling();
             // The reset button sits in its own right-aligned row; move the row, not the button.
             spectrumReset.transform.parent.SetAsLastSibling();
             mounted = true;

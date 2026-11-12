@@ -132,10 +132,26 @@ namespace Arcade.Audio
         // the output device is freed. Dropping task references does not stop their workers.
         internal static void Shutdown()
         {
-            BeginSong(null);
+            currentSong = null;
+            Interlocked.Increment(ref generation);
+            renders.Clear();
             playbackActive = false;
             queue.GetAwaiter().GetResult();
             queue = Task.CompletedTask;
+        }
+
+        internal static int Clear()
+        {
+            Shutdown();
+            if (!Directory.Exists(Folder)) return 0;
+            int deleted = 0;
+            foreach (string pattern in new[] { "*.flac", "*.flac.part" })
+                foreach (string path in Directory.EnumerateFiles(Folder, pattern))
+                {
+                    File.Delete(path);
+                    deleted++;
+                }
+            return deleted;
         }
 
         private static string RenderSafely(string sourcePath, bool opus, byte[] bytes, float speed, string path, int owner)

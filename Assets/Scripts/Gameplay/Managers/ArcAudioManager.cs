@@ -272,6 +272,20 @@ namespace Arcade.Gameplay
             UpdateRenderProgress();
             if (scheduledStart >= 0 && BassAudio.Clock >= scheduledStart) Play();
         }
+        public static int ClearSlowAudioCache()
+        {
+            var audio = Instance;
+            if (audio)
+            {
+                audio.pendingRender = null;
+                audio.preRenders.Clear();
+                // Release the cached file before deleting it; live playback keeps the same song time.
+                if (audio.renderedVoice != null) audio.SwitchVoice(null, audio.playBackSpeed);
+                if (audio.progressBar) audio.progressBar.SetActive(false);
+            }
+            return SlowAudioCache.Clear();
+        }
+
         public void ReleaseVoice()
         {
             scheduledStart = -1;

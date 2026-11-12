@@ -188,6 +188,43 @@ public class PlaybackSpeedTransitionTests
         finally { if (encoder != 0) Native.StopEncoder(encoder); decoder.Dispose(); }
     }
 
+    [TestCase(true)]
+    [TestCase(false)]
+    public void ClearingPlayingOrPausedCacheReleasesFileAndKeepsPosition(bool playing)
+    {
+        var cache = typeof(BassClip).Assembly.GetType("Arcade.Audio.SlowAudioCache", true);
+        var folderField = cache.GetField("folder", BindingFlags.Static | BindingFlags.NonPublic);
+        object previousFolder = folderField.GetValue(null);
+        string cacheFolder = Path.Combine(Path.GetTempPath(), "Affdata-clear-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(cacheFolder);
+        temp = Path.Combine(cacheFolder, "song.flac");
+        try
+        {
+            folderField.SetValue(null, cacheFolder);
+            LoadSilentTransport();
+            SetRate(.5f);
+            EncodeSilence();
+            typeof(ArcAudioManager).GetMethod("SwitchVoice", Private).Invoke(audio, new object[] { temp, .5f });
+            if (playing) audio.Play();
+            float before = audio.Timing;
+            Assert.AreEqual(1, ArcAudioManager.ClearSlowAudioCache());
+            Assert.IsFalse(File.Exists(temp), "The native cached voice must release its file before deletion.");
+            Assert.IsNull(typeof(ArcAudioManager).GetField("renderedVoice", Private).GetValue(audio));
+            Assert.IsNotNull(typeof(ArcAudioManager).GetField("live", Private).GetValue(audio));
+            Assert.That(audio.Timing, Is.EqualTo(before).Within(.05));
+            Assert.AreEqual(.5f, audio.PlayBackSpeed);
+            Assert.AreEqual(playing, Native.IsActive(Handle) == 1);
+            typeof(ArcAudioManager).GetMethod("Update", Private).Invoke(audio, null);
+            Assert.IsFalse(File.Exists(temp), "Clearing must not immediately regenerate the cache.");
+        }
+        finally
+        {
+            audio.ReleaseVoice();
+            folderField.SetValue(null, previousFolder);
+            Directory.Delete(cacheFolder, true);
+        }
+    }
+
     private static class Native
     {
         [DllImport("bass", EntryPoint = "BASS_ChannelIsActive")] internal static extern int IsActive(int handle);

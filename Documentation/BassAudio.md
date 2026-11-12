@@ -18,7 +18,9 @@ These libraries retain their upstream licenses; this project's license does not 
 
 Removed the old AudioSource/AudioListener components, pitch AudioMixer, Unity audio tween module, and NAudio/NLayer/NVorbis loader dependencies.
 
-Validation: native BASS/BASS_FX initialization, four tempo settings with unchanged pitch, muted sample playback, and Unity compilation. No full test suite was run. Other desktop platforms have matching binaries/import settings but were not executed on this Mac.
+The Audio settings page provides a one-click slow-playback cache cleanup action. It cancels queued renders, releases any cached playback file by switching to live pitch-preserving playback at the same position, and removes generated FLAC files without touching settings or charts. macOS uses the writable system cache directory rather than the signed application bundle.
+
+Validation on Apple Silicon covers native live rendering, FLAC encoding and playback, rate changes and seeks, cache cleanup, and cancellation before BASS shutdown. Windows binaries are supplied but were not executed on this Mac.
 
 Default shutter visuals use Arcade Alpha `Assets/Textures/Shutter/New/shutter_l.png` and `shutter_r.png`. Opening lasts 0.3 seconds with power-1.5 ease-in; closing lasts 0.75 seconds with OutCubic. Pivot motion preserves the existing layout and the same full-panel travel distance.
 
