@@ -22,6 +22,37 @@ public class ArcGroupAppearanceTests
     private static int GroupBegin(ArcArc arc) => (int)Begin.GetValue(arc);
     private static float At(ArcArc arc, int now) => (float)Alpha.Invoke(null, new object[] { arc, now });
 
+    [TestCase(false, false)]
+    [TestCase(false, true)]
+    [TestCase(true, false)]
+    [TestCase(true, true)]
+    public void ConvergingBranchesKeepAaOwnershipWhenAnEarlierBranchIsSplit(bool split, bool reversed)
+    {
+        var early = Arc(100, split ? 200 : 300, 0, split ? .5f : 1);
+        var continuation = Arc(200, 300, .5f, 1);
+        var later = Arc(150, 300, 2, 1);
+        var shared = Arc(300, 400, 1, 1.5f);
+        var arcs = new List<ArcArc> { early, later, shared };
+        if (split) arcs.Add(continuation);
+        if (reversed) arcs.Reverse();
+        Group(arcs.ToArray());
+
+        Assert.That(early.ArcGroup, Is.SameAs(later.ArcGroup));
+        Assert.That(early.ArcGroup, Is.SameAs(shared.ArcGroup));
+        Assert.That(GroupBegin(early), Is.EqualTo(100));
+        if (split) Assert.That(GroupBegin(continuation), Is.EqualTo(100));
+        Assert.That(GroupBegin(later), Is.EqualTo(150));
+        // AA and project-arc retain an already assigned successor's branch ownership.
+        // Its appearance origin is not the minimum over every incoming predecessor chain.
+        int sharedBegin = split ? 150 : 100;
+        Assert.That(GroupBegin(shared), Is.EqualTo(sharedBegin));
+        Assert.That(At(shared, 125), Is.EqualTo(split ? 1f : .65f));
+        Assert.That(At(shared, sharedBegin), Is.EqualTo(1f));
+        Assert.That(At(shared, sharedBegin + 1), Is.EqualTo(.65f));
+        Assert.That(At(later, 125), Is.EqualTo(1f));
+        Assert.That(At(later, 151), Is.EqualTo(.65f));
+    }
+
     [Test]
     public void MergingBranchesRetainsEachBranchAppearanceOriginWithoutSplittingJudgementGroup()
     {
