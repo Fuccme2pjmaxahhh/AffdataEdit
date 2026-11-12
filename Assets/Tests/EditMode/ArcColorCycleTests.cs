@@ -47,6 +47,7 @@ public class ArcColorCycleTests
     public void HotkeyCyclesOnlyEnabledColorsAndWraps(int mask, int start, int[] expected)
     {
         compose.ArcadePreference.ArcColorCycleMask = mask;
+        compose.ArcadePreference.ArcColorCycleCustomized = true;
         create.SetArcColor(start); // Direct menu selection can still choose an excluded color.
         Assert.AreEqual(start, create.ArcColor);
         foreach (int color in expected)
@@ -73,6 +74,16 @@ public class ArcColorCycleTests
         compose.ArcadePreference = JsonConvert.DeserializeObject<ArcadePreference>(JsonConvert.SerializeObject(compose.ArcadePreference));
         create.SwitchColor(); Assert.AreEqual(2, create.ArcColor);
         create.SwitchColor(); Assert.AreEqual(0, create.ArcColor);
+    }
+
+    [Test]
+    public void PriorDefaultMigratesAndExplicitBlackOptInSurvivesReload()
+    {
+        var preference = JsonConvert.DeserializeObject<ArcadePreference>("{\"ArcColorCycleMask\":31}");
+        Assert.AreEqual(15, preference.GetArcColorCycleMask());
+        preference.ArcColorCycleCustomized = true;
+        preference = JsonConvert.DeserializeObject<ArcadePreference>(JsonConvert.SerializeObject(preference));
+        Assert.AreEqual(31, preference.GetArcColorCycleMask());
     }
 
     [Test]

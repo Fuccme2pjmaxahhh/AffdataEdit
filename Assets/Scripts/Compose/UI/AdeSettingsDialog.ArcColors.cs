@@ -61,6 +61,7 @@ namespace Arcade.Compose
                         return;
                     }
                     preference.ArcColorCycleMask = next;
+                    preference.ArcColorCycleCustomized = true;
                     ArcadeComposeManager.Instance.SavePreferences();
                 });
                 arcColorToggles[color] = toggle;

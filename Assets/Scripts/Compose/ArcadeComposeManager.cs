@@ -38,9 +38,12 @@ namespace Arcade.Compose
         public const int AllArcColors = 0b11111; // Bits follow the blue/red/green/gray/black color IDs.
         public const int DefaultArcColors = 0b01111;
         public int ArcColorCycleMask = DefaultArcColors;
+        public bool ArcColorCycleCustomized = false;
         public int GetArcColorCycleMask()
         {
             int mask = ArcColorCycleMask & AllArcColors;
+            // The previous release saved all five colors even before the user chose any.
+            if (!ArcColorCycleCustomized && mask == AllArcColors) return DefaultArcColors;
             return mask == 0 ? DefaultArcColors : mask;
         }
 		public float SpectrumOpacity = 0.5f;
