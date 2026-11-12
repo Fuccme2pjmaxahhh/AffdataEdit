@@ -15,6 +15,7 @@ Existing PNG paths and GUIDs are retained so scene and prefab references remain 
 | `Assets/Resources/AffdataEdit/Icons/Realtime.png` | [`refresh-dot`](refresh-dot.svg) |
 | `Assets/Resources/AffdataEdit/Icons/Account.png` | [`user-bust`](user-bust.svg) |
 | `Assets/Resources/AffdataEdit/Icons/Edit.png` | [`pencil`](pencil.svg) |
+| `Assets/Resources/AffdataEdit/Icons/Spectrum.png` | [Local spectrum bars](spectrum.svg): three outlined bars built like Tabler `chart-bar`, same 24-unit 2-unit-stroke style |
 | `Assets/Textures/Icon/MDI/Undo.png` | [`arrow-back-up`](arrow-back-up.svg) |
 | `Assets/Textures/Icon/MDI/Redo.png` | [`arrow-forward-up`](arrow-forward-up.svg) |
 | `Assets/Textures/Icon/MDI/Refresh.png` | [`refresh`](refresh.svg) |

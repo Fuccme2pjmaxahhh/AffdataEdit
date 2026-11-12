@@ -1,0 +1,18 @@
+# Keep only the headers used by AffStretch's default FFT backend.
+/linear/*
+!/linear/LICENSE.txt
+!/linear/fft.h
+!/linear/stft.h
+!/linear/include/
+/linear/include/*
+!/linear/include/signalsmith-linear/
+/linear/include/signalsmith-linear/*
+!/linear/include/signalsmith-linear/stft.h
+/signalsmith-stretch/*
+!/signalsmith-stretch/LICENSE.txt
+!/signalsmith-stretch/signalsmith-stretch.h
+!/signalsmith-stretch/include/
+/signalsmith-stretch/include/*
+!/signalsmith-stretch/include/signalsmith-stretch/
+/signalsmith-stretch/include/signalsmith-stretch/*
+!/signalsmith-stretch/include/signalsmith-stretch/signalsmith-stretch.h

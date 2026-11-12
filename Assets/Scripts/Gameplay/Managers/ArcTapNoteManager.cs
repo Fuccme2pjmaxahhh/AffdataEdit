@@ -24,7 +24,10 @@ namespace Arcade.Gameplay
         private readonly List<ArcTap> renderCandidates = new List<ArcTap>();
         private readonly ArcJudgementCursor<ArcTap> judgement = new ArcJudgementCursor<ArcTap>();
         private readonly List<ArcTap> crossedTaps = new List<ArcTap>();
-        internal void ResetJudgement() => judgement.Reset();
+        // Hit sounds run on their own cursor at SoundChartTiming (ahead of the drawn time by the visual delay).
+        private readonly ArcJudgementCursor<ArcTap> soundJudgement = new ArcJudgementCursor<ArcTap>();
+        private readonly List<ArcTap> soundCrossedTaps = new List<ArcTap>();
+        internal void ResetJudgement() { judgement.Reset(); soundJudgement.Reset(); }
         private readonly Dictionary<(ArcTimingGroup, int), (float position, float length)> framePositions
             = new Dictionary<(ArcTimingGroup, int), (float, float)>();
         private readonly ArcVisibleNoteIndex<ArcTap> renderIndex = new ArcVisibleNoteIndex<ArcTap>(n => n.Timing);
@@ -48,7 +51,7 @@ namespace Arcade.Gameplay
 		{
 			foreach (var t in Taps) t.Destroy();
 			Taps.Clear();
-            renderIndex.Clear(); renderCandidates.Clear(); RenderingTaps.Clear(); judgement.Clear(); crossedTaps.Clear(); framePositions.Clear();
+            renderIndex.Clear(); renderCandidates.Clear(); RenderingTaps.Clear(); judgement.Clear(); crossedTaps.Clear(); soundJudgement.Clear(); soundCrossedTaps.Clear(); framePositions.Clear();
 		}
 		public void Load(List<ArcTap> taps)
 		{
@@ -228,6 +231,11 @@ namespace Arcade.Gameplay
 
 			ArcTimingManager timing = ArcTimingManager.Instance;
 			int currentTiming = ArcGameplayManager.Instance.ChartTiming;
+            int soundTiming = ArcGameplayManager.Instance.SoundChartTiming;
+            soundJudgement.Advance(Taps, soundTiming, soundCrossedTaps);
+            foreach (var t in soundCrossedTaps)
+                if (!t.NoInput() && soundTiming <= t.Timing + 150 && ArcGameplayManager.Instance.IsPlaying)
+                    ArcEffectManager.Instance.PlayTapSound();
             judgement.Advance(Taps, currentTiming, crossedTaps);
 			foreach (var t in crossedTaps)
 			{
@@ -239,7 +247,7 @@ namespace Arcade.Gameplay
 				if (currentTiming > t.Timing && currentTiming <= t.Timing + 150)
 				{
 					t.Judged = true;
-					if (ArcGameplayManager.Instance.IsPlaying) ArcEffectManager.Instance.PlayTapNoteEffectAt(new Vector2(t.WorldX, 0));
+					if (ArcGameplayManager.Instance.IsPlaying) ArcEffectManager.Instance.PlayTapNoteEffectAt(new Vector2(t.WorldX, 0), playSound: false);
 				}
 				else if (currentTiming > t.Timing + 150)
 				{

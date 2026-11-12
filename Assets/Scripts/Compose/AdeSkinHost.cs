@@ -1,4 +1,5 @@
 using Arcade.Audio;
+using Arcade.Gameplay;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -460,7 +461,7 @@ namespace Arcade.Compose
 		[RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
 		private static void ResetStaticState() => Instance = null;
 		private List<UnityEngine.Object> externalSkinDataObjects = new List<UnityEngine.Object>();
-		private List<UnityEngine.Object> externalBackgroundDataObjects = new List<UnityEngine.Object>();
+		private AdeBackgroundImageCache backgroundImages;
 		public RawSkinDefaults rawDefaultData;
 		[System.NonSerialized]
 		public SkinDatas skinData;
@@ -494,6 +495,7 @@ namespace Arcade.Compose
 		private void Awake()
 		{
 			Instance = this;
+			backgroundImages = new AdeBackgroundImageCache(this);
 		}
 
 		private void Start()
@@ -504,8 +506,8 @@ namespace Arcade.Compose
 
 		private void OnDestroy()
 		{
+			backgroundImages?.Dispose();
 			DestroyExternalResources(externalSkinDataObjects);
-			DestroyExternalResources(externalBackgroundDataObjects);
 		}
 
 		// Note: the user generated assets will not gc by the csharp run time, so we should Destroy them manually
@@ -531,6 +533,7 @@ namespace Arcade.Compose
 		// TODO: It will be better to add something indicate the loading.
 		public void LoadSkinDatas()
 		{
+			backgroundImages?.Invalidate();
 			this.skinData = null;
 			DestroyExternalResources(externalSkinDataObjects);
 			SkinDatas skinData = new SkinDatas();
@@ -741,7 +744,7 @@ namespace Arcade.Compose
 
 		public void LoadExternalBackground()
 		{
-			DestroyExternalResources(externalBackgroundDataObjects);
+			backgroundImages?.Invalidate();
 			ExternalBackgrounds = new Dictionary<string, Labelled<Sprite>>();
 			if (!Directory.Exists(ExternalBackgroundFolderPath))
 			{
@@ -755,23 +758,54 @@ namespace Arcade.Compose
 					return;
 				}
 			}
-			foreach (string filepath in Directory.GetFiles(ExternalBackgroundFolderPath, "*.jpg"))
-			{
-				Sprite background = LoadNormalSprite(filepath, externalBackgroundDataObjects);
-				if (background != null)
-				{
-					string id = Path.GetFileNameWithoutExtension(filepath);
-					if (ExternalBackgrounds.ContainsKey(id))
-					{
-						Debug.LogWarning($"Duplicated background id \"{id}\" will be ignored");
-					}
-					else
-					{
-						ExternalBackgrounds.Add(id, new Labelled<Sprite> { value = background, label = filepath });
-					}
-				}
-			}
+			ExternalBackgrounds = DiscoverBackgrounds(ExternalBackgroundFolderPath);
 		}
+
+		internal static Dictionary<string, Labelled<Sprite>> DiscoverBackgrounds(string folder)
+		{
+			var result = new Dictionary<string, Labelled<Sprite>>();
+			foreach (string filepath in Directory.GetFiles(folder, "*.jpg"))
+			{
+				string id = Path.GetFileNameWithoutExtension(filepath);
+				if (result.ContainsKey(id))
+					Debug.LogWarning($"Duplicated background id \"{id}\" will be ignored");
+				else
+					// Discovery is metadata-only: a folder can contain hundreds of full-size images.
+					result.Add(id, new Labelled<Sprite> { label = filepath });
+			}
+			return result;
+		}
+
+		internal Sprite GetBackgroundPreview(string name, bool external, bool prefetch = false, float distance = 0)
+		{
+			Labelled<Sprite> data;
+			if (external)
+			{
+				if (ExternalBackgrounds == null || !ExternalBackgrounds.TryGetValue(name, out data)) return null;
+			}
+			else
+			{
+				if (skinData == null || !skinData.BackgroundDatas.TryGetValue(name, out var background)) return null;
+				data = background.background;
+			}
+			return data.value ? data.value : backgroundImages.Preview(data.label, prefetch, distance);
+		}
+
+		internal void ApplyBackground(string name, bool external)
+		{
+			var data = external ? ExternalBackgrounds[name] : skinData.BackgroundDatas[name].background;
+			if (data.value)
+			{
+				backgroundImages.UseSharedBackground();
+				ArcSkinManager.Instance.SetBackground(data.value);
+			}
+			else backgroundImages.Select(data.label, sprite =>
+			{
+				if (ArcSkinManager.Instance) ArcSkinManager.Instance.SetBackground(sprite);
+			});
+		}
+
+		internal void CancelBackgroundSelection() => backgroundImages?.UseSharedBackground();
 
 		private void LoadBackgroundDatas(SkinDatas skinData, BackgroundDataSpec[] spec)
 		{
@@ -831,14 +865,13 @@ namespace Arcade.Compose
 			}
 			string file = spec.file ?? spec.name;
 			string path = Path.Combine(SkinFolderPath, "Playfield", "Background", file + ".jpg");
-			Sprite background = LoadNormalSprite(path, externalSkinDataObjects);
-			if (background == null)
+			if (!File.Exists(path))
 			{
 				Debug.LogWarning($"Background not found, ignored the BackgroundDataSpec. spec:\n{JsonConvert.SerializeObject(spec)}");
 				return;
 			}
 			BackgroundData data = new BackgroundData();
-			data.background = new Labelled<Sprite> { value = background, label = path };
+			data.background = new Labelled<Sprite> { label = path };
 			data.side = null;
 			SideExtension.TryFromName(spec.side, out data.side);
 			data.theme = null;

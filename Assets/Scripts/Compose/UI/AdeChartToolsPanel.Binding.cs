@@ -74,6 +74,7 @@ namespace Arcade.Compose
                 Bind(page.Statement.transform.parent, "语句操作/应用语句", () => ApplyControl(page, true));
                 BindDisclosure(page.Statement.transform.parent, "AFF 语句");
             }
+            BindCollapsibles();
         }
 
         private bool TryReadGroupInput(ControlPage page, out Gameplay.Chart.ArcTimingGroup timingGroup)

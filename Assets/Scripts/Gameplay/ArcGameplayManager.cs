@@ -57,15 +57,22 @@ namespace Arcade.Gameplay
 		{
 			get
 			{
-				return audioTiming + GlobalAudioOffset / 1000f;
+				return audioTiming + (GlobalAudioOffset + DisplayDelayChart) / 1000f;
 			}
 			set
 			{
-				audioTiming = value - GlobalAudioOffset / 1000f;
+				audioTiming = value - (GlobalAudioOffset + DisplayDelayChart) / 1000f;
 			}
 		}
 		public int ChartAudioOffset { get; set; }
 		public int GlobalAudioOffset { get; set; }
+		// Visual-only delay in real ms (画面延迟补偿 + measured output latency): notes are drawn this much
+		// later than the music, while hit sounds keep firing on the music's time (SoundChartTiming).
+		public int DisplayDelay { get; set; }
+		// In chart time: the timeline runs at the playback speed.
+		public int DisplayDelayChart => Mathf.RoundToInt(DisplayDelay * (ArcAudioManager.Instance ? ArcAudioManager.Instance.PlayBackSpeed : 1));
+		// Chart time to trigger hit sounds at: the drawn time plus the visual delay, so sounds stay on the music.
+		public int SoundChartTiming => ChartTiming + DisplayDelayChart;
 		public int ChartTiming
 		{
 			get
@@ -119,36 +126,89 @@ namespace Arcade.Gameplay
 		private double lastDspTime = 0;
 		private double deltaDspTime = 0;
 
+		// Playback sync corrects drift only. The music's reported position (from the BASS_FX tempo
+		// stream, used even at 100%) trails what is heard, so the gap between the clock and that
+		// position is measured once after playback starts and kept, instead of snapping to it.
+		private const int SyncCalibrationSamples = 12;
+		// SyncRate 20/s removes about 95% of any drift within 150 ms.
+		private const float SyncDeadZone = .003f, SyncResnap = .25f, SyncRate = 20f;
+		private float syncBaseline, syncSum, lastSyncPosition = -1, syncSpeed;
+		private int syncSamples;
+		private uint syncSeekVersion, syncVoiceVersion;
+		private bool syncWasPlaying;
+
+		private void ResetPlaybackSync()
+		{
+			syncSamples = 0;
+			syncSum = 0;
+			lastSyncPosition = -1;
+		}
+
 		private void Update()
 		{
 			double now = BassAudio.Clock;
-			deltaDspTime = now - lastDspTime;
-			lastDspTime = now;
+			AdvancePlaybackClock(now, IsPlaying ? ArcAudioManager.Instance.PlayBackSpeed : 1);
 			if (IsPlaying)
 			{
 				float playBackSpeed = ArcAudioManager.Instance.PlayBackSpeed;
-				// Count only time after playback began, not the previous editor frame.
-				AudioTimingWithoutGlobalOffset += (float)deltaDspTime * playBackSpeed;
-				if (EnablePlaybackSync && AudioTimingWithoutGlobalOffset <= Length)
-				{
-					float t = ArcAudioManager.Instance.Timing;
-					if (deltaDspTime > 0f && (AudioTimingWithoutGlobalOffset >= 0 || ArcAudioManager.Instance.Timing > 0))
-					{
-						float delta = AudioTimingWithoutGlobalOffset - t;
-                        const float maxDelta = .04f;
-						if (Mathf.Abs(delta) > maxDelta)
-						{
-							AudioTimingWithoutGlobalOffset = t;
-						}
-					}
-				}
+				uint voiceVersion = ArcAudioManager.Instance.VoiceVersion;
+				if (!syncWasPlaying || syncSeekVersion != SeekVersion || syncSpeed != playBackSpeed || syncVoiceVersion != voiceVersion) ResetPlaybackSync();
+				syncSeekVersion = SeekVersion;
+				syncVoiceVersion = voiceVersion;
+				syncSpeed = playBackSpeed;
+				if (EnablePlaybackSync && AudioTimingWithoutGlobalOffset <= Length) SyncToMusic();
 			}
+			syncWasPlaying = IsPlaying;
 			if (AudioTiming > Length)
 			{
 				OnMusicFinished.Invoke();
 				Stop();
 			}
 		}
+
+        private void AdvancePlaybackClock(double now, float speed)
+        {
+            deltaDspTime = System.Math.Max(0, now - lastDspTime);
+            lastDspTime = now;
+            if (IsPlaying) audioTiming += (float)deltaDspTime * speed;
+        }
+
+        // Preserve the music/sound clock across rate changes. DisplayDelayChart changes with
+        // speed, so preserving only the drawn time would jump hit sounds backwards/forwards.
+        internal float CapturePlaybackTransition(float previousSpeed, double now)
+        {
+            AdvancePlaybackClock(now, previousSpeed);
+            return audioTiming + (GlobalAudioOffset + Mathf.RoundToInt(DisplayDelay * previousSpeed)) / 1000f;
+        }
+
+        internal void CompletePlaybackTransition(float transportTiming, double now)
+        {
+            if (IsPlaying) AudioTimingWithoutGlobalOffset = transportTiming;
+            // Buffer preparation and seeking happened while music was paused. Do not advance
+            // the chart through that wall time, or every switch accumulates a phase error.
+            lastDspTime = now;
+            ResetPlaybackSync();
+        }
+		private void SyncToMusic()
+		{
+			float position = ArcAudioManager.Instance.Timing;
+			// Wait for the music to start; sample only fresh positions, since BASS updates them in steps.
+			if (position <= 0 || deltaDspTime <= 0 || position == lastSyncPosition) return;
+			lastSyncPosition = position;
+			float gap = AudioTimingWithoutGlobalOffset - position;
+			if (syncSamples < SyncCalibrationSamples)
+			{
+				syncSum += gap;
+				if (++syncSamples == SyncCalibrationSamples) syncBaseline = syncSum / SyncCalibrationSamples;
+				return;
+			}
+			float drift = gap - syncBaseline;
+			// A large jump means the music stalled or skipped: follow it at once, keeping the baseline.
+			if (Mathf.Abs(drift) > SyncResnap) AudioTimingWithoutGlobalOffset = position + syncBaseline;
+			else if (Mathf.Abs(drift) > SyncDeadZone)
+				AudioTimingWithoutGlobalOffset -= drift * Mathf.Min(1, (float)deltaDspTime * SyncRate);
+		}
+
 		public bool Load(ArcChart chart, BassClip audio)
 		{
 			if (audio == null || chart == null) return false;
@@ -173,6 +233,7 @@ namespace Arcade.Gameplay
 		}
 		public void Clean()
 		{
+            ArcNoteRenderer.Instance?.ReleaseChartMemory();
             ArcAudioManager.Instance.ReleaseVoice();
 			AudioTiming = 0;
 			ArcTimingManager.Instance.Clean();
@@ -182,6 +243,7 @@ namespace Arcade.Gameplay
 			ArcSlideManager.Instance.Clean();
 			ArcCameraManager.Instance.Clean();
 			ArcSceneControlManager.Instance.Clean();
+            ArcEffectManager.Instance?.ReleaseChartMemory();
 			Chart = null;
 			Length = 0;
 		}

@@ -139,6 +139,7 @@ namespace Arcade.Compose
                 section.type = Image.Type.Sliced; section.color = Color.white;
             }
             closeIcon.color = AdeUiTheme.IconColor;
+            StyleScrollbars();
             labels.RemoveAll(x => !x); controls.RemoveAll(x => !x);
             foreach (var label in labels) label.color = Foreground;
             foreach (var label in mutedLabels) if (label) label.color = Muted;

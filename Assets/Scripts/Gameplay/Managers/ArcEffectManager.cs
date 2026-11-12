@@ -106,8 +106,32 @@ namespace Arcade.Gameplay
 		{
 			if (!effect) return;
 			effect.ResetState();
-			freeHoldEffects.Push(effect);
+			if (freeHoldEffects.Count < 32 || ArcGameplayManager.Instance && ArcGameplayManager.Instance.IsPlaying)
+                freeHoldEffects.Push(effect);
+			else Destroy(effect.gameObject);
 		}
+
+        internal void ReleaseChartMemory()
+        {
+            ArcLongNoteEffect.ResetAll();
+            foreach (var state in holdEffects.Values) ReleaseHoldEffect(state.Effect);
+            holdEffects.Clear(); releasedHolds.Clear();
+            while (freeHoldEffects.Count > 8)
+            {
+                var effect = freeHoldEffects.Pop();
+                if (effect) Destroy(effect.gameObject);
+            }
+            foreach (var state in arcEffects.Values)
+            {
+                state.Owners.Clear();
+                if (state.Effect) { state.Effect.ResetState(); Destroy(state.Effect.gameObject); }
+            }
+            arcEffects.Clear();
+            if (hitTypes) hitTypes.ReleaseChartMemory();
+            tapNoteEffectPool?.TrimAvailable(1);
+            sfxTapNoteEffectPool?.TrimAvailable(1);
+            ArcLongNoteParticlePool.TrimIdle(8);
+        }
 
 		// Arc renderers report their judging state; the color's particle follows the most
 		// recent judging arc of that color and keeps emitting while any of them judges.
@@ -187,7 +211,20 @@ namespace Arcade.Gameplay
 
 		public void AddSpecialEffectAudio(string effect, BassClip audio)
 		{
-			SpecialEffectAudios.Add(effect, audio);
+			if (SpecialEffectAudios.TryGetValue(effect, out BassClip previous) && previous != audio) Destroy(previous);
+			SpecialEffectAudios[effect] = audio;
+		}
+
+		public void RetainSpecialEffectAudios(ISet<string> used)
+		{
+			var unused = new List<string>();
+			foreach (var effect in SpecialEffectAudios.Keys)
+				if (!used.Contains(effect)) unused.Add(effect);
+			foreach (string effect in unused)
+			{
+				Destroy(SpecialEffectAudios[effect]);
+				SpecialEffectAudios.Remove(effect);
+			}
 		}
 
 		public void CleanSpecialEffectAudios()
@@ -199,7 +236,8 @@ namespace Arcade.Gameplay
 			SpecialEffectAudios.Clear();
 		}
 
-		public void PlayTapNoteEffectAt(Vector2 pos, bool isArc = false, string arcTapEffect = "none")
+		// playSound false: the caller plays the hit sound itself on the music's time (see SoundChartTiming).
+		public void PlayTapNoteEffectAt(Vector2 pos, bool isArc = false, string arcTapEffect = "none", bool playSound = true)
 		{
             hitTypes.ShowPure(pos);
             Vector3 world = EffectPlane.GetPositionOnPlane(pos);
@@ -214,20 +252,19 @@ namespace Arcade.Gameplay
                 if (!tapEmitter) tapEmitter = tapNoteEffectPool.Get(effect => effect.PlayAt(world, combine));
                 else tapEmitter.PlayAt(world, combine);
             }
-			if (isArc)
+			if (!playSound) return;
+			if (isArc) PlayArcTapSound(arcTapEffect);
+			else PlayTapSound();
+		}
+		public void PlayArcTapSound(string arcTapEffect)
+		{
+			if (SpecialEffectAudios.ContainsKey(arcTapEffect))
 			{
-				if (SpecialEffectAudios.ContainsKey(arcTapEffect))
-				{
-					BassAudio.PlayOneShot(SpecialEffectAudios[arcTapEffect], true);
-				}
-				else
-				{
-					PlayArcSound();
-				}
+				BassAudio.PlayOneShot(SpecialEffectAudios[arcTapEffect], true);
 			}
 			else
 			{
-				PlayTapSound();
+				PlayArcSound();
 			}
 		}
 		public void PlayTapSound()

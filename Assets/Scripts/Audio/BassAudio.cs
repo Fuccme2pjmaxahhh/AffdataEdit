@@ -18,6 +18,7 @@ namespace Arcade.Audio
         private static void ResetStaticState()
         {
             instance = null;
+            outputLatencyMs = 0;
             samples.Clear();
             voices.Clear();
             musicVolume = .7f;
@@ -34,10 +35,24 @@ namespace Arcade.Audio
         public static float GuideVolume { get => guideVolume; set => guideVolume = Mathf.Clamp(value, 0, MaxVolume); }
         private static float Volume(Bus bus) => bus == Bus.Music ? musicVolume : bus == Bus.Guide ? guideVolume : effectVolume;
 
+        // Measured delay (ms) from starting a stream to it being heard on this device and output setup. BASS
+        // measures it once per start (it varies a little between launches and with the output settings).
+        public static int OutputLatencyMs
+        {
+            get
+            {
+                // Read from settings at startup; a failing device must not break loading them.
+                try { EnsureInitialized(); }
+                catch (System.Exception) { return 0; }
+                return outputLatencyMs;
+            }
+        }
+        private static int outputLatencyMs;
+
         internal static void EnsureInitialized()
         {
             if (instance) return;
-            uint flags = BassOutputSettings.ConfigureDevice();
+            uint flags = BassOutputSettings.ConfigureDevice() | BassNative.DeviceLatency;
             // Native state can survive an Editor domain reload. Error 14 means the
             // device is already initialized and can be reused by the new owner.
             if (!BassNative.BASS_Init(-1, 48000, flags, System.IntPtr.Zero, System.IntPtr.Zero)
@@ -47,9 +62,10 @@ namespace Arcade.Audio
             BassNative.Check(BassNative.BASS_SetConfig(50, 1), "keep audio output active"); // BASS_CONFIG_DEV_NONSTOP
             BassNative.BASS_SetConfig(0, 100); // output buffer in milliseconds
             BassNative.BASS_SetConfig(1, 5);   // update period
+            outputLatencyMs = BassNative.BASS_GetInfo(out var info) ? (int)Mathf.Min(info.latency, 1000) : 0;
             var go = new GameObject("BASS Audio");
             instance = go.AddComponent<BassAudio>();
-            DontDestroyOnLoad(go);
+            if (Application.isPlaying) DontDestroyOnLoad(go);
         }
 
         public static void PlayOneShot(BassClip clip, bool musicBus = false) => PlayOneShot(clip, musicBus ? Bus.Music : Bus.Effect);
@@ -95,6 +111,7 @@ namespace Arcade.Audio
         private void Shutdown()
         {
             if (instance != this) return;
+            SlowAudioCache.Shutdown();
             Gameplay.ArcAudioManager.Instance?.ReleaseVoice();
             voices.Clear(); samples.Clear();
             BassNative.BASS_Free();

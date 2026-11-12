@@ -19,6 +19,7 @@ namespace Arcade.Gameplay
 
         private readonly List<Hit> active = new List<Hit>();
         private readonly Stack<Image> idle = new Stack<Image>();
+        private const int MaxIdleImages = 64;
         private RectTransform root;
         private Sprite pure;
         private ArcChart previousChart;
@@ -108,8 +109,7 @@ namespace Arcade.Gameplay
                 hit.Age += Time.deltaTime;
                 if (hit.Age >= (hit.FadeDuration < .4f ? .4f : hit.FadeDuration))
                 {
-                    hit.Image.gameObject.SetActive(false);
-                    idle.Push(hit.Image);
+                    ReturnImage(hit.Image);
                     active.RemoveAt(i);
                     continue;
                 }
@@ -127,10 +127,21 @@ namespace Arcade.Gameplay
         {
             foreach (var hit in active)
             {
-                hit.Image.gameObject.SetActive(false);
-                idle.Push(hit.Image);
+                ReturnImage(hit.Image);
             }
             active.Clear();
+        }
+        private void ReturnImage(Image image)
+        {
+            image.gameObject.SetActive(false);
+            if (idle.Count < MaxIdleImages || ArcGameplayManager.Instance && ArcGameplayManager.Instance.IsPlaying)
+                idle.Push(image);
+            else Destroy(image.gameObject);
+        }
+        internal void ReleaseChartMemory()
+        {
+            Clear(); active.TrimExcess(); previousChart = null;
+            while (idle.Count > 8) Destroy(idle.Pop().gameObject);
         }
 
         private void OnDisable() => Clear();

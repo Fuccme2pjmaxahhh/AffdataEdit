@@ -68,6 +68,7 @@ namespace Arcade.Compose
 		[System.NonSerialized] private BassClip chartAudio;
 		private Texture2D Cover;
 		private Sprite CoverSprite;
+		private long coverSize, coverModifiedTicks;
 
 		private bool loading;
 		private FileSystemWatcher watcher = new FileSystemWatcher();
@@ -138,6 +139,9 @@ namespace Arcade.Compose
 
         private void OnDestroy()
         {
+            watcher.EnableRaisingEvents = false;
+            watcher.Changed -= OnWatcherChanged;
+            watcher.Dispose();
             if (difficultyNormal) Destroy(difficultyNormal);
             if (difficultySelected) Destroy(difficultySelected);
             if (difficultyBeyondNormal) Destroy(difficultyBeyondNormal);
@@ -176,8 +180,9 @@ namespace Arcade.Compose
 
 		public void CleanProject()
 		{
-			if (CurrentProjectMetadata == null) return;
 			AdeOperationManager.Instance.CancelOngoingOperation();
+			ArcGameplayManager.Instance.Clean();
+			SlowAudioCache.BeginSong(null);
 			if (chartAudio != null)
 			{
 				Destroy(chartAudio);
@@ -209,7 +214,6 @@ namespace Arcade.Compose
 			watcher.EnableRaisingEvents = false;
 			AdeUiTheme.SetToolbarToggleState(FileWatchEnableImage, false);
 			ArcEffectManager.Instance.CleanSpecialEffectAudios();
-			ArcGameplayManager.Instance.Clean();
 		}
 		public bool IsLoading => loading;
 
@@ -448,17 +452,29 @@ namespace Arcade.Compose
 			};
 			foreach (string coverPath in files)
 			{
+				var info = new FileInfo(coverPath);
+				if (!info.Exists) continue;
+				if (Cover && CoverSprite && CoverSprite.name == coverPath && coverSize == info.Length
+					&& coverModifiedTicks == info.LastWriteTimeUtc.Ticks) return;
 				Texture2D texture = Loader.LoadTexture2D(coverPath);
 				if (texture != null)
 				{
 					Sprite sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
 					sprite.name = coverPath;
+					if (CoverSprite) Destroy(CoverSprite);
+					if (Cover) Destroy(Cover);
 					Cover = texture;
 					CoverSprite = sprite;
+					coverSize = info.Length;
+					coverModifiedTicks = info.LastWriteTimeUtc.Ticks;
 					CoverImage.sprite = CoverSprite;
 					return;
 				}
 			}
+			if (CoverSprite) Destroy(CoverSprite);
+			if (Cover) Destroy(Cover);
+			CoverSprite = null;
+			Cover = null;
 			CoverImage.sprite = DefaultCover;
 		}
 		struct AudioSpec
@@ -481,9 +497,16 @@ namespace Arcade.Compose
 			};
 			foreach (AudioSpec audioPath in files)
 			{
+				if (chartAudio && chartAudio.MatchesFile(audioPath.path))
+				{
+					audioOverrided = audioPath.overrided;
+					return;
+				}
 				BassClip clip = Loader.LoadAudioFile(audioPath.path);
 				if (clip != null)
 				{
+					ArcAudioManager.Instance.ReleaseVoice();
+					if (chartAudio) Destroy(chartAudio);
 					chartAudio = clip;
 					AdeTimingSlider.Instance.Enable = true;
 					AdeTimingSlider.Instance.Length = (int)(chartAudio.length * 1000);
@@ -491,6 +514,9 @@ namespace Arcade.Compose
 					return;
 				}
 			}
+			ArcAudioManager.Instance.ReleaseVoice();
+			if (chartAudio) Destroy(chartAudio);
+			chartAudio = null;
 		}
 
 		private void LoadChart(int difficulty)
@@ -574,13 +600,18 @@ namespace Arcade.Compose
 			{
 				effects.Add(arc.Effect);
 			}
+			ArcEffectManager.Instance.RetainSpecialEffectAudios(effects);
 			foreach (var effect in effects)
 			{
 				if (effect.EndsWith("_wav"))
 				{
 					string effectAudioFilename = effect.Substring(0, effect.Length - 4);
 					string effectAudioPath = Path.Combine(CurrentProjectFolder, $"{effectAudioFilename}.wav");
-					BassClip clip = Loader.LoadAudioFile(effectAudioPath) ?? Loader.LoadAudioFile(Path.Combine(CurrentProjectFolder, $"{effect}.opus"));
+					string opusPath = Path.Combine(CurrentProjectFolder, $"{effect}.opus");
+					string sourcePath = File.Exists(effectAudioPath) ? effectAudioPath : opusPath;
+					if (ArcEffectManager.Instance.SpecialEffectAudios.TryGetValue(effect, out BassClip existing)
+						&& existing && existing.MatchesFile(sourcePath)) continue;
+					BassClip clip = Loader.LoadAudioFile(sourcePath);
 					if (clip != null)
 					{
 						ArcEffectManager.Instance.AddSpecialEffectAudio(effect, clip);

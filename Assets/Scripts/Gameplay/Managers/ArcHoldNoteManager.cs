@@ -149,6 +149,7 @@ namespace Arcade.Gameplay
 		{
 			ArcTimingManager timing = ArcTimingManager.Instance;
 			int currentTiming = ArcGameplayManager.Instance.ChartTiming;
+			int soundTiming = ArcGameplayManager.Instance.SoundChartTiming;
 			ArcEffectManager.Instance.ResetHoldNoteEffect();
 			foreach (var t in Holds)
 			{
@@ -162,15 +163,16 @@ namespace Arcade.Gameplay
 				{
 					continue;
 				}
+				// The sound follows the music's time (ahead of the drawn time by the visual delay).
+				if (!t.AudioPlayed && soundTiming >= t.Timing && soundTiming <= t.EndTiming)
+				{
+					if (ArcGameplayManager.Instance.IsPlaying && t.ShouldPlayAudio) ArcEffectManager.Instance.PlayTapSound();
+					t.AudioPlayed = true;
+				}
 				if (t.Judged) continue;
 				if (currentTiming >= t.Timing && currentTiming <= t.EndTiming)
 				{
 					t.Judging = true;
-					if (!t.AudioPlayed)
-					{
-						if (ArcGameplayManager.Instance.IsPlaying && t.ShouldPlayAudio) ArcEffectManager.Instance.PlayTapSound();
-						t.AudioPlayed = true;
-					}
 					ArcEffectManager.Instance.SetHoldNoteEffect(t);
 					ArcEffectManager.Instance.ShowLongNoteHitType(t, new Vector3(t.WorldX, 0, 0));
 				}
@@ -178,7 +180,6 @@ namespace Arcade.Gameplay
 				{
 					t.Judging = false;
 					t.Judged = true;
-					t.AudioPlayed = true;
 				}
 				else
 				{

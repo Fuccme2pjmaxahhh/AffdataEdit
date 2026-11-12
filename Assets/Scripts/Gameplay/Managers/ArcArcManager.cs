@@ -42,7 +42,10 @@ namespace Arcade.Gameplay
         private long arcTapVersion = -1;
         private readonly ArcJudgementCursor<ArcArcTap> judgement = new ArcJudgementCursor<ArcArcTap>();
         private readonly List<ArcArcTap> crossedArcTaps = new List<ArcArcTap>();
-        internal void ResetJudgement() => judgement.Reset();
+        // Hit sounds run on their own cursor at SoundChartTiming (ahead of the drawn time by the visual delay).
+        private readonly ArcJudgementCursor<ArcArcTap> soundJudgement = new ArcJudgementCursor<ArcArcTap>();
+        private readonly List<ArcArcTap> soundCrossedArcTaps = new List<ArcArcTap>();
+        internal void ResetJudgement() { judgement.Reset(); soundJudgement.Reset(); }
         private readonly HashSet<ArcArc> candidateArcs = new HashSet<ArcArc>();
 
 		public GameObject ArcNotePrefab, ArcTapPrefab, SfxArcTapPrefab;
@@ -85,7 +88,7 @@ namespace Arcade.Gameplay
             RenderingArcs.Clear();
             RenderingArcTaps.Clear();
             renderIndex.Clear(); arcTapIndex.Clear(); allArcTaps.Clear(); candidateArcs.Clear();
-            renderCandidates.Clear(); arcTapCandidates.Clear(); flaggedArcs.Clear(); arcTapVersion = -1; judgement.Clear(); crossedArcTaps.Clear();
+            renderCandidates.Clear(); arcTapCandidates.Clear(); flaggedArcs.Clear(); arcTapVersion = -1; judgement.Clear(); crossedArcTaps.Clear(); soundJudgement.Clear(); soundCrossedArcTaps.Clear();
 			foreach (var t in Arcs)
 			{
 				t.Destroy();
@@ -404,6 +407,11 @@ namespace Arcade.Gameplay
 
 			int currentTiming = ArcGameplayManager.Instance.ChartTiming;
             RefreshArcTaps();
+            int soundTiming = ArcGameplayManager.Instance.SoundChartTiming;
+            soundJudgement.Advance(allArcTaps, soundTiming, soundCrossedArcTaps);
+            foreach (var tap in soundCrossedArcTaps)
+                if (!tap.Arc.NoInput() && !tap.Arc.Designant && soundTiming <= tap.Timing + 150 && ArcGameplayManager.Instance.IsPlaying)
+                    ArcEffectManager.Instance.PlayArcTapSound(tap.Arc.Effect);
             judgement.Advance(allArcTaps, currentTiming, crossedArcTaps);
             foreach (var tap in crossedArcTaps)
                 if (!tap.Arc.NoInput() && !tap.Arc.Designant) JudgeArcTap(tap);
@@ -413,6 +421,12 @@ namespace Arcade.Gameplay
 				{
 					continue;
 				}
+				// The sound follows the music's time (ahead of the drawn time by the visual delay).
+				if (!arc.IsVoid && !arc.AudioPlayed && soundTiming > arc.Timing && soundTiming <= arc.EndTiming)
+				{
+					if (ArcGameplayManager.Instance.IsPlaying && arc.ShouldPlayAudio) ArcEffectManager.Instance.PlayArcSound();
+					arc.AudioPlayed = true;
+				}
 				if (arc.Judged) continue;
 				if (currentTiming > arc.EndTiming)
 				{
@@ -420,14 +434,6 @@ namespace Arcade.Gameplay
 				}
 				else if (currentTiming > arc.Timing && currentTiming <= arc.EndTiming)
 				{
-					if (!arc.IsVoid)
-					{
-						if (!arc.AudioPlayed)
-						{
-							if (ArcGameplayManager.Instance.IsPlaying && arc.ShouldPlayAudio) ArcEffectManager.Instance.PlayArcSound();
-							arc.AudioPlayed = true;
-						}
-					}
 					foreach (var a in arc.ArcGroup) a.Judging = true;
 				}
 				else
@@ -443,7 +449,7 @@ namespace Arcade.Gameplay
 			if (currentTiming > t.Timing && currentTiming <= t.Timing + 150)
 			{
 				t.Judged = true;
-				if (ArcGameplayManager.Instance.IsPlaying) ArcEffectManager.Instance.PlayTapNoteEffectAt(new Vector2(t.LocalPosition.x, t.LocalPosition.y + 0.5f), true, t.Arc.Effect);
+				if (ArcGameplayManager.Instance.IsPlaying) ArcEffectManager.Instance.PlayTapNoteEffectAt(new Vector2(t.LocalPosition.x, t.LocalPosition.y + 0.5f), true, t.Arc.Effect, false);
 			}
 			else if (currentTiming > t.Timing + 150)
 			{

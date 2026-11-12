@@ -7,6 +7,7 @@ public static class WindowsCiBuild
 {
     public static void Build()
     {
+        PlayerSettings.bundleVersion = System.DateTime.UtcNow.ToString("yyyy.MM.dd", System.Globalization.CultureInfo.InvariantCulture);
         const string output = "Build/Windows/AffdataEdit.exe";
         Directory.CreateDirectory(Path.GetDirectoryName(output));
         BuildReport report = BuildPipeline.BuildPlayer(new BuildPlayerOptions

@@ -81,6 +81,7 @@ namespace Arcade.Compose
 
 		public static void AddRoot(Transform root)
 		{
+			AdeSmoothScrollInstaller.EnsureUnder(root);
 			if (extraRoots.Contains(root)) return;
 			extraRoots.Add(root);
 			Refresh();

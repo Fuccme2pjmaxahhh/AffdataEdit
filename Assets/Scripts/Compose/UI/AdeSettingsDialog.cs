@@ -12,17 +12,17 @@ namespace Arcade.Compose
     // Their original dialogs and callbacks remain available as a fallback if setup fails.
     public sealed partial class AdeSettingsDialog : MonoBehaviour
     {
-        public enum Page { General, Appearance, Editing, Audio, Grid, ContextMenu, Hotkeys, Account, Storage, About }
+        public enum Page { General, Appearance, Editing, Audio, Spectrum, Grid, ContextMenu, Hotkeys, Account, Storage, About }
         public static AdeSettingsDialog Instance { get; private set; }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetStaticState() => Instance = null;
         public bool Ready { get; private set; }
-        private static readonly string[] Titles = { "常规", "外观", "编辑", "音频", "网格", "右键", "热键", "账号", "存储", "关于" };
+        private static readonly string[] Titles = { "常规", "外观", "编辑", "音频", "频谱", "网格", "右键", "热键", "账号", "存储", "关于" };
         private static readonly HashSet<string> EditingRows = new HashSet<string>
         {
             "CancelLimit", "FixNotesTimeOnPaste", "EnableTapWidthEditing", "ChartSortMode", "DragEditMode",
-            "ShowJudgementDetails", "ShowSpectrum", "SpectrumBrightness"
+            "ShowJudgementDetails"
         };
         private readonly RectTransform[] pages = new RectTransform[Titles.Length];
         private readonly Button[] navigation = new Button[Titles.Length];
@@ -90,6 +90,7 @@ namespace Arcade.Compose
             if (Arcade.Audio.BassOutputSettings.IsWindows) AdeAudioOutputSettings.AddTo(compose);
             BuildSpectrumSetting(settings.Find("Wraper"));
             BuildHitTypeSetting(settings.Find("Wraper"));
+            BuildDisplayDelaySetting();
             BuildPasteTimingSetting(settings.Find("Wraper"));
             BuildTapWidthSetting(settings.Find("Wraper"));
             BuildContextMenuSetting(settings.Find("Wraper"));
@@ -100,7 +101,9 @@ namespace Arcade.Compose
                 Register(row, row.name == "DarkUi" ? Page.Appearance : row.name == "Log" ? Page.About
                     : row.name == "KeepContextMenuOpen" || row.name == "VerticalContextMenu" ? Page.ContextMenu
                     : EditingRows.Contains(row.name) ? Page.Editing
-                    : row.name == "PlaybackSync" || row.name == "GlobalAudioOffset" || row.name.StartsWith("WindowsAudio") ? Page.Audio : Page.General);
+                    : row.name == "ShowSpectrum" || row.name.StartsWith("Spectrum") ? Page.Spectrum
+                    : row.name == "PlaybackSync" || row.name == "GlobalAudioOffset" || row.name == "DisplayDelay"
+                        || row.name == "AutoOutputLatency" || row.name.StartsWith("WindowsAudio") ? Page.Audio : Page.General);
             foreach (Transform row in settings)
                 if (row.name != "Wraper" && row.name != "Text" && row.name != "Version") Register(row, Page.About);
             foreach (Page page in SourcePages)
@@ -161,6 +164,50 @@ namespace Arcade.Compose
             });
         }
 
+        // The automatic output-latency toggle shows the measured value above the combined
+        // 全局音频偏移 / 画面延迟补偿 row. Both delay controls only move the picture; hit sounds
+        // keep following the music.
+        private void BuildDisplayDelaySetting()
+        {
+            var compose = ArcadeComposeManager.Instance;
+            var offsetRow = compose.GlobalAudioOffsetInput.GetComponentInParent<HorizontalLayoutGroup>(true).transform;
+            // This is only a staging container. Keep it outside the source list: rows are
+            // registered later in this same frame, before deferred Destroy has run.
+            var clone = AdeUiKit.CloneRow(offsetRow, null, "DisplayDelay");
+            var caption = clone.GetComponentInChildren<TMP_Text>(true);
+            var input = clone.GetComponentInChildren<TMP_InputField>(true);
+            caption.text = "画面延迟补偿";
+            caption.transform.SetParent(offsetRow, false);
+            input.transform.SetParent(offsetRow, false);
+            if (Application.isPlaying) Destroy(clone);
+            else DestroyImmediate(clone);
+            input.onEndEdit = new TMP_InputField.SubmitEvent();
+            input.SetTextWithoutNotify(compose.ArcadePreference.DisplayDelay.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            input.onEndEdit.AddListener(text =>
+            {
+                if (!int.TryParse(text, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out int value))
+                    value = compose.ArcadePreference.DisplayDelay;
+                value = Mathf.Clamp(value, -500, 500);
+                input.SetTextWithoutNotify(value.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                compose.ArcadePreference.DisplayDelay = value;
+                compose.SavePreferences();
+                compose.ApplyDisplayDelay();
+            });
+            var toggleTemplate = compose.PlaybackSyncToggle.GetComponentInParent<HorizontalLayoutGroup>(true).transform;
+            var autoRow = AdeUiKit.CloneRow(toggleTemplate, offsetRow.parent, "AutoOutputLatency");
+            autoRow.transform.SetSiblingIndex(offsetRow.GetSiblingIndex());
+            autoRow.GetComponentInChildren<TMP_Text>(true).text =
+                "自动补偿输出延迟（检测到 " + Arcade.Audio.BassAudio.OutputLatencyMs + " ms）";
+            var toggle = autoRow.GetComponentInChildren<Toggle>(true);
+            toggle.SetIsOnWithoutNotify(compose.ArcadePreference.AutoOutputLatency);
+            toggle.onValueChanged.AddListener(value =>
+            {
+                compose.ArcadePreference.AutoOutputLatency = value;
+                compose.SavePreferences();
+                compose.ApplyDisplayDelay();
+            });
+        }
+
         private void BuildHitTypeSetting(Transform parent)
         {
             var compose = ArcadeComposeManager.Instance;
@@ -210,6 +257,32 @@ namespace Arcade.Compose
                 brightness.SetValueWithoutNotify(value);
                 compose.SavePreferences();
             };
+            var logRow = AdeUiKit.CloneRow(template, parent, "SpectrumLogScale");
+            logRow.GetComponentInChildren<TMP_Text>(true).text = "频谱对数频率轴";
+            var logToggle = logRow.GetComponentInChildren<Toggle>(true);
+            logToggle.SetIsOnWithoutNotify(compose.ArcadePreference.SpectrumLogScale);
+            logToggle.onValueChanged.AddListener(value =>
+            {
+                compose.ArcadePreference.SpectrumLogScale = value;
+                compose.SavePreferences();
+                UpdateSpectrumTuningRows();
+            });
+            var modeTemplate = compose.ResolutionDropdown.GetComponentInParent<HorizontalLayoutGroup>(true).transform;
+            var modeRow = AdeUiKit.CloneRow(modeTemplate, parent, "SpectrumIntensityMode");
+            modeRow.GetComponentInChildren<TMP_Text>(true).text = "频谱强度模式";
+            var mode = modeRow.GetComponentInChildren<TMP_Dropdown>(true);
+            mode.onValueChanged = new TMP_Dropdown.DropdownEvent();
+            mode.ClearOptions();
+            mode.AddOptions(new List<string> { "dB", "Linear" });
+            mode.interactable = true;
+            mode.SetValueWithoutNotify(compose.ArcadePreference.SpectrumLinearAmplitude ? 1 : 0);
+            mode.onValueChanged.AddListener(value =>
+            {
+                compose.ArcadePreference.SpectrumLinearAmplitude = value == 1;
+                compose.SavePreferences();
+                UpdateSpectrumTuningRows();
+            });
+            BuildSpectrumTuning(parent);
             gameObject.AddComponent<AdeAudioSpectrum>();
         }
 
@@ -282,9 +355,17 @@ namespace Arcade.Compose
             var buttons = view.Find("Buttons") as RectTransform;
             buttons.anchorMin = Vector2.zero; buttons.anchorMax = new Vector2(1, 0);
             buttons.pivot = new Vector2(.5f, 0); buttons.sizeDelta = new Vector2(0, 86); buttons.anchoredPosition = Vector2.zero;
+            // Same 28-unit side margin as the body, so the Close button lines up with the page controls.
+            var buttonLayout = buttons.GetComponent<HorizontalOrVerticalLayoutGroup>();
+            if (buttonLayout)
+                buttonLayout.padding = new RectOffset(28, 28, buttonLayout.padding.top, buttonLayout.padding.bottom);
 
             var body = Rect("SettingsBody", view);
-            Fill(body); body.offsetMin = new Vector2(20, 92); body.offsetMax = new Vector2(-20, -88);
+            // 28-unit outer margin on every side: the sidebar lines up with the "设置" title, the page controls
+            // end 28 units from the right edge (in line with the Close button), and the sidebar sits ~24 units
+            // below the header line and above the button row. On the right the body runs 20 units further:
+            // the 12-unit scrollbar sits 8 units from the window edge with an 8-unit gap to the controls.
+            Fill(body); body.offsetMin = new Vector2(28, 88); body.offsetMax = new Vector2(-8, -98);
             var nav = Rect("Categories", body, typeof(Image), typeof(VerticalLayoutGroup));
             nav.anchorMin = Vector2.zero; nav.anchorMax = new Vector2(0, 1); nav.pivot = Vector2.zero;
             nav.sizeDelta = new Vector2(190, 0); sidebar = nav.GetComponent<Image>();
@@ -294,7 +375,8 @@ namespace Arcade.Compose
             layoutGroup.childForceExpandWidth = true; layoutGroup.childForceExpandHeight = false;
             var line = Rect("Separator", body, typeof(Image));
             line.anchorMin = Vector2.zero; line.anchorMax = new Vector2(0, 1); line.pivot = Vector2.zero;
-            line.sizeDelta = new Vector2(1, 0); line.anchoredPosition = new Vector2(206, 0);
+            // Centred between the sidebar (190) and the page content (232 + 8 padding).
+            line.sizeDelta = new Vector2(1, 0); line.anchoredPosition = new Vector2(215, 0);
             divider = line.GetComponent<Image>(); divider.raycastTarget = false;
             for (int i = 0; i < pages.Length; i++)
             {
@@ -304,13 +386,14 @@ namespace Arcade.Compose
                 var scroll = Rect(Titles[i], body, typeof(ScrollRect));
                 Fill(scroll); scroll.offsetMin = new Vector2(232, 0);
                 var viewport = Rect("Viewport", scroll, typeof(RectMask2D), typeof(Image)); Fill(viewport);
-                viewport.offsetMax = new Vector2(-16, 0);
+                viewport.offsetMax = new Vector2(-20, 0);
                 viewport.GetComponent<Image>().color = Color.clear;
                 pages[i] = Rect("Content", viewport, typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
                 var content = pages[i]; content.anchorMin = new Vector2(0, 1); content.anchorMax = Vector2.one;
                 content.pivot = new Vector2(.5f, 1); content.sizeDelta = Vector2.zero;
                 var layout = content.GetComponent<VerticalLayoutGroup>();
-                layout.padding = new RectOffset(8, 20, 8, 24); layout.spacing = 14;
+                // Top padding 12 matches the sidebar's, so the first row lines up with the first category.
+                layout.padding = new RectOffset(8, 0, 12, 24); layout.spacing = 14;
                 layout.childControlWidth = layout.childControlHeight = true;
                 layout.childForceExpandWidth = true; layout.childForceExpandHeight = false;
                 content.GetComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
@@ -326,6 +409,8 @@ namespace Arcade.Compose
             }
             BuildAppearance();
             BuildStorage();
+            BuildSpectrumReset();
+            BuildGridEditor();
             BuildAbout();
             BuildHotkeyGroups();
             BuildContextMenuEditor();
@@ -359,7 +444,12 @@ namespace Arcade.Compose
         private void ToggleSettings()
         {
             if (mounted) dialog.SwitchOpenState();
-            else Show(Page.General);
+            else
+            {
+                // Reopen on the category used last time.
+                int last = ArcadeComposeManager.Instance.ArcadePreference.LastSettingsPage;
+                Show(last >= 0 && last < Titles.Length ? (Page)last : Page.General);
+            }
         }
 
         private void BindEntries()
@@ -378,17 +468,28 @@ namespace Arcade.Compose
         private void Mount()
         {
             if (mounted) return;
+            MountRows();
+            darkToggle.transform.parent.SetAsFirstSibling();
+            hotkeyPresetRow.SetAsFirstSibling();
+            accountAction.transform.parent.SetAsLastSibling();
+            contextEditorRoot.SetAsLastSibling();
+            // Spectrum has its own page; keep the slow-audio cache entry on Audio.
+            foreach (string name in new[] { "SpectrumLogScale", "SpectrumIntensityMode", "SpectrumBrightness", "ShowSpectrum" })
+                rows.FirstOrDefault(r => r.Row.name == name)?.Row.SetAsFirstSibling();
+            slowAudioCacheEntry.SetAsLastSibling();
+            // The reset button sits in its own right-aligned row; move the row, not the button.
+            spectrumReset.transform.parent.SetAsLastSibling();
+            mounted = true;
+            Select(activePage, false);
+        }
+
+        private void MountRows()
+        {
             foreach (var row in rows)
             {
                 row.Row.SetParent(row.Host ? row.Host : pages[(int)row.Page], false);
                 ArrangeRow(row.Row, row.Page);
             }
-            darkToggle.transform.parent.SetAsFirstSibling();
-            hotkeyPresetRow.SetAsFirstSibling();
-            accountAction.transform.parent.SetAsLastSibling();
-            contextEditorRoot.SetAsLastSibling();
-            mounted = true;
-            Select(activePage, false);
         }
 
         private void Select(Page page) => Select(page, true);
@@ -396,6 +497,12 @@ namespace Arcade.Compose
         {
             if (closePrevious) sources[(int)activePage]?.OnClose?.Invoke();
             activePage = page;
+            var compose = ArcadeComposeManager.Instance;
+            if (compose.ArcadePreference.LastSettingsPage != (int)page)
+            {
+                compose.ArcadePreference.LastSettingsPage = (int)page;
+                compose.SavePreferences();
+            }
             for (int i = 0; i < pages.Length; i++) pages[i].parent.parent.gameObject.SetActive(i == (int)page);
             sources[(int)page]?.OnOpen?.Invoke();
             if (page == Page.Account) AdeAccountManager.Instance.PrepareSettingsView();
@@ -437,6 +544,18 @@ namespace Arcade.Compose
             Style();
         }
 
+        // The audio-buffer note reads as a caption (smaller, muted), like other explanatory text.
+        private void StyleAudioHint()
+        {
+            var row = rows.FirstOrDefault(r => r.Row.name == "WindowsAudioHint");
+            var hint = row?.Row.GetComponentInChildren<TMP_Text>(true);
+            if (!hint) return;
+            hint.fontSize = AdeEditorText.CaptionSize;
+            hint.fontStyle = FontStyles.Normal;
+            hint.textWrappingMode = TextWrappingModes.Normal;
+            hint.color = AdeUiTheme.Current.Muted;
+        }
+
         private void Style()
         {
             bool dark = AdeUiTheme.Dark;
@@ -448,6 +567,9 @@ namespace Arcade.Compose
             StyleHotkeyGroups();
             StyleHotkeyPreset();
             StyleContextMenu();
+            StyleAudioHint();
+            StyleSpectrum();
+            StyleGrid();
             sidebar.color = AdeUiTheme.Current.Chrome;
             sidebar.sprite = AdeUiTheme.RoundedSurface;
             sidebar.type = Image.Type.Sliced;
@@ -483,10 +605,11 @@ namespace Arcade.Compose
             var icon = Rect("Icon", button.transform);
             icon.anchorMin = icon.anchorMax = new Vector2(0, .5f);
             icon.anchoredPosition = new Vector2(26, 0); icon.sizeDelta = new Vector2(24, 24);
-            if (page == Page.ContextMenu || page == Page.Editing)
+            if (page == Page.ContextMenu || page == Page.Editing || page == Page.Spectrum)
             {
                 var image = icon.gameObject.AddComponent<Image>();
-                image.sprite = Resources.Load<Sprite>(page == Page.ContextMenu ? "AffdataEdit/Icons/MouseRight" : "AffdataEdit/Icons/Edit");
+                image.sprite = Resources.Load<Sprite>(page == Page.ContextMenu ? "AffdataEdit/Icons/MouseRight"
+                    : page == Page.Spectrum ? "AffdataEdit/Icons/Spectrum" : "AffdataEdit/Icons/Edit");
                 image.preserveAspect = true;
                 icons[(int)page] = image;
             }

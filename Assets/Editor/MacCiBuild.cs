@@ -9,8 +9,10 @@ public static class MacCiBuild
 {
     public static void Build()
     {
+        PlayerSettings.bundleVersion = System.DateTime.UtcNow.ToString("yyyy.MM.dd", System.Globalization.CultureInfo.InvariantCulture);
         const string output = "Build/macOS/AffdataEdit.app";
         Directory.CreateDirectory(Path.GetDirectoryName(output));
+        EditorUserBuildSettings.SetPlatformSettings("Standalone", "OSXUniversal", "Architecture", "ARM64");
         BuildReport report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
         {
             scenes = new[] { "Assets/_Scenes/ArcEditor.unity" },

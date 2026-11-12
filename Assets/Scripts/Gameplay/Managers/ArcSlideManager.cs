@@ -33,9 +33,27 @@ namespace Arcade.Gameplay
         private ArcSlideJudgementGrid grid, floorGrid, highGrid;
         internal readonly List<ArcSlide> RenderingSlides = new List<ArcSlide>();
         private readonly List<ArcSlide> renderCandidates = new List<ArcSlide>();
+        private readonly HashSet<ArcSlide> visualOwners = new HashSet<ArcSlide>();
+        private readonly HashSet<ArcSlide> visualCandidates = new HashSet<ArcSlide>();
+        private readonly List<ArcSlide> expiredVisuals = new List<ArcSlide>();
+        private const int MaxIdleVisuals = 8;
+        private readonly Stack<ArcSlideVisual> idleVisuals = new Stack<ArcSlideVisual>();
+        internal ArcSlideVisual RentVisual(ArcSlide slide)
+        {
+            if (idleVisuals.Count == 0) return new ArcSlideVisual(slide);
+            var visual = idleVisuals.Pop(); visual.Bind(slide);
+            return visual;
+        }
+        internal void ReturnVisual(ArcSlideVisual visual)
+        {
+            visual.Unbind();
+            if (idleVisuals.Count < MaxIdleVisuals) idleVisuals.Push(visual);
+            else visual.Dispose();
+        }
         private readonly ArcVisibleNoteIndex<ArcSlide> renderIndex = new ArcVisibleNoteIndex<ArcSlide>(n => n.EndTiming);
         private int previousTime = int.MinValue;
-        private bool previousPlaying;
+        private int previousSoundTime = int.MinValue;
+        private bool previousSoundPlaying;
         private uint previousSeekVersion;
 
         private void Awake()
@@ -84,13 +102,13 @@ namespace Arcade.Gameplay
         public void Load(List<ArcSlide> slides)
         {
             Clean(); Slides = slides;
-            foreach (var slide in Slides) slide.Instantiate();
             RebuildGroups();
         }
-        public void Add(ArcSlide slide) { Slides.Add(slide); slide.Instantiate(); RebuildGroups(); }
+        public void Add(ArcSlide slide) { Slides.Add(slide); RebuildGroups(); }
         public void Remove(ArcSlide slide)
         {
             Slides.Remove(slide); slide.Destroy(); RebuildGroups();
+            visualOwners.Remove(slide);
             if (feedback.TryGetValue(slide, out var hit)) { Destroy(hit.Object); feedback.Remove(slide); }
         }
         public void Clean()
@@ -98,13 +116,21 @@ namespace Arcade.Gameplay
             foreach (var slide in Slides) slide.Destroy();
             Slides = new List<ArcSlide>(); ResetFeedback();
             renderIndex.Clear(); renderCandidates.Clear(); RenderingSlides.Clear();
+            visualOwners.Clear(); visualCandidates.Clear(); expiredVisuals.Clear();
+            while (idleVisuals.Count > 0) idleVisuals.Pop().Dispose();
             foreach (var hit in feedback.Values) if (hit.Object) Destroy(hit.Object);
             feedback.Clear();
         }
         public void ResetFeedback()
         {
-            previousTime = int.MinValue; previousPlaying = false; grid?.ResetState(); floorGrid?.ResetState(); highGrid?.ResetState();
+            ResetVisualFeedback();
+            previousSoundTime = int.MinValue; previousSoundPlaying = false;
             previousSeekVersion = ArcGameplayManager.Instance ? ArcGameplayManager.Instance.SeekVersion : 0;
+        }
+        private void ResetVisualFeedback()
+        {
+            previousTime = int.MinValue;
+            grid?.ResetState(); floorGrid?.ResetState(); highGrid?.ResetState();
             activeRanges.Clear(); floorRanges.Clear(); highRanges.Clear();
             foreach (var hit in feedback.Values) { hit.Opacity = 0; if (hit.Object) hit.Object.SetActive(false); }
         }
@@ -125,14 +151,19 @@ namespace Arcade.Gameplay
             if (!game || !game.IsLoaded) return;
             if (Slides.Count > 0) EnsureResources();
             int now = game.ChartTiming;
-            bool startedPlaying = game.IsPlaying && !previousPlaying;
+            int soundNow = game.SoundChartTiming;
+            bool startedPlaying = game.IsPlaying && !previousSoundPlaying;
             bool seeked = previousSeekVersion != game.SeekVersion;
+            // Rate/display-delay rebasing can move the drawn clock backwards. Sound heads,
+            // like the Tap/ArcTap cursors, must not revisit already crossed audio positions.
+            if (!seeked && game.IsPlaying && previousSoundPlaying)
+                soundNow = Mathf.Max(soundNow, previousSoundTime);
             bool discontinuity = seeked || previousTime == int.MinValue || now < previousTime || (long)now - previousTime > 250;
-            if (discontinuity) ResetFeedback();
+            if (seeked) ResetFeedback();
+            else if (discontinuity) ResetVisualFeedback();
             activeRanges.Clear(); floorRanges.Clear(); highRanges.Clear(); activeSegments.Clear();
             foreach (var slide in Slides)
             {
-                if (slide.Visual == null) slide.Instantiate();
                 bool hit = slide.IsValid && game.Auto && !slide.NoInput() && !slide.GroupHide()
                     && now >= slide.Timing && now < slide.EndTiming;
                 slide.Judging = hit;
@@ -141,7 +172,9 @@ namespace Arcade.Gameplay
                 // Sound at the group's head, or when playback starts inside an active segment.
                 // Paused scrubbing and discontinuous seeks must never produce hit sounds.
                 if (game.Auto && slide.IsValid && !slide.NoInput() && !slide.GroupHide() && !seeked
-                    && (slide.IsGroupHead && ShouldPlayHeadSound(slide.Timing, previousTime, now, previousPlaying, game.IsPlaying)
+                    // Compare both frames in the music clock. Mixing an old visual time with
+                    // a new speed-scaled delay can otherwise replay or skip the same head.
+                    && (slide.IsGroupHead && CrossedSoundHead(slide.Timing, soundNow, game.IsPlaying)
                         || startedPlaying && hit))
                 {
                     if (slide.IsFloor) ArcEffectManager.Instance.PlayTapSound();
@@ -158,11 +191,26 @@ namespace Arcade.Gameplay
             }
             RenderingSlides.Clear();
             renderIndex.Query(Slides, renderCandidates);
+            visualCandidates.Clear();
             foreach (var slide in renderCandidates)
             {
+                if (!slide.IsValid || slide.GroupHide()) continue;
+                // The interval index includes reversed/negative timing sections. Do not approximate
+                // visibility by endpoint time: a middle section can still be on screen.
+                visualCandidates.Add(slide);
+                if (slide.Visual == null) slide.Instantiate();
+                visualOwners.Add(slide);
                 bool consume = (game.Auto || slide.NoInput()) && !(slide.TimingGroup?.NoClip ?? false);
                 slide.Visual.Present(now, consume);
                 if (slide.Visual.IsVisible) RenderingSlides.Add(slide);
+            }
+            expiredVisuals.Clear();
+            foreach (var slide in visualOwners)
+                if (!visualCandidates.Contains(slide)) expiredVisuals.Add(slide);
+            foreach (var slide in expiredVisuals)
+            {
+                slide.Destroy();
+                visualOwners.Remove(slide);
             }
             foreach (var pair in activeSegments)
             {
@@ -208,7 +256,8 @@ namespace Arcade.Gameplay
                 highGrid.UpdateFrame(game.IsPlaying && !discontinuity ? Mathf.Max(0, now - previousTime) / 1000f : 0);
             }
             previousTime = now;
-            previousPlaying = game.IsPlaying;
+            previousSoundTime = soundNow;
+            previousSoundPlaying = game.IsPlaying;
             previousSeekVersion = game.SeekVersion;
         }
 
@@ -218,6 +267,8 @@ namespace Arcade.Gameplay
                 return false;
             return previous < start && now >= start || !wasPlaying && previous == start && now >= start;
         }
+        private bool CrossedSoundHead(int start, int now, bool playing)
+            => ShouldPlayHeadSound(start, previousSoundTime, now, previousSoundPlaying, playing);
         public void RebuildGroups(bool resetFeedback = true)
         {
             ArcScoreManager.Invalidate();
@@ -247,33 +298,62 @@ namespace Arcade.Gameplay
             }
             ordered.Sort((a, b) => a.note.Timing != b.note.Timing
                 ? a.note.Timing.CompareTo(b.note.Timing) : a.index.CompareTo(b.index));
+            var tails = new Dictionary<(ArcTimingGroup Group, SlideHeight Height, int EndTiming), List<(ArcSlide Note, int Order)>>();
             for (int i = 0; i < ordered.Count; i++)
             {
                 var current = ordered[i].note;
+                var startRange = current.Range(0);
                 ArcSlide best = null;
+                (ArcTimingGroup Group, SlideHeight Height, int EndTiming) bestKey = default;
+                int bestIndex = -1, bestOrder = int.MaxValue;
                 float bestLeft = 0, bestRight = 0;
                 double bestOverlap = MinimumContinuityOverlap;
-                for (int j = 0; j < i; j++)
+                // Only nearby end times can connect. Explicit source order preserves
+                // the original tie-break even when candidates live in different buckets.
+                for (long timing = (long)current.Timing - ContinuityToleranceMilliseconds;
+                    timing <= (long)current.Timing + ContinuityToleranceMilliseconds; timing++)
                 {
-                    var before = ordered[j].note;
-                    if (!before.IsGroupTail || before.TimingGroup != current.TimingGroup || before.Height != current.Height
-                        || System.Math.Abs((long)current.Timing - before.EndTiming) > ContinuityToleranceMilliseconds) continue;
-                    var a = before.Range(1); var b = current.Range(0);
-                    float left = Mathf.Max(a.x, b.x), right = Mathf.Min(a.y, b.y);
-                    // Coordinates have three decimals; remove float noise at the strict threshold.
-                    double overlapWidth = System.Math.Round((double)right - left, 6);
-                    if (overlapWidth > bestOverlap)
+                    if (timing < int.MinValue || timing > int.MaxValue) continue;
+                    var key = (current.TimingGroup, current.Height, (int)timing);
+                    if (!tails.TryGetValue(key, out var candidates)) continue;
+                    for (int j = 0; j < candidates.Count; j++)
                     {
-                        best = before; bestOverlap = overlapWidth; bestLeft = left; bestRight = right;
+                        var candidate = candidates[j];
+                        var endRange = candidate.Note.Range(1);
+                        float left = Mathf.Max(endRange.x, startRange.x), right = Mathf.Min(endRange.y, startRange.y);
+                        // Coordinates have three decimals; remove float noise at the strict threshold.
+                        double overlapWidth = System.Math.Round((double)right - left, 6);
+                        if (overlapWidth > bestOverlap
+                            || (best != null && overlapWidth == bestOverlap && candidate.Order < bestOrder))
+                        {
+                            best = candidate.Note;
+                            bestKey = key; bestIndex = j; bestOrder = candidate.Order;
+                            bestOverlap = overlapWidth; bestLeft = left; bestRight = right;
+                        }
                     }
                 }
-                if (best == null) continue;
-                current.GroupRoot = best.GroupRoot;
-                current.GroupJudgementStartTiming = current.GroupRoot.GroupEndTiming;
-                current.GroupRoot.GroupEndTiming = System.Math.Max(current.GroupRoot.GroupEndTiming, current.EndTiming);
-                best.IsGroupTail = current.IsGroupHead = false;
-                best.Overlap.z = current.Overlap.x = bestLeft;
-                best.Overlap.w = current.Overlap.y = bestRight;
+                if (best != null)
+                {
+                    current.GroupRoot = best.GroupRoot;
+                    current.GroupJudgementStartTiming = current.GroupRoot.GroupEndTiming;
+                    current.GroupRoot.GroupEndTiming = System.Math.Max(current.GroupRoot.GroupEndTiming, current.EndTiming);
+                    best.IsGroupTail = current.IsGroupHead = false;
+                    best.Overlap.z = current.Overlap.x = bestLeft;
+                    best.Overlap.w = current.Overlap.y = bestRight;
+
+                    var candidates = tails[bestKey];
+                    int lastIndex = candidates.Count - 1;
+                    candidates[bestIndex] = candidates[lastIndex];
+                    candidates.RemoveAt(lastIndex);
+                    if (candidates.Count == 0) tails.Remove(bestKey);
+                }
+                var endKey = (current.TimingGroup, current.Height, current.EndTiming);
+                if (!tails.TryGetValue(endKey, out var bucket))
+                {
+                    bucket = new List<(ArcSlide Note, int Order)>();
+                    tails.Add(endKey, bucket);
+                }
+                bucket.Add((current, i));
             }
         }
         private void OnDestroy()

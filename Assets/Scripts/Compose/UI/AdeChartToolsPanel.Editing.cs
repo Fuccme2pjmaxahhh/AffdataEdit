@@ -40,11 +40,27 @@ namespace Arcade.Compose
 
         private int GroupEventCount(ArcTimingGroup group)
         {
-            var chart = ArcGameplayManager.Instance.Chart;
-            if (chart == null) return 0;
-            return chart.Taps.Count(x => x.TimingGroup == group) + chart.Holds.Count(x => x.TimingGroup == group)
-                + chart.Arcs.Count(x => x.TimingGroup == group) + chart.Slides.Count(x => x.TimingGroup == group)
-                + chart.Cameras.Count(x => x.TimingGroup == group) + chart.SceneControl.Count(x => x.TimingGroup == group);
+            if (group == null) return defaultGroupEvents;
+            return groupEventCounts.TryGetValue(group, out int count) ? count : 0;
+        }
+        private readonly Dictionary<ArcTimingGroup, int> groupEventCounts = new Dictionary<ArcTimingGroup, int>();
+        private int defaultGroupEvents;
+        private void RefreshGroupEventCounts()
+        {
+            groupEventCounts.Clear(); defaultGroupEvents = 0;
+            if (lastChart == null) return;
+            void Count(IHasTimingGroup note)
+            {
+                var group = note.TimingGroup;
+                if (group == null) defaultGroupEvents++;
+                else { groupEventCounts.TryGetValue(group, out int value); groupEventCounts[group] = value + 1; }
+            }
+            foreach (var note in lastChart.Taps) Count(note);
+            foreach (var note in lastChart.Holds) Count(note);
+            foreach (var note in lastChart.Arcs) Count(note);
+            foreach (var note in lastChart.Slides) Count(note);
+            foreach (var note in lastChart.Cameras) Count(note);
+            foreach (var note in lastChart.SceneControl) Count(note);
         }
 
         private void DuplicateGroup(int index)
@@ -82,26 +98,27 @@ namespace Arcade.Compose
             Message("时间组及组内内容已删除。可撤销。");
         }
 
-        private void RefreshGroups()
+        private void EnsureGroupRows()
         {
             if (!groupTopSpacer)
             {
                 groupTopSpacer = Rect("Top spacer", groupList);
                 groupTopSpacer.SetAsFirstSibling();
                 groupBottomSpacer = Rect("Bottom spacer", groupList);
+                groupTopSpacer.gameObject.SetActive(false); groupBottomSpacer.gameObject.SetActive(false);
             }
             while (groupRows.Count < Mathf.Min(groups.Count, GroupRowCount))
             {
                 int slot = groupRows.Count;
                 var button = Quiet(Button(groupList, "", () => SelectGroup(groupFirst + slot)));
-                button.GetComponentInChildren<TMP_Text>().alignment = TextAlignmentOptions.Left;
-                button.GetComponentInChildren<TMP_Text>().fontSize = 24;
+                button.GetComponentInChildren<TMP_Text>(true).alignment = TextAlignmentOptions.Left;
+                button.GetComponentInChildren<TMP_Text>(true).fontSize = 24;
                 var layout = button.gameObject.AddComponent<HorizontalLayoutGroup>();
                 layout.padding = new RectOffset(12, 12, 0, 0); layout.spacing = 8;
                 layout.childControlWidth = layout.childControlHeight = true;
                 layout.childForceExpandWidth = layout.childForceExpandHeight = false;
                 layout.childAlignment = TextAnchor.MiddleLeft;
-                Size(button.GetComponentInChildren<TMP_Text>().transform, -1, ControlHeight);
+                Size(button.GetComponentInChildren<TMP_Text>(true).transform, -1, ControlHeight);
                 var detail = MutedLabel(button.transform, "", ControlHeight, 18);
                 detail.alignment = TextAlignmentOptions.Right;
                 detail.textWrappingMode = TextWrappingModes.NoWrap;
@@ -112,12 +129,18 @@ namespace Arcade.Compose
                 groupRows.Add(button);
                 groupBottomSpacer.SetAsLastSibling();
             }
+        }
+        private void RefreshGroups()
+        {
+            RefreshGroupEventCounts();
+            EnsureGroupRows();
             groupFirst = -1;
             ScrollGroups();
             bool loaded = lastChart != null;
             bool editable = loaded && lastGroup != null;
             groupCount.text = "Timing  ·  " + groups.Count;
-            Size(groupScroll.transform, -1, Mathf.Min(groups.Count, 4) * (ControlHeight + 4) - 4);
+            Size(groupScroll.transform, -1, editCollapsed ? groupListHeight : Mathf.Min(groups.Count, 4) * (ControlHeight + 4) - 4);
+            groupLayoutDirty = true;
             groupProperties.gameObject.SetActive(editable);
             defaultGroupHint.gameObject.SetActive(!editable);
             noInput.SetIsOnWithoutNotify(lastGroup?.NoInput ?? false);
@@ -130,24 +153,27 @@ namespace Arcade.Compose
             RefreshTimings();
         }
 
-        // Binds the rows to the groups at the current scroll position; event counts are only taken for them.
+        // Binds only the viewport and overscan rows; event counts were cached on data refresh.
         private void ScrollGroups()
         {
+            if (!groupList || !groupScroll) return;
             const float pitch = ControlHeight + 4;
-            int first = Mathf.Clamp(Mathf.FloorToInt(groupList.anchoredPosition.y / pitch), 0, Mathf.Max(0, groups.Count - groupRows.Count));
-            if (first == groupFirst) return;
+            EnsureGroupRows();
+            VirtualContent(groupList, groups.Count, pitch);
+            int slots = Mathf.Min(groups.Count, GroupRowCount);
+            int first = VirtualFirst(groupList.anchoredPosition.y, pitch, groups.Count, slots);
+            if (first == groupFirst && slots == groupSlots) return;
             groupFirst = first;
-            int after = groups.Count - first - groupRows.Count;
-            SetSpacer(groupTopSpacer, first * pitch - 4);
-            SetSpacer(groupBottomSpacer, after * pitch - 4);
+            groupSlots = slots;
             bool loaded = lastChart != null;
             for (int i = 0; i < groupRows.Count; i++)
             {
                 int index = first + i;
-                groupRows[i].gameObject.SetActive(index < groups.Count);
-                if (index >= groups.Count) continue;
+                groupRows[i].gameObject.SetActive(i < slots && index < groups.Count);
+                if (i >= slots || index >= groups.Count) continue;
+                VirtualRow((RectTransform)groupRows[i].transform, index, pitch);
                 var group = groups[index];
-                groupRows[i].GetComponentInChildren<TMP_Text>().text = GroupName(group);
+                groupRows[i].GetComponentInChildren<TMP_Text>(true).text = GroupName(group);
                 groupDetails[i].text = group == null ? "基础" : GroupEventCount(group) + " 个事件";
                 groupRows[i].interactable = loaded;
                 groupCopies[i].interactable = loaded;
@@ -155,13 +181,6 @@ namespace Arcade.Compose
                 Style(groupCopies[i]); Style(groupDeletes[i]);
                 Highlight(groupRows[i], group == lastGroup);
             }
-        }
-
-        // The layout's 4px spacing already separates a spacer from its neighbouring row.
-        private static void SetSpacer(RectTransform spacer, float height)
-        {
-            spacer.gameObject.SetActive(height > 0);
-            if (height > 0) Size(spacer, -1, height);
         }
 
         private void ApplyGroup()
@@ -251,7 +270,7 @@ namespace Arcade.Compose
 
         private void ResizeTimingList()
         {
-            if (!expanded || activePage != Page.Groups || activeGroupTab != 0 || lastChart == null) return;
+            if (!expanded || activePage != Page.Groups || activeGroupTab != 0 || lastChart == null || editCollapsed) return;
             float height = ((RectTransform)pages[0].parent).rect.height;
             if (!timingLayoutDirty && Mathf.Approximately(height, timingViewportHeight)) return;
             timingLayoutDirty = false;
@@ -315,8 +334,9 @@ namespace Arcade.Compose
                 page.TopSpacer = Rect("Top spacer", page.List);
                 page.TopSpacer.SetAsFirstSibling();
                 page.BottomSpacer = Rect("Bottom spacer", page.List);
+                page.TopSpacer.gameObject.SetActive(false); page.BottomSpacer.gameObject.SetActive(false);
             }
-            while (page.Rows.Count < Mathf.Min(page.Events.Count, 6))
+            while (page.Rows.Count < VirtualRowCount(4 * (ControlHeight + 4), ControlHeight + 4, page.Events.Count))
             {
                 int index = page.Rows.Count;
                 var button = Quiet(Button(page.List, "", () =>
@@ -327,9 +347,9 @@ namespace Arcade.Compose
                     RevealCurrentGroup();
                     FillControl(page); HighlightControlRows(page); ClearMessage();
                 }));
-                button.GetComponentInChildren<TMP_Text>().alignment = TextAlignmentOptions.Left;
-                button.GetComponentInChildren<TMP_Text>().fontSize = 20;
-                Size(button.GetComponentInChildren<TMP_Text>().transform, 100, ControlHeight);
+                button.GetComponentInChildren<TMP_Text>(true).alignment = TextAlignmentOptions.Left;
+                button.GetComponentInChildren<TMP_Text>(true).fontSize = 20;
+                Size(button.GetComponentInChildren<TMP_Text>(true).transform, 100, ControlHeight);
                 var layout = button.gameObject.AddComponent<HorizontalLayoutGroup>();
                 layout.padding = new RectOffset(8, 8, 0, 0); layout.spacing = 8;
                 layout.childControlWidth = layout.childControlHeight = true;
@@ -359,20 +379,19 @@ namespace Arcade.Compose
         {
             if (!page.TopSpacer) return;
             const float pitch = ControlHeight + 4;
-            int first = Mathf.Clamp(Mathf.FloorToInt(page.List.anchoredPosition.y / pitch),
-                0, Mathf.Max(0, page.Events.Count - page.Rows.Count));
+            VirtualContent(page.List, page.Events.Count, pitch);
+            int first = VirtualFirst(page.List.anchoredPosition.y, pitch, page.Events.Count, page.Rows.Count);
             if (first == page.First) return;
             page.First = first;
-            SetSpacer(page.TopSpacer, first * pitch - 4);
-            SetSpacer(page.BottomSpacer, (page.Events.Count - first - page.Rows.Count) * pitch - 4);
             for (int i = 0; i < page.Rows.Count; i++)
             {
                 int index = first + i;
                 page.Rows[i].gameObject.SetActive(index < page.Events.Count);
                 if (index >= page.Events.Count) continue;
+                VirtualRow((RectTransform)page.Rows[i].transform, index, pitch);
                 var e = page.Events[index];
                 string name = e is ArcCamera c ? $"{c.CameraType.ToString().ToLowerInvariant()} · {c.Duration} ms" : ((RawAffSceneControl)((ArcSceneControl)e).IntoRawItem()).Type;
-                page.Rows[i].GetComponentInChildren<TMP_Text>().text = $"{e.Timing} ms";
+                page.Rows[i].GetComponentInChildren<TMP_Text>(true).text = $"{e.Timing} ms";
                 page.Descriptions[i].text = name;
                 page.Groups[i].text = GroupName(((IHasTimingGroup)e).TimingGroup);
             }

@@ -124,6 +124,8 @@ namespace Arcade.Gameplay
             tapModelBuffer?.Dispose(); tapFrameBuffer?.Dispose();
             if (nativeTapModels.IsCreated) nativeTapModels.Dispose();
             residentSource = null; tapModelBuffer = tapFrameBuffer = null;
+            tapModels = Array.Empty<TapModel>();
+            tapModelVersion = -1; tapDirtyMin = int.MaxValue; tapDirtyMax = -1; residentFrame = -1;
         }
     }
 }

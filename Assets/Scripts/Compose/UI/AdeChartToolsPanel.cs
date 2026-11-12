@@ -27,8 +27,8 @@ namespace Arcade.Compose
         private readonly List<Button> groupRows = new List<Button>();
         private readonly List<TMP_Text> groupDetails = new List<TMP_Text>();
         private readonly List<Button> groupCopies = new List<Button>(), groupDeletes = new List<Button>();
-        // The group list is virtualized: a few rows are rebound as it scrolls, between two spacers.
-        private const int GroupRowCount = 6;
+        // The group list is virtualized: a few absolute rows are rebound as it scrolls.
+        // GroupRowCount (AdeChartToolsPanel.Collapse.cs) grows when the list is enlarged.
         private int groupFirst;
         private RectTransform groupTopSpacer, groupBottomSpacer;
         // Timing group dropdowns share one option list, rebuilt only when the groups change.
@@ -92,6 +92,8 @@ namespace Arcade.Compose
             Instance = this;
             var timing = AdeTimingEditor.Instance;
             BindView();
+            Canvas.preWillRenderCanvases += SynchronizeVirtualRows;
+            Canvas.willRenderCanvases += SynchronizeVirtualRows;
             pageSelector = new AdeAnimatedTabs(tabs);
             groupSelector = new AdeAnimatedTabs(groupTabs);
             tabs[0].GetComponentInChildren<TMP_Text>(true).text = "Timing";
@@ -115,6 +117,8 @@ namespace Arcade.Compose
 
         private void OnDestroy()
         {
+            Canvas.preWillRenderCanvases -= SynchronizeVirtualRows;
+            Canvas.willRenderCanvases -= SynchronizeVirtualRows;
             pageSelector?.Dispose(); groupSelector?.Dispose();
             AdeRightSideCards.Release(this);
             panelMotion.TryCancel();
@@ -146,7 +150,9 @@ namespace Arcade.Compose
                 groupList.anchoredPosition = new Vector2(groupList.anchoredPosition.x, y);
                 groupFirst = -1; ScrollGroups(); revealCurrentGroup = false;
             }
+            ResizeGroupList();
             ResizeTimingList();
+            if (expanded) RefreshVirtualViewport();
             if (themeRevision != AdeUiTheme.Revision) ApplyTheme();
             if (!ArcadeComposeManager.Instance.IsEditorMode && expanded) Collapse();
         }
@@ -264,7 +270,9 @@ namespace Arcade.Compose
         {
             activeGroupTab = index;
             timingLayoutDirty = true;
-            for (int i = 0; i < groupSections.Length; i++) groupSections[i].gameObject.SetActive(i == index);
+            // Picking a tab reopens a collapsed editor.
+            editCollapsed = false;
+            ApplyCollapse();
             UpdateHighlights();
             ClearMessage();
         }

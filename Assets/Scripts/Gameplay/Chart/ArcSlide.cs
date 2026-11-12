@@ -146,11 +146,16 @@ namespace Arcade.Gameplay.Chart
         internal ArcSlideVisual Visual;
         public override void Instantiate()
         {
-            if (Visual == null) Visual = new ArcSlideVisual(this);
+            if (Visual == null) Visual = ArcSlideManager.Instance
+                ? ArcSlideManager.Instance.RentVisual(this) : new ArcSlideVisual(this);
         }
         protected override void ReleaseVisual()
         {
-            Visual?.Dispose();
+            if (Visual != null)
+            {
+                if (ArcSlideManager.Instance) ArcSlideManager.Instance.ReturnVisual(Visual);
+                else Visual.Dispose();
+            }
             Visual = null;
             base.ReleaseVisual();
         }
