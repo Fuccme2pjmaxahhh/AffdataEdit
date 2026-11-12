@@ -268,7 +268,7 @@ namespace Arcade.Compose
 				// Finish serialization before touching the existing chart file.
 				using (var snapshot = new MemoryStream())
 				{
-					ArcGameplayManager.Instance.Chart.Serialize(snapshot, ArcadeComposeManager.Instance.ArcadePreference.ChartSortMode);
+					ArcGameplayManager.Instance.Chart.Serialize(snapshot, ArcadeComposeManager.Instance.ArcadePreference.ChartSortMode, ArcadeComposeManager.Instance.ArcadePreference.LowPrecisionArcAndSlide);
 					string path = Path.Combine(CurrentProjectFolder, $"{CurrentDifficulty}.aff");
 					if (File.Exists(path)) File.Copy(path, NewSnapshotPath(ProjectBackupFolder, CurrentDifficulty), true);
 					CurrentProjectMetadata.LastWorkingDifficulty = CurrentDifficulty;
@@ -303,7 +303,7 @@ namespace Arcade.Compose
 				{
 					using (var snapshot = new MemoryStream())
 					{
-						ArcGameplayManager.Instance.Chart.Serialize(snapshot, ArcadeComposeManager.Instance.ArcadePreference.ChartSortMode);
+						ArcGameplayManager.Instance.Chart.Serialize(snapshot, ArcadeComposeManager.Instance.ArcadePreference.ChartSortMode, ArcadeComposeManager.Instance.ArcadePreference.LowPrecisionArcAndSlide);
 						// The AFF writer closes its stream; ToArray remains valid after Close.
 						byte[] bytes = snapshot.ToArray();
 						using (var fs = new FileStream(NewSnapshotPath(ProjectAutosaveFolder, CurrentDifficulty), FileMode.Create, FileAccess.Write, FileShare.None))

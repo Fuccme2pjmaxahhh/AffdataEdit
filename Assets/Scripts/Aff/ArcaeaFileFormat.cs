@@ -24,7 +24,7 @@ namespace Arcade.Aff
 			return chart;
 		}
 
-		public static void DumpToStream(Stream stream, RawAffChart chart)
+		public static void DumpToStream(Stream stream, RawAffChart chart, bool lowPrecision = false)
 		{
 			TextWriter writer = new StreamWriter(stream);
 			writer.WriteLine($"AudioOffset:{chart.AudioOffset.ToString(CultureInfo.InvariantCulture)}");
@@ -39,20 +39,20 @@ namespace Arcade.Aff
 			writer.WriteLine($"-");
 			foreach (var item in chart.items)
 			{
-				writeItem(writer, item);
+				writeItem(writer, item, lowPrecision);
 			}
 			writer.Close();
 		}
 		// One item as written in an aff file, e.g. for quoting it in reports.
-		public static string FormatItem(IRawAffItem item)
+		public static string FormatItem(IRawAffItem item, bool lowPrecision = false)
 		{
 			using (var writer = new StringWriter(CultureInfo.InvariantCulture))
 			{
-				writeItem(writer, item);
+				writeItem(writer, item, lowPrecision);
 				return writer.ToString().TrimEnd();
 			}
 		}
-		static void writeItem(TextWriter writer, IRawAffItem item, string intent = "")
+		static void writeItem(TextWriter writer, IRawAffItem item, bool lowPrecision, string intent = "")
 		{
 			if (item is RawAffTiming timing)
 			{
@@ -68,10 +68,14 @@ namespace Arcade.Aff
 			}
 			else if (item is RawAffSlide slide)
 			{
+                if (lowPrecision && !ArcSlide.ValidShape(
+                    AffCoordinate.Round(slide.StartCenter, true), AffCoordinate.Round(slide.StartWidth, true),
+                    AffCoordinate.Round(slide.EndCenter, true), AffCoordinate.Round(slide.EndWidth, true), slide.LeftCurve, slide.RightCurve))
+                    throw new InvalidDataException($"Slide（{slide.Timing}）在两位小数下宽度归零或边界交叉，请关闭低精度或调整范围。");
 				writer.WriteLine(intent + string.Format(CultureInfo.InvariantCulture,
 					"slide({0},{1},{2},{3},{4},{5},{6},{7},{8});", slide.Timing, slide.EndTiming,
-					FormatSlideCoordinate(slide.StartCenter), FormatSlideCoordinate(slide.StartWidth),
-					FormatSlideCoordinate(slide.EndCenter), FormatSlideCoordinate(slide.EndWidth), slide.LeftCurve, slide.RightCurve, (int)slide.Height));
+					AffCoordinate.Format(slide.StartCenter, lowPrecision), AffCoordinate.Format(slide.StartWidth, lowPrecision),
+					AffCoordinate.Format(slide.EndCenter, lowPrecision), AffCoordinate.Format(slide.EndWidth, lowPrecision), slide.LeftCurve, slide.RightCurve, (int)slide.Height));
 			}
 			else if (item is RawAffArc arc)
 			{
@@ -79,8 +83,8 @@ namespace Arcade.Aff
 				{
 					arc.LineType = ArcLineType.TrueIsVoid;
 				}
-				writer.WriteLine($"{intent}arc({arc.Timing.ToString(CultureInfo.InvariantCulture)},{arc.EndTiming.ToString(CultureInfo.InvariantCulture)},{arc.XStart.ToString("f3", CultureInfo.InvariantCulture)},{arc.XEnd.ToString("f3", CultureInfo.InvariantCulture)}" +
-					$",{ArcCurveTypeStrings[arc.CurveType]},{arc.YStart.ToString("f3", CultureInfo.InvariantCulture)},{arc.YEnd.ToString("f3", CultureInfo.InvariantCulture)},{arc.Color},{arc.Effect},{(arc.TraceColor.HasValue && arc.LineType == ArcLineType.TrueIsVoid ? FormatHexColor(arc.TraceColor.Value) : ArcLineTypeStrings[arc.LineType])}"
+				writer.WriteLine($"{intent}arc({arc.Timing.ToString(CultureInfo.InvariantCulture)},{arc.EndTiming.ToString(CultureInfo.InvariantCulture)},{AffCoordinate.Format(arc.XStart, lowPrecision)},{AffCoordinate.Format(arc.XEnd, lowPrecision)}" +
+					$",{ArcCurveTypeStrings[arc.CurveType]},{AffCoordinate.Format(arc.YStart, lowPrecision)},{AffCoordinate.Format(arc.YEnd, lowPrecision)},{arc.Color},{arc.Effect},{(arc.TraceColor.HasValue && arc.LineType == ArcLineType.TrueIsVoid ? FormatHexColor(arc.TraceColor.Value) : ArcLineTypeStrings[arc.LineType])}"
 					 + (arc.Smoothness == null ? "" : $",{arc.Smoothness.Value.ToString("0.0######", CultureInfo.InvariantCulture)}") + ")" +
 					(arc.ArcTaps.Count > 0 ? $"[{string.Join(",", arc.ArcTaps.Select(e => $"arctap({e.Timing.ToString(CultureInfo.InvariantCulture)}{FormatWidthAndMine(e.Width, e.IsMine)})"))}]" : "") +
 					";");
@@ -117,7 +121,7 @@ namespace Arcade.Aff
 				writer.WriteLine($"{intent}timinggroup({timinggroup.Attributes}){{");
 				foreach (var nestedItem in timinggroup.Items)
 				{
-					writeItem(writer, nestedItem, intent + "  ");
+					writeItem(writer, nestedItem, lowPrecision, intent + "  ");
 				}
 				writer.WriteLine($"{intent}}};");
 			}
@@ -128,10 +132,6 @@ namespace Arcade.Aff
 		{
 			string text = width == 1 ? "" : "," + width.ToString("0.00", CultureInfo.InvariantCulture);
 			return mine ? text + ",4" : text;
-		}
-		private static string FormatSlideCoordinate(float value)
-		{
-			return value.ToString("f3", CultureInfo.InvariantCulture);
 		}
 		public static string FormatHexColor(Color32 color)
 		{

@@ -22,7 +22,7 @@ namespace Arcade.Compose
         private static readonly HashSet<string> EditingRows = new HashSet<string>
         {
             "CancelLimit", "FixNotesTimeOnPaste", "EnableTapWidthEditing", "ChartSortMode", "DragEditMode",
-            "ShowJudgementDetails"
+            "ShowJudgementDetails", "LowPrecisionArcAndSlide"
         };
         private readonly RectTransform[] pages = new RectTransform[Titles.Length];
         private readonly Button[] navigation = new Button[Titles.Length];
@@ -93,6 +93,7 @@ namespace Arcade.Compose
             BuildDisplayDelaySetting();
             BuildPasteTimingSetting(settings.Find("Wraper"));
             BuildTapWidthSetting(settings.Find("Wraper"));
+            BuildCoordinatePrecisionSetting(settings.Find("Wraper"));
             BuildContextMenuSetting(settings.Find("Wraper"));
             BuildChartSortSetting(settings.Find("Wraper"));
             BuildDragEditingSettings(settings.Find("Wraper"));
@@ -146,6 +147,23 @@ namespace Arcade.Compose
                 compose.ArcadePreference.EnableTapWidthEditing = value;
                 compose.SavePreferences();
                 Editing.AdeValueEditor.Instance.UpdateFields();
+            });
+        }
+
+        private void BuildCoordinatePrecisionSetting(Transform parent)
+        {
+            var compose = ArcadeComposeManager.Instance;
+            var template = compose.PlaybackSyncToggle.GetComponentInParent<HorizontalLayoutGroup>(true).transform;
+            var row = AdeUiKit.CloneRow(template, parent, "LowPrecisionArcAndSlide");
+            row.GetComponentInChildren<TMP_Text>(true).text = "Arc / Slide 低精度（最多两位）";
+            var toggle = row.GetComponentInChildren<Toggle>(true);
+            toggle.SetIsOnWithoutNotify(compose.ArcadePreference.LowPrecisionArcAndSlide);
+            toggle.onValueChanged.AddListener(value =>
+            {
+                compose.ArcadePreference.LowPrecisionArcAndSlide = value;
+                compose.SavePreferences();
+                Editing.AdeValueEditor.Instance.UpdateFields();
+                FindFirstObjectByType<UI.AdeSlideEditor>()?.Refresh();
             });
         }
 

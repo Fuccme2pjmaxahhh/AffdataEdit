@@ -95,7 +95,7 @@ namespace Arcade.Gameplay.Chart
 			}
 		}
 
-		public void Serialize(Stream stream, ChartSortMode mode = ChartSortMode.Timing)
+		public void Serialize(Stream stream, ChartSortMode mode = ChartSortMode.Timing, bool lowPrecision = false)
 		{
 			List<ArcEvent> events = new List<ArcEvent>();
 			events.AddRange(Timings);
@@ -164,7 +164,7 @@ namespace Arcade.Gameplay.Chart
 				}
 				raw.items.Add(timingGroupItem);
 			}
-			ArcaeaFileFormat.DumpToStream(stream, raw);
+			ArcaeaFileFormat.DumpToStream(stream, raw, lowPrecision);
 		}
 
 		static List<ArcEvent> SortedEvent(List<ArcEvent> events, ChartSortMode mode)

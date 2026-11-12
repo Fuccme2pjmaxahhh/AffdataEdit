@@ -34,6 +34,7 @@ namespace Arcade.Compose
         public bool EnableTapWidthEditing = false;
 		public bool ShowSpectrum = false;
 		public bool ShowJudgementDetails = false;
+        public bool LowPrecisionArcAndSlide = false;
         public const int AllArcColors = 0b11111; // Bits follow the blue/red/green/gray/black color IDs.
         public const int DefaultArcColors = 0b01111;
         public int ArcColorCycleMask = DefaultArcColors;

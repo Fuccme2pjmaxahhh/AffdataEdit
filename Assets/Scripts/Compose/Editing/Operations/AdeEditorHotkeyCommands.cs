@@ -184,14 +184,22 @@ namespace Arcade.Compose
                 items.Add((taps.Min(t => t.Timing), taps.Key.TimingGroup, raw));
             }
             var lines = new List<string>();
-            foreach (var group in items.OrderBy(i => i.Timing).GroupBy(i => i.Group))
+            try
             {
-                if (group.Key == null) lines.AddRange(group.Select(i => ArcaeaFileFormat.FormatItem(i.Item)));
-                else lines.Add(ArcaeaFileFormat.FormatItem(new RawAffTimingGroup
+                foreach (var group in items.OrderBy(i => i.Timing).GroupBy(i => i.Group))
                 {
-                    Attributes = group.Key.Attributes,
-                    Items = group.Select(i => (IRawAffNestableItem)i.Item).ToList()
-                }));
+                    if (group.Key == null) lines.AddRange(group.Select(i => ArcaeaFileFormat.FormatItem(i.Item, ArcadeComposeManager.Instance.ArcadePreference.LowPrecisionArcAndSlide)));
+                    else lines.Add(ArcaeaFileFormat.FormatItem(new RawAffTimingGroup
+                    {
+                        Attributes = group.Key.Attributes,
+                        Items = group.Select(i => (IRawAffNestableItem)i.Item).ToList()
+                    }, ArcadeComposeManager.Instance.ArcadePreference.LowPrecisionArcAndSlide));
+                }
+            }
+            catch (System.IO.InvalidDataException error)
+            {
+                AdeToast.Instance?.Show(error.Message);
+                return;
             }
             previewOpen = true;
             AdeBasicSingleDialogContent.Instance.Show(string.Join("\n", lines), "选中物件代码", "关闭",

@@ -283,11 +283,19 @@ namespace Arcade.Compose
 			int difficulty = project.CurrentDifficulty;
 			string key = $"{archiveId}:{difficulty}";
 			byte[] data;
-			using (var stream = new MemoryStream())
+			try
 			{
-				gameplay.Chart.Serialize(stream, ArcadeComposeManager.Instance.ArcadePreference.ChartSortMode);
-				data = stream.ToArray();
+                using (var stream = new MemoryStream())
+                {
+                    gameplay.Chart.Serialize(stream, ArcadeComposeManager.Instance.ArcadePreference.ChartSortMode, ArcadeComposeManager.Instance.ArcadePreference.LowPrecisionArcAndSlide);
+                    data = stream.ToArray();
+                }
 			}
+            catch (InvalidDataException error)
+            {
+                if (manual) AdeToast.Instance?.Show(error.Message);
+                return;
+            }
 			string hash = Sha256(data);
 			// A newly loaded chart becomes the baseline so loading alone never uploads.
 			if (!ReferenceEquals(syncedChart, gameplay.Chart) || syncedKey != key)

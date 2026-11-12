@@ -15,6 +15,7 @@ using Arcade.Util.UniTaskHelper;
 using Arcade.Util.UI;
 using System.Globalization;
 using Affdata.Core.Chart;
+using Arcade.Aff;
 
 namespace Arcade.Compose.Editing
 {
@@ -30,6 +31,7 @@ namespace Arcade.Compose.Editing
 		public RectTransform MoveTiming, MoveTrack, MoveEndTiming, MoveStartPos, MoveEndPos;
 
 		public Image IsVoidIntermediate;
+        private static bool LowPrecision => ArcadeComposeManager.Instance && ArcadeComposeManager.Instance.ArcadePreference.LowPrecisionArcAndSlide;
         private RectTransform smoothnessRow, designantRow;
         private InputField smoothnessInput;
         private Toggle designantToggle;
@@ -221,14 +223,14 @@ namespace Arcade.Compose.Editing
 				);
 				UpdateField(
 					(note) => note is ArcArc,
-					(note) => $"{(note as ArcArc).XStart.ToString("f3", CultureInfo.InvariantCulture)},{(note as ArcArc).YStart.ToString("f3", CultureInfo.InvariantCulture)}",
+					(note) => $"{AffCoordinate.Format((note as ArcArc).XStart, LowPrecision)},{AffCoordinate.Format((note as ArcArc).YStart, LowPrecision)}",
 					"-,-",
 					(active) => StartPos.gameObject.SetActive(active),
 					(data) => StartPos.GetComponentInChildren<InputField>().SetTextWithoutNotify(data)
 				);
 				UpdateField(
 					(note) => note is ArcArc,
-					(note) => $"{(note as ArcArc).XEnd.ToString("f3", CultureInfo.InvariantCulture)},{(note as ArcArc).YEnd.ToString("f3", CultureInfo.InvariantCulture)}",
+					(note) => $"{AffCoordinate.Format((note as ArcArc).XEnd, LowPrecision)},{AffCoordinate.Format((note as ArcArc).YEnd, LowPrecision)}",
 					"-,-",
 					(active) => EndPos.gameObject.SetActive(active),
 					(data) => EndPos.GetComponentInChildren<InputField>().SetTextWithoutNotify(data)
@@ -652,7 +654,7 @@ namespace Arcade.Compose.Editing
 			{
 				return new ValueChangeErrorMessage { message = "坐标位置格式错误" };
 			}
-			result = new Vector2(x, y);
+			result = new Vector2(AffCoordinate.Round(x, LowPrecision), AffCoordinate.Round(y, LowPrecision));
 			return null;
 		}
 

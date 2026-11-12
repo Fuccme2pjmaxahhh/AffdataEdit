@@ -22,6 +22,8 @@ namespace Arcade.Compose.UI
     {
         private readonly List<GameObject> rows = new List<GameObject>();
         private InputField startRange, endRange;
+        private Text rangeHelp;
+        private static bool LowPrecision => ArcadeComposeManager.Instance && ArcadeComposeManager.Instance.ArcadePreference.LowPrecisionArcAndSlide;
         private Button moveStart, moveEnd;
         private Dropdown leftCurve, rightCurve, height;
         private AdeSlidePreview preview;
@@ -49,9 +51,8 @@ namespace Arcade.Compose.UI
                 note.EndCenter = value.EndCenter; note.EndWidth = value.EndWidth;
             });
             rows.Add(shape);
-            var help = Instantiate(editor.StartPos.GetComponentsInChildren<Text>(true)[0], editor.Timing.parent);
+            var help = rangeHelp = Instantiate(editor.StartPos.GetComponentsInChildren<Text>(true)[0], editor.Timing.parent);
             help.name = "Slide range help";
-            help.text = "范围：中心,宽度；自动保留三位小数\n竖线随 X 网格设置；拖动四角自动吸附";
             help.fontSize = 14; help.alignment = TMPro.TextAlignmentOptions.Left;
             help.gameObject.AddComponent<LayoutElement>().preferredHeight = 42;
             rows.Add(help.gameObject);
@@ -100,8 +101,8 @@ namespace Arcade.Compose.UI
                 { Invalid(); return; }
                 Apply(note =>
                 {
-                    if (start) { note.StartCenter = center; note.StartWidth = width; }
-                    else { note.EndCenter = center; note.EndWidth = width; }
+                    if (start) { note.StartCenter = AffCoordinate.Round(center, LowPrecision); note.StartWidth = AffCoordinate.Round(width, LowPrecision); }
+                    else { note.EndCenter = AffCoordinate.Round(center, LowPrecision); note.EndWidth = AffCoordinate.Round(width, LowPrecision); }
                 });
             });
             rows.Add(row.gameObject); return input;
@@ -144,7 +145,7 @@ namespace Arcade.Compose.UI
         }
         private void Invalid()
         {
-            AdeToast.Instance.Show("Slide 坐标须为有限数值、三位小数下宽度大于 0，左右边界不可交叉"); Refresh();
+            AdeToast.Instance.Show("Slide 坐标须为有限数值、当前精度下宽度大于 0，左右边界不可交叉"); Refresh();
         }
         internal static Vector2 EditingRange(ArcSlide note, bool end)
         {
@@ -154,19 +155,21 @@ namespace Arcade.Compose.UI
 
         internal static void SetRangeEndpoints(ArcSlide note, bool end, float left, float right)
         {
-            float width = RawAffSlide.RoundCoordinate(right - left);
+            float width = AffCoordinate.Round(right - left, LowPrecision);
             float center = (left + right) / 2;
             if (width == 0) { center = left; width = .02f; }
+            center = AffCoordinate.Round(center, LowPrecision);
             if (end) { note.EndCenter = center; note.EndWidth = width; }
             else { note.StartCenter = center; note.StartWidth = width; }
         }
-        private void Refresh()
+        public void Refresh()
         {
             if (!ready) return;
             var selected = AdeSelectionManager.Instance.SelectedNotes;
             bool active = selected.Count > 0 && selected.All(n => n is ArcSlide);
             foreach (var row in rows) row.SetActive(active);
             if (!active) return;
+            rangeHelp.text = $"范围：中心,宽度；最多{(LowPrecision ? "两" : "三")}位小数\n竖线随 X 网格设置；拖动四角自动吸附";
             moveStart.gameObject.SetActive(selected.Count == 1);
             moveEnd.gameObject.SetActive(selected.Count == 1);
             var note = (ArcSlide)selected[0];
@@ -184,7 +187,7 @@ namespace Arcade.Compose.UI
             preview.gameObject.SetActive(selected.Count == 1);
             preview.Note = (ArcSlide)note.Clone(); preview.SetVerticesDirty();
         }
-        private static string Range(float center, float width) => center.ToString("f3", CultureInfo.InvariantCulture) + "," + width.ToString("f3", CultureInfo.InvariantCulture);
+        private static string Range(float center, float width) => AffCoordinate.Format(center, LowPrecision) + "," + AffCoordinate.Format(width, LowPrecision);
         private void OnCommand(ICommand command, bool undo) => Refresh();
         public void OnNoteSelect(ArcNote note) => Refresh();
         public void OnNoteDeselect(ArcNote note) => Refresh();
