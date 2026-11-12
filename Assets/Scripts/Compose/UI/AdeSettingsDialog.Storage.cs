@@ -28,11 +28,11 @@ namespace Arcade.Compose
         private RectTransform AddStorageLocation(string title, string path, bool file, Page page = Page.Storage)
         {
             var card = Rect(title, pages[(int)page], typeof(Image), typeof(LayoutElement));
-            card.GetComponent<LayoutElement>().preferredHeight = 148;
+            card.GetComponent<LayoutElement>().preferredHeight = 152;
             storageCards.Add(card.GetComponent<Image>());
             var heading = Rect("Title", card, typeof(TextMeshProUGUI));
             heading.anchorMin = new Vector2(0, 1); heading.anchorMax = Vector2.one;
-            heading.offsetMin = new Vector2(16, -44); heading.offsetMax = new Vector2(-16, -12);
+            heading.offsetMin = new Vector2(16, -56); heading.offsetMax = new Vector2(-16, -12);
             var label = heading.GetComponent<TMP_Text>();
             AdeEditorText.Configure(label, AdeEditorText.BodySize);
             label.text = title;
@@ -41,7 +41,7 @@ namespace Arcade.Compose
 
             var location = Rect("Path", card, typeof(TextMeshProUGUI));
             location.anchorMin = new Vector2(0, 1); location.anchorMax = Vector2.one;
-            location.offsetMin = new Vector2(16, -80); location.offsetMax = new Vector2(-56, -48);
+            location.offsetMin = new Vector2(16, -88); location.offsetMax = new Vector2(-56, -56);
             var pathText = location.GetComponent<TMP_Text>();
             AdeEditorText.Configure(pathText, AdeEditorText.CaptionSize);
             string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -57,7 +57,7 @@ namespace Arcade.Compose
             var copyRect = (RectTransform)copy.transform;
             copyRect.anchorMin = copyRect.anchorMax = Vector2.one;
             copyRect.pivot = Vector2.one; copyRect.sizeDelta = new Vector2(32, 32);
-            copyRect.anchoredPosition = new Vector2(-12, -48);
+            copyRect.anchoredPosition = new Vector2(-12, -56);
             var copyIcon = (RectTransform)copy.transform.Find("Icon");
             copyIcon.anchorMin = copyIcon.anchorMax = new Vector2(.5f, .5f);
             copyIcon.anchoredPosition = Vector2.zero;
