@@ -164,14 +164,14 @@ namespace Arcade.Compose
                 var control = child.GetComponent<Selectable>();
                 if (!control) continue;
                 float width = control is Toggle ? 36 : control is Slider ? 180
-                    : control is TMP_Dropdown ? 260 : page == Page.Audio && control is TMP_InputField ? AudioInputWidth
+                    : control is TMP_Dropdown ? 260 : (page == Page.Audio || page == Page.Spectrum) && control is TMP_InputField ? AudioInputWidth
                     : page == Page.Grid ? 360 : row.name == "Reset" ? 280 : 180;
                 size.minWidth = size.preferredWidth = width;
                 size.flexibleWidth = 0;
                 size.minHeight = size.preferredHeight = control is Slider ? 24 : control is Toggle ? 36 : 44;
                 foreach (var text in control.GetComponentsInChildren<TMP_Text>(true))
                     text.fontSize = AdeEditorText.BodySize;
-                if (control is TMP_InputField input && page == Page.Audio)
+                if (control is TMP_InputField input && (page == Page.Audio || page == Page.Spectrum))
                     input.textComponent.alignment = TextAlignmentOptions.Center;
             }
             if (hasControl || staticBinding)

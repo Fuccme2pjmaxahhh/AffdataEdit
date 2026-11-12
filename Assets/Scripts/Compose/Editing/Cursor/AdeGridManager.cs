@@ -50,6 +50,7 @@ namespace Arcade.Compose
 		private List<float> verticalXPositions = new List<float>();
 		public IReadOnlyList<float> VerticalXPositions => verticalXPositions;
 		private List<float> verticalYPositions = new List<float>();
+		public IReadOnlyList<float> VerticalYPositions => verticalYPositions;
 
 		private struct VisibleBeatline
 		{

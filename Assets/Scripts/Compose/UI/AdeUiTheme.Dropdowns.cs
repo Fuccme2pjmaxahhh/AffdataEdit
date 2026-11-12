@@ -44,6 +44,7 @@ namespace Arcade.Compose
                 float deltaPerTick = input ? Mathf.Abs(input.scrollDeltaPerTick) : 1;
                 // Move one 44-unit option per wheel tick, including the UI module's multiplier.
                 scroll.scrollSensitivity = deltaPerTick > 0 ? 44 / deltaPerTick : 44;
+                AdeSmoothScrollInstaller.Ensure(scroll);
             }
             if (scroll && scroll.verticalScrollbar)
             {

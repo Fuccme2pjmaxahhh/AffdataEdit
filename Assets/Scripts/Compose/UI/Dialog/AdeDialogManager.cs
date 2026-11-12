@@ -79,6 +79,7 @@ namespace Arcade.Compose
 				Pose(group, view, 0);
 			}
 			group.blocksRaycasts = true;
+			AdeSmoothScrollInstaller.EnsureUnder(view);
 			AdeUiTheme.OnDialogOpened();
 			motions[dialog] = AnimateView(group, view, from, 1f, () => motions.Remove(dialog));
 		}

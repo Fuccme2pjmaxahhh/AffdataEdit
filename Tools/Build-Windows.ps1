@@ -4,6 +4,12 @@
 )
 
 $ErrorActionPreference = 'Stop'
+function Get-BuildSha256([string]$Path) {
+    $taskHashStream = [IO.File]::OpenRead($Path)
+    $taskSha256 = [Security.Cryptography.SHA256]::Create()
+    try { return [BitConverter]::ToString($taskSha256.ComputeHash($taskHashStream)).Replace('-', '') }
+    finally { $taskSha256.Dispose(); $taskHashStream.Dispose() }
+}
 $taskProjectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $taskDevRoot = Split-Path $taskProjectRoot -Parent
 $taskDestination = 'C:\AffdataEdit_custom'
@@ -60,10 +66,21 @@ try {
     $env:TMP = $taskTemp
     Write-Host '2/3 Building Windows player (Unity reuses its incremental caches)...'
     Write-Host "Build log: $taskLog"
-    $taskArguments = '-batchmode -quit -job-worker-count 2 -desiredWorkerCount 1 -projectPath "' + $BuildWorkspace +
+    # Player builds do not need an editor graphics device. Headless mode avoids
+    # native crashes while loading editor GUI materials/resources on this machine.
+    $taskArguments = '-batchmode -nographics -quit -job-worker-count 2 -desiredWorkerCount 1 -projectPath "' + $BuildWorkspace +
         '" -executeMethod WindowsCiBuild.Build -logFile "' + $taskLog + '"'
     $taskUnity = Start-Process -FilePath $UnityPath -ArgumentList $taskArguments -WindowStyle Hidden -PassThru -Wait
-    if ($taskUnity.ExitCode -ne 0) { throw "Unity build failed ($($taskUnity.ExitCode)). See $taskLog" }
+    if ($taskUnity.ExitCode -ne 0) {
+        if (Test-Path -LiteralPath $taskLog) {
+            $taskBuildErrors = @(Select-String -LiteralPath $taskLog -Pattern 'error CS\d+|warning CS\d+|Shader error|Shader warning|Fatal Error!|BuildFailedException:' | Select-Object -First 8)
+            if ($taskBuildErrors.Count -gt 0) {
+                Write-Host 'Unity reported these build errors:' -ForegroundColor Red
+                foreach ($taskBuildError in $taskBuildErrors) { Write-Host $taskBuildError.Line -ForegroundColor Red }
+            }
+        }
+        throw "Unity build failed ($($taskUnity.ExitCode)). See $taskLog"
+    }
     if (-not (Select-String -LiteralPath $taskLog -SimpleMatch 'Build Finished, Result: Success.' -Quiet)) {
         throw "Unity did not report a successful build. See $taskLog"
     }
@@ -84,8 +101,8 @@ try {
     # No /MIR here: never delete user settings, charts or backgrounds in the installed app.
     & robocopy $taskPlayer $taskDestination /E /XJ /R:1 /W:1 /NFL /NDL /NJH /NJS /NP
     if ($LASTEXITCODE -ge 8) { throw "Publishing failed (robocopy $LASTEXITCODE). See $taskLog" }
-    $sourceHash = (Get-FileHash -LiteralPath (Join-Path $taskPlayer 'AffdataEdit_Data\Managed\Arcade.dll')).Hash
-    $targetHash = (Get-FileHash -LiteralPath (Join-Path $taskDestination 'AffdataEdit_Data\Managed\Arcade.dll')).Hash
+    $sourceHash = Get-BuildSha256 (Join-Path $taskPlayer 'AffdataEdit_Data\Managed\Arcade.dll')
+    $targetHash = Get-BuildSha256 (Join-Path $taskDestination 'AffdataEdit_Data\Managed\Arcade.dll')
     if ($sourceHash -ne $targetHash) { throw 'Published assembly verification failed.' }
     Write-Host ('Build complete in {0:N1}s: {1}' -f $taskTimer.Elapsed.TotalSeconds, $taskExe)
 }
