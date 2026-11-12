@@ -64,6 +64,7 @@ SOFTWARE.
 BASSenc
 =======
 Source: https://www.un4seen.com/files/bassenc24.zip (bassenc.txt)
+macOS ARM64 source: https://www.un4seen.com/files/bassenc24-osx.zip
 
 Copyright (c) 2003-2025 Un4seen Developments Ltd. All rights reserved.
 
@@ -87,6 +88,7 @@ package are the property of their respective owners.
 BASSenc_FLAC
 ============
 Source: https://www.un4seen.com/files/bassenc_flac24.zip (bassenc_flac.txt)
+macOS ARM64 source: https://www.un4seen.com/files/bassenc_flac24-osx.zip
 
 Copyright (c) 2017-2025 Un4seen Developments Ltd. All rights reserved.
 
@@ -116,6 +118,7 @@ Copyright (C) 2011-2025 Xiph.Org Foundation
 BASSFLAC
 ========
 Source: https://www.un4seen.com/files/bassflac24.zip (bassflac.txt)
+macOS ARM64 source: https://www.un4seen.com/files/bassflac24-osx.zip
 
 Copyright (c) 2004-2026 Un4seen Developments Ltd. All rights reserved.
 

@@ -118,4 +118,27 @@ public class MemoryAudioLifecycleTests
         Assert.AreEqual(5000, typeof(BassClip).GetMethod("ReadSpectrumSamples", PrivateInstance).Invoke(clip, new object[] { begin, write }));
         Assert.AreEqual(5000, written);
     }
+
+    [Test]
+    public void ShutdownCancelsQueuedSlowRendersBeforeDeviceRelease()
+    {
+        var clip = Load();
+        var cache = typeof(BassClip).Assembly.GetType("Arcade.Audio.SlowAudioCache", true);
+        const BindingFlags flags = BindingFlags.Static | BindingFlags.NonPublic;
+        cache.GetMethod("BeginSong", flags).Invoke(null, new object[] { clip });
+        cache.GetMethod("SetPlaybackState", flags).Invoke(null, new object[] { true, 1f });
+        var request = cache.GetMethod("Request", flags);
+        var renders = new List<System.Threading.Tasks.Task<string>>();
+        try
+        {
+            foreach (float speed in new[] { .75f, .5f, .25f })
+                renders.Add((System.Threading.Tasks.Task<string>)request.Invoke(null, new object[] { clip, speed }));
+        }
+        finally { cache.GetMethod("Shutdown", flags).Invoke(null, null); }
+        foreach (var render in renders)
+        {
+            Assert.IsTrue(render.IsCompleted, "Shutdown must wait for every owned render task.");
+            Assert.IsNull(render.Result, "Cancelled work must not touch BASS after shutdown.");
+        }
+    }
 }

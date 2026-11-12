@@ -128,6 +128,16 @@ namespace Arcade.Audio
             renders.Clear();
         }
 
+        // Cancel both queued and active renders, then let their native handles close before
+        // the output device is freed. Dropping task references does not stop their workers.
+        internal static void Shutdown()
+        {
+            BeginSong(null);
+            playbackActive = false;
+            queue.GetAwaiter().GetResult();
+            queue = Task.CompletedTask;
+        }
+
         private static string RenderSafely(string sourcePath, bool opus, byte[] bytes, float speed, string path, int owner)
         {
             Thread thread = Thread.CurrentThread;

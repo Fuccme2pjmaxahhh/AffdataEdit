@@ -16,3 +16,16 @@ Rebuild `Assets/Plugins/AffStretch/AffStretch.dll` (Windows x64; depends only on
 pip install ziglang
 python Native/AffStretch/build.py
 ```
+
+Rebuild `Assets/Plugins/AffStretch/macOS/libAffStretch.dylib` for Apple Silicon only
+with Xcode command-line tools:
+
+```sh
+python3 Native/AffStretch/build.py --target macos-arm64
+```
+
+The macOS build targets ARM64 and uses an ad-hoc signature. Its FLAC cache companions
+are the ARM64 slices of the official [BASSenc](https://www.un4seen.com/files/bassenc24-osx.zip),
+[BASSenc_FLAC](https://www.un4seen.com/files/bassenc_flac24-osx.zip) and
+[BASSFLAC](https://www.un4seen.com/files/bassflac24-osx.zip) libraries, under
+`Assets/Plugins/Bass/macOS`. Their Unity import settings enable only macOS ARM64.

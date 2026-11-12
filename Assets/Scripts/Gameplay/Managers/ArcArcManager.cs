@@ -421,13 +421,13 @@ namespace Arcade.Gameplay
 				{
 					continue;
 				}
-				if (arc.Judged) continue;
 				// The sound follows the music's time (ahead of the drawn time by the visual delay).
 				if (!arc.IsVoid && !arc.AudioPlayed && soundTiming > arc.Timing && soundTiming <= arc.EndTiming)
 				{
 					if (ArcGameplayManager.Instance.IsPlaying && arc.ShouldPlayAudio) ArcEffectManager.Instance.PlayArcSound();
 					arc.AudioPlayed = true;
 				}
+				if (arc.Judged) continue;
 				if (currentTiming > arc.EndTiming)
 				{
 					arc.Judged = true;

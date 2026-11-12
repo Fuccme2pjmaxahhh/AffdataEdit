@@ -111,6 +111,7 @@ namespace Arcade.Audio
         private void Shutdown()
         {
             if (instance != this) return;
+            SlowAudioCache.Shutdown();
             Gameplay.ArcAudioManager.Instance?.ReleaseVoice();
             voices.Clear(); samples.Clear();
             BassNative.BASS_Free();

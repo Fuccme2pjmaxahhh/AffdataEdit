@@ -407,7 +407,7 @@ public class ArcSlideTests
         {
             var manager = owner.AddComponent<Arcade.Gameplay.ArcSlideManager>(); property.SetValue(null, manager);
             var time = typeof(Arcade.Gameplay.ArcSlideManager).GetField("previousTime", BindingFlags.Instance | BindingFlags.NonPublic);
-            var playing = typeof(Arcade.Gameplay.ArcSlideManager).GetField("previousPlaying", BindingFlags.Instance | BindingFlags.NonPublic);
+            var playing = typeof(Arcade.Gameplay.ArcSlideManager).GetField("previousSoundPlaying", BindingFlags.Instance | BindingFlags.NonPublic);
             time.SetValue(manager, 1234); playing.SetValue(manager, true);
             new ArcSlide { Timing = 1000, EndTiming = 2000 }.Rebuild();
             Assert.That(time.GetValue(manager), Is.EqualTo(1234)); Assert.That(playing.GetValue(manager), Is.True);

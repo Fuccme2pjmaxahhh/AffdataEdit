@@ -73,6 +73,34 @@ public class MemoryChartLifecycleTests
         finally { Object.DestroyImmediate(texture); }
     }
 
+    [TestCase(false)]
+    [TestCase(true)]
+    public void NegativeDisplayDelayKeepsHeadSoundPendingAfterVisualJudgement(bool sky)
+    {
+        var game = Inactive<ArcGameplayManager>(); Singleton(game);
+        Singleton(Inactive<ArcAudioManager>());
+        Singleton(Inactive<ArcEffectManager>());
+        game.DisplayDelay = -200;
+        Set(game, "audioTiming", 1.201f);
+        Assert.AreEqual(1001, game.SoundChartTiming);
+        if (sky)
+        {
+            var manager = Inactive<ArcArcManager>(); Singleton(manager);
+            var note = new ArcArc { Timing = 1000, EndTiming = 1100, Judged = true };
+            manager.Arcs.Add(note);
+            Call(manager, "JudgeArcs");
+            Assert.IsTrue(note.AudioPlayed, "The music clock must still consume the pending head.");
+        }
+        else
+        {
+            var manager = Inactive<ArcHoldNoteManager>(); Singleton(manager);
+            var note = new ArcHold { Timing = 1000, EndTiming = 1100, Judged = true };
+            manager.Holds.Add(note);
+            Call(manager, "JudgeHoldNotes");
+            Assert.IsTrue(note.AudioPlayed, "The music clock must still consume the pending head.");
+        }
+    }
+
     [Test]
     public void ChartLoadDefersSlideMeshesAndReturnedVisualRebindsWithoutRetainingItsOldNote()
     {

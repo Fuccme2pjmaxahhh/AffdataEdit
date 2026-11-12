@@ -11,6 +11,7 @@ public static class MacCiBuild
     {
         const string output = "Build/macOS/AffdataEdit.app";
         Directory.CreateDirectory(Path.GetDirectoryName(output));
+        EditorUserBuildSettings.SetPlatformSettings("Standalone", "OSXUniversal", "Architecture", "ARM64");
         BuildReport report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
         {
             scenes = new[] { "Assets/_Scenes/ArcEditor.unity" },
