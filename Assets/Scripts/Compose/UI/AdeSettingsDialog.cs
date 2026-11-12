@@ -163,7 +163,7 @@ namespace Arcade.Compose
                 compose.ArcadePreference.LowPrecisionArcAndSlide = value;
                 compose.SavePreferences();
                 Editing.AdeValueEditor.Instance.UpdateFields();
-                FindFirstObjectByType<UI.AdeSlideEditor>()?.Refresh();
+                FindAnyObjectByType<UI.AdeSlideEditor>()?.Refresh();
             });
         }
 
