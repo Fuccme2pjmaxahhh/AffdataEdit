@@ -35,12 +35,41 @@ namespace Arcade.Compose
 		public bool ShowSpectrum = false;
 		public bool ShowJudgementDetails = false;
 		public float SpectrumOpacity = 0.5f;
+		// Spectrum frequency axis: false = linear (default), true = log (sliding bass lines show as curves).
+		public bool SpectrumLogScale = false;
+        // Missing in older preferences => false, preserving the existing dB display.
+        public bool SpectrumLinearAmplitude = false;
+		// User tuning of the spectrum look (Settings > 频谱); a missing field keeps these defaults.
+		public SpectrumTuning SpectrumTuning = new SpectrumTuning();
+		// Settings category shown when the settings window is opened from the toolbar (last one used).
+		public int LastSettingsPage = 0;
 		public bool KeepContextMenuOpen = true;
 		public bool VerticalContextMenu = true;
 		public ContextMenuCustomization ContextMenuItems = new ContextMenuCustomization();
 		public bool Auto;
 		public int GlobalAudioOffset = 0;
+		// 画面延迟补偿 (ms): draws notes later than the music; hit sounds stay on the music.
+		public int DisplayDelay = 0;
+		// Also delay the picture by the output latency BASS measures at startup.
+		public bool AutoOutputLatency = true;
 		public Arcade.Gameplay.Chart.ChartSortMode ChartSortMode;
+	}
+
+	// Spectrum look parameters. Defaults are the built-in look; "恢复默认" resets to a new instance.
+	[Serializable]
+	public class SpectrumTuning
+	{
+		// dB mode.
+		public float DbFloor = -60f, DbCeiling = -20f; // absolute part: these dB map to empty..full
+		public float DbBandShare = 50f; // % of each band's own (relative) range, the rest absolute
+		public float DbContrast = 1.5f; // S-curve exponent, 1 = none
+		public float DbGate = -72f; // below this level cells fade out
+		// Linear amplitude mode.
+		public float LinearGain = 0.8f; // x raw FFT magnitude (Arcade Alpha uses 0.5 without a window)
+		public float LinearContrast = 1f; // power curve, 1 = straight
+		public float LinearBoost = 1.6f;
+		// Log frequency axis.
+		public float LogMinFrequency = 380f, LogMaxFrequency = 16000f;
 	}
 
 	public class ArcadeComposeManager : MonoBehaviour
@@ -549,6 +578,13 @@ namespace Arcade.Compose
 			AdeCommandManager.Instance.SetBufferSize(size);
 		}
 
+		// Visual-only delay = 画面延迟补偿 + (if enabled) the device's measured output latency.
+		public void ApplyDisplayDelay()
+		{
+			ArcGameplayManager.Instance.DisplayDelay = ArcadePreference.DisplayDelay
+				+ (ArcadePreference.AutoOutputLatency ? Arcade.Audio.BassAudio.OutputLatencyMs : 0);
+		}
+
 		public void SetGlobalAudioOffset(string x)
 		{
 			int offset = int.Parse(x, CultureInfo.InvariantCulture);
@@ -599,6 +635,7 @@ namespace Arcade.Compose
 				AdeCommandManager.Instance.bufferSize = ArcadePreference.UndoBufferSize;
 				GlobalAudioOffsetInput.SetTextWithoutNotify($"{ArcadePreference.GlobalAudioOffset.ToString(CultureInfo.InvariantCulture)}");
 				ArcGameplayManager.Instance.GlobalAudioOffset = ArcadePreference.GlobalAudioOffset;
+				ApplyDisplayDelay();
 				bool resolutionHit = false;
 				for (int i = 0; i < ResolutionDropdown.options.Count; i++)
 				{

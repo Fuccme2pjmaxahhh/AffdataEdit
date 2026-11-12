@@ -1,49 +1,203 @@
-// Arcade Alpha's FFT and linear frequency mapping, at its default 256 samples / 0.5 gain.
+// Spectrogram over 128 rows with an -80..0 dB amplitude display, in one of two frequency scales:
+// - Linear (default): one 512-sample Hann FFT (~11.6 ms), each row averaging 2 bins from 0 Hz to Nyquist.
+// - Log (_LogScale): _MinFrequency.._MaxFrequency (default 380 Hz - 16 kHz) in equal pitch steps; each row uses the shortest of three Hann FFTs
+//   that still resolves it: 2048 samples (~46 ms) for the lows, 1024 (~23 ms) for the low mids and 512
+//   above, so sliding bass lines show as curves while the upper rows keep sharp onsets.
 #pragma kernel CSMain
+#pragma kernel ProfileBands
 
-#define FFT_SIZE 256
-#define WIDTH 512
+#define LONG_FFT 2048
+#define MID_FFT 1024
+#define SHORT_FFT 512
+#define WIDTH 1024
 #define HEIGHT 128
+#define THREADS 128
+// Crossovers where each FFT's bin spacing roughly matches the row spacing (~4% per row).
+#define LONG_BELOW 760.0
+#define MID_BELOW 1530.0
 
 StructuredBuffer<float> _AudioSamples;
+// Tables for the 2048-point FFT; the shorter ones reuse them (bit reversal shifted, same twiddle index).
 StructuredBuffer<int> _BitReversalTable;
 StructuredBuffer<float2> _TwiddleFactors;
+// Per-column audio time (seconds), following the chart's BPM like the notes do.
+StructuredBuffer<float> _ColumnTimes;
+int _UseColumnTimes;
+int _LogScale;
+// Log-axis range in Hz (user setting; C# keeps 20 <= min < max <= ~Nyquist).
+float _MinFrequency;
+float _MaxFrequency;
 RWTexture2D<float4> _ResultTexture;
+RWStructuredBuffer<float2> _BandRanges;
+int _NormalizeBands;
 int _TotalSamples;
 float _SampleRate;
 float _StartTime;
 float _Duration;
 
-// A group cooperates on one time column, keeping the FFT in shared memory.
-groupshared float2 fftData[FFT_SIZE];
-[numthreads(128, 1, 1)]
+// A group cooperates on one time column, keeping the three FFTs in shared memory (28 KB).
+groupshared float2 longData[LONG_FFT];
+groupshared float2 midData[MID_FFT];
+groupshared float2 shortData[SHORT_FFT];
+
+float ReadSample(int index) { return index >= 0 && index < _TotalSamples - 1 ? _AudioSamples[index] : 0; }
+
+// Periodic Hann window of an FFT that is (LONG_FFT >> shift) long, read from the twiddle cosines:
+// cos(2 pi j / 2048) is twiddle[j].x for the first half and -twiddle[j - 1024].x for the second.
+float Hann(uint i, uint shift)
+{
+    uint j = i << shift;
+    return j < LONG_FFT / 2 ? 0.5 - 0.5 * _TwiddleFactors[j].x : 0.5 + 0.5 * _TwiddleFactors[j - LONG_FFT / 2].x;
+}
+
+float2 Butterfly(float2 b, uint k, uint stage)
+{
+    // W_N^(k * N/2 >> stage) is the same 2048-point twiddle for every N: index k * (1024 >> stage).
+    float2 twiddle = _TwiddleFactors[k * ((uint)(LONG_FFT / 2) >> stage)];
+    return float2(twiddle.x * b.x - twiddle.y * b.y, twiddle.x * b.y + twiddle.y * b.x);
+}
+
+// Power of bin `bin` of an N-point FFT, scaled so a full-scale sine reads amplitude 1 after sqrt / N
+// (compensates Hann's 0.5 coherent gain; the linear scale corrects its DC bin separately).
+float BinPower(uint size, uint bin)
+{
+    float2 value = size == LONG_FFT ? longData[bin] : (size == MID_FFT ? midData[bin] : shortData[bin]);
+    return dot(value, value) * 16.0;
+}
+
+[numthreads(THREADS, 1, 1)]
 void CSMain(uint3 group : SV_GroupID, uint lane : SV_GroupIndex)
 {
-    float time = (group.x / (float)WIDTH) * _Duration + _StartTime;
-    int startSample = (int)floor(time * _SampleRate - FFT_SIZE * 0.5) - FFT_SIZE / 2;
-    for (uint i = lane; i < FFT_SIZE; i += FFT_SIZE / 2)
+    float time = _UseColumnTimes != 0 ? _ColumnTimes[group.x] : (group.x / (float)WIDTH) * _Duration + _StartTime;
+    // Every window is centred on the column's time (an end-aligned window showed onsets late).
+    int centre = (int)floor(time * _SampleRate);
+    for (uint block = 0; block < LONG_FFT / THREADS; block++)
     {
-        int index = startSample + (int)i;
-        float value = 0;
-        if (index >= 0 && index < _TotalSamples - 1) value = _AudioSamples[index];
-        fftData[_BitReversalTable[i]] = float2(value, 0);
+        uint i = block * THREADS + lane;
+        uint reversed = (uint)_BitReversalTable[i];
+        // Reversing 11 bits of i < 1024 (or < 512) equals its 10-bit (9-bit) reversal shifted left by 1 (2).
+        // The linear scale only needs the 512-point FFT; _LogScale is uniform, so the branches are coherent.
+        if (_LogScale != 0)
+        {
+            longData[reversed] = float2(ReadSample(centre - LONG_FFT / 2 + (int)i) * Hann(i, 0), 0);
+            if (i < MID_FFT) midData[reversed >> 1] = float2(ReadSample(centre - MID_FFT / 2 + (int)i) * Hann(i, 1), 0);
+        }
+        if (i < SHORT_FFT) shortData[reversed >> 2] = float2(ReadSample(centre - SHORT_FFT / 2 + (int)i) * Hann(i, 2), 0);
     }
     GroupMemoryBarrierWithGroupSync();
-    for (uint stage = 0; stage < 8; stage++)
+    // Radix-2 butterflies: 11 stages for 2048, the first 10 also run 1024 and the first 9 run 512.
+    // Keep every loop enclosing a group barrier uniform. Starting the loop
+    // counter at `lane` makes FXC treat its trip count as divergent, even when
+    // the mathematical number of iterations is the same for every thread.
+    for (uint stage = 0; stage < 11; stage++)
     {
         uint halfLen = 1u << stage;
-        uint k = lane & (halfLen - 1u);
-        uint u = ((lane >> stage) << (stage + 1u)) + k;
-        uint v = u + halfLen;
-        float2 twiddle = _TwiddleFactors[k * (128u >> stage)];
-        float2 a = fftData[u];
-        float2 b = fftData[v];
-        float2 t = float2(twiddle.x * b.x - twiddle.y * b.y, twiddle.x * b.y + twiddle.y * b.x);
-        fftData[u] = a + t;
-        fftData[v] = a - t;
+        for (uint block = 0; block < LONG_FFT / (2 * THREADS); block++)
+        {
+            uint j = block * THREADS + lane;
+            uint k = j & (halfLen - 1u);
+            uint u = ((j >> stage) << (stage + 1u)) + k;
+            uint v = u + halfLen;
+            if (_LogScale != 0)
+            {
+                float2 a = longData[u], t = Butterfly(longData[v], k, stage);
+                longData[u] = a + t;
+                longData[v] = a - t;
+            }
+            if (_LogScale != 0 && stage < 10 && j < MID_FFT / 2)
+            {
+                float2 a = midData[u], t = Butterfly(midData[v], k, stage);
+                midData[u] = a + t;
+                midData[v] = a - t;
+            }
+            if (stage < 9 && j < SHORT_FFT / 2)
+            {
+                float2 a = shortData[u], t = Butterfly(shortData[v], k, stage);
+                shortData[u] = a + t;
+                shortData[v] = a - t;
+            }
+        }
         GroupMemoryBarrierWithGroupSync();
     }
-    uint frequency = (uint)((lane / (float)HEIGHT) * (FFT_SIZE / 2 - 1));
-    float value = saturate(length(fftData[frequency]) * 0.5);
-    _ResultTexture[uint2(group.x, lane)] = float4(value, 0, 0, 1);
+    uint row = lane;
+    float power = 0;
+    uint size = SHORT_FFT;
+    if (_LogScale == 0)
+    {
+        // Linear: each row averages its own 2 bins (~86 Hz each). DC has magnitude N/2 instead of N/4.
+        for (uint b = row * 2u; b <= row * 2u + 1u; b++) power += BinPower(SHORT_FFT, b) * (b == 0 ? 0.25 : 1.0);
+        power *= 0.5;
+    }
+    else
+    {
+        // Row edges are spaced logarithmically (equal pitch steps), row 0 lowest.
+        float octaves = log2(_MaxFrequency / _MinFrequency);
+        float low = _MinFrequency * exp2(octaves * row / HEIGHT);
+        float high = _MinFrequency * exp2(octaves * (row + 1) / HEIGHT);
+        float centreFrequency = sqrt(low * high);
+        size = centreFrequency < LONG_BELOW ? LONG_FFT : (centreFrequency < MID_BELOW ? MID_FFT : SHORT_FFT);
+        float binWidth = _SampleRate / size;
+        uint lastBin = size / 2 - 1;
+        int first = (int)ceil(low / binWidth), last = min((int)floor(high / binWidth), (int)lastBin);
+        if (last >= first)
+        {
+            // The row spans whole bins: average them.
+            for (int bin = first; bin <= last; bin++) power += BinPower(size, (uint)bin);
+            power /= (float)(last - first + 1);
+        }
+        else
+        {
+            // Narrower than a bin: interpolate between the two bins around the row's centre.
+            float position = min(centreFrequency / binWidth, lastBin - 1.0);
+            uint below = (uint)position;
+            power = lerp(BinPower(size, below), BinPower(size, below + 1), position - below);
+        }
+    }
+    float magnitude = sqrt(power);
+    float amplitude = magnitude / size;
+    float decibels = 20.0 * log10(max(amplitude, 0.0001));
+    float value = saturate((decibels + 80.0) / 80.0);
+    float relative = 0;
+    if (_NormalizeBands != 0)
+    {
+        float2 range = _BandRanges[row];
+        relative = saturate((value - range.x) / max(range.y - range.x, 0.25));
+    }
+    // BinPower multiplies raw FFT power by 16. Undo it and store the raw magnitude x0.25, separately from
+    // the dB path; the shader applies the user's linear gain (default x3.2 -> magnitude x0.8).
+    float linearValue = saturate(magnitude * 0.0625);
+    // R: absolute dB, G: band-relative dB, B: raw FFT magnitude x0.25.
+    _ResultTexture[uint2(group.x, row)] = float4(value, relative, linearValue, 1);
+}
+
+groupshared uint histogram[64];
+[numthreads(THREADS, 1, 1)]
+void ProfileBands(uint3 group : SV_GroupID, uint lane : SV_GroupIndex)
+{
+    if (lane < 64) histogram[lane] = 0;
+    GroupMemoryBarrierWithGroupSync();
+    for (uint x = lane; x < WIDTH; x += THREADS)
+    {
+        float value = _ResultTexture[uint2(x, group.x)].r;
+        uint bin = min((uint)(saturate(value) * 64.0), 63u);
+        InterlockedAdd(histogram[bin], 1);
+    }
+    GroupMemoryBarrierWithGroupSync();
+    if (lane == 0)
+    {
+        // Robust 10th/99th percentiles over the entire-song sample, not the
+        // moving view, plus 6 dB headroom so loud passages keep variation
+        // instead of clipping at the top color. A 20 dB minimum span prevents
+        // tiny noise fluctuations from being stretched to full opacity.
+        uint count = 0, low = 0, high = 63;
+        bool foundLow = false;
+        for (uint i = 0; i < 64; i++)
+        {
+            count += histogram[i];
+            if (!foundLow && count >= WIDTH / 10) { low = i; foundLow = true; }
+            if (count >= WIDTH * 99 / 100) { high = i; break; }
+        }
+        float floorValue = low / 64.0;
+        _BandRanges[group.x] = float2(floorValue, max((high + 1) / 64.0 + 0.075, floorValue + 0.25));
+    }
 }
