@@ -17,3 +17,9 @@ Unity 以 `-batchmode -nographics` 运行，跳过构建时不需要的编辑器
 发布后的 SHA256 校验通过 .NET 完成，不依赖启动终端是否能自动加载 PowerShell 的 `Get-FileHash` 命令。
 
 Unity 编辑器可以打开源码项目，但不能同时打开构建副本 `BuildWorkspace`。首次构建、Unity／依赖／渲染资源有更新时，仍需要较长的导入与编译时间。
+
+Windows 和 macOS 均使用 LZ4HC 无损压缩，保留原有四套完整预设、基础菱形及隐藏选项。额外菱形图片和配置已从产品源码移除，不再生成扩展资源包。其他轨道、判定线、两侧装饰、Combo 颜色及用户自定义背景保持可用。
+
+macOS 架构和构建验证说明见 [macOS 构建](BUILD-MACOS.md)。
+
+更新本地旧版时，脚本将新版不再使用的已知 Unity 生成数据文件移到项目外层 `RetiredPlayerFiles/时间戳` 备份，避免压缩后的 `data.unity3d` 与旧版松散数据重复占用空间。设置、谱面和背景会保留，安装目录仍不用 `/MIR`。

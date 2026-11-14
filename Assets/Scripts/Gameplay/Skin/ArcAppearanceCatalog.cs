@@ -52,7 +52,6 @@ namespace Arcade.Gameplay
         }
         internal sealed class Diamond : AppearanceOption
         {
-            public string ID, FilePath;
             public float MultiplyScale = 1, PivotY = .5f;
             public bool CanvasRectUseDesignResolutionSize, UseInternalBlendFactorSettings;
             public int MinOpacity = 50, MaxOpacity = 100;
@@ -92,12 +91,6 @@ namespace Arcade.Gameplay
                 new Diamond { Id = "diamond", Name = "diamond", MultiplyScale = 1, PivotY = 1,
                     UseInternalBlendFactorSettings = true }
             };
-            foreach (var item in JsonConvert.DeserializeObject<List<Diamond>>(File.ReadAllText(Path.Combine(Root, "Diamonds", "Diamonds.json"))))
-            {
-                if (string.IsNullOrEmpty(item.ID) || diamonds.Exists(d => d.Id == item.ID)) continue;
-                item.Id = item.Name = item.ID;
-                diamonds.Add(item);
-            }
         }
         public static int GetTrackSide(string id)
         {

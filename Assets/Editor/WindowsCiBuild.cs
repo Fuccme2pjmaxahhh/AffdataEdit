@@ -15,7 +15,7 @@ public static class WindowsCiBuild
             scenes = new[] { "Assets/_Scenes/Startup.unity", "Assets/_Scenes/ArcEditor.unity" },
             locationPathName = output,
             target = BuildTarget.StandaloneWindows64,
-            options = BuildOptions.StrictMode
+            options = BuildOptions.StrictMode | BuildOptions.CompressWithLz4HC
         });
         if (report.summary.result != BuildResult.Succeeded || report.summary.totalWarnings != 0)
             throw new BuildFailedException($"Windows build: {report.summary.result}, " +

@@ -104,6 +104,36 @@ try {
     $sourceHash = Get-BuildSha256 (Join-Path $taskPlayer 'AffdataEdit_Data\Managed\Arcade.dll')
     $targetHash = Get-BuildSha256 (Join-Path $taskDestination 'AffdataEdit_Data\Managed\Arcade.dll')
     if ($sourceHash -ne $targetHash) { throw 'Published assembly verification failed.' }
+    # Retire only recognized generated files absent from the new player. Keep a
+    # recoverable copy outside the installation; never mirror the installation.
+    $taskRetiredRoot = Join-Path $taskDevRoot ('RetiredPlayerFiles\' + (Get-Date -Format 'yyyy-MM-dd_HH-mm-ss'))
+    $taskRetiredCount = 0
+    function Save-RetiredPlayerFile([string]$File) {
+        $taskFullFile = [IO.Path]::GetFullPath($File)
+        if (-not $taskFullFile.StartsWith($taskDestination + '\', [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Unsafe retirement source: $taskFullFile"
+        }
+        if ((Get-Item -LiteralPath $taskFullFile).Attributes -band [IO.FileAttributes]::ReparsePoint) {
+            throw "Refusing a linked player file: $taskFullFile"
+        }
+        $taskRelative = $taskFullFile.Substring($taskDestination.Length + 1)
+        $taskBackup = [IO.Path]::GetFullPath((Join-Path $taskRetiredRoot $taskRelative))
+        if (-not $taskBackup.StartsWith($taskRetiredRoot + '\', [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Unsafe retirement destination: $taskBackup"
+        }
+        New-Item -ItemType Directory -Path (Split-Path $taskBackup -Parent) -Force | Out-Null
+        Move-Item -LiteralPath $taskFullFile -Destination $taskBackup
+        $script:taskRetiredCount++
+    }
+    $taskData = Join-Path $taskDestination 'AffdataEdit_Data'
+    foreach ($taskOldFile in Get-ChildItem -LiteralPath $taskData -File) {
+        if ($taskOldFile.Name -match '^(?:globalgamemanagers(?:\.assets)?|resources\.assets|sharedassets\d+\.assets|level\d+)(?:\.resS|\.resource)?$|^data\.unity3d$') {
+            if (-not (Test-Path -LiteralPath (Join-Path $taskPlayer ('AffdataEdit_Data\' + $taskOldFile.Name)))) {
+                Save-RetiredPlayerFile $taskOldFile.FullName
+            }
+        }
+    }
+    if ($taskRetiredCount -gt 0) { Write-Host "Archived $taskRetiredCount obsolete bundled files: $taskRetiredRoot" }
     Write-Host ('Build complete in {0:N1}s: {1}' -f $taskTimer.Elapsed.TotalSeconds, $taskExe)
 }
 finally {

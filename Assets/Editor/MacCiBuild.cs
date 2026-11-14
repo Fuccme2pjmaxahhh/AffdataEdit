@@ -2,9 +2,8 @@ using System.IO;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
-using UnityEngine;
 
-// macOS CI build. It is uploaded as a workflow artifact and not published to R2.
+// Apple Silicon player; release.yml publishes it separately from Windows.
 public static class MacCiBuild
 {
     public static void Build()
@@ -18,12 +17,11 @@ public static class MacCiBuild
             scenes = new[] { "Assets/_Scenes/Startup.unity", "Assets/_Scenes/ArcEditor.unity" },
             locationPathName = output,
             target = BuildTarget.StandaloneOSX,
-            options = BuildOptions.StrictMode
+            options = BuildOptions.StrictMode | BuildOptions.CompressWithLz4HC
         });
-        if (report.summary.result != BuildResult.Succeeded)
-            throw new BuildFailedException($"macOS build: {report.summary.result}, {report.summary.totalErrors} errors.");
-        if (report.summary.totalWarnings != 0)
-            Debug.LogWarning($"macOS build finished with {report.summary.totalWarnings} warnings.");
+        if (report.summary.result != BuildResult.Succeeded || report.summary.totalWarnings != 0)
+            throw new BuildFailedException($"macOS build: {report.summary.result}, " +
+                $"{report.summary.totalErrors} errors, {report.summary.totalWarnings} warnings.");
         foreach (string backup in Directory.GetDirectories("Build/macOS", "*_BackUpThisFolder_ButDontShipItWithYourGame"))
             Directory.Delete(backup, true);
     }

@@ -184,9 +184,7 @@ namespace Arcade.Gameplay
                 diamondMaterial = new Material(Resources.Load<Shader>("AffdataEdit/AppearanceDiamond"));
                 diamond.material = diamondMaterial;
             }
-            var image = id == "diamond" ? ArcAppearanceCatalog.Loaded.BaseDiamond : new ArcAppearanceCatalog.ImageAsset
-            { File = "Diamonds/" + (string.IsNullOrEmpty(diamondConfig.FilePath) ? id + ".png" : diamondConfig.FilePath) };
-            diamond.sprite = Load(image); diamond.enabled = true;
+            diamond.sprite = Load(ArcAppearanceCatalog.Loaded.BaseDiamond); diamond.enabled = true;
             diamond.rectTransform.pivot = new Vector2(.5f, diamondConfig.PivotY);
             Vector2 anchor = diamondConfig.AnchorSettings.AnchorType == 0 ? new Vector2(.5f, 1) : new Vector2(.5f, .5f);
             diamond.rectTransform.anchorMin = diamond.rectTransform.anchorMax = anchor;
