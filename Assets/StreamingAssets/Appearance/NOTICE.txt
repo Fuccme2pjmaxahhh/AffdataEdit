@@ -1,0 +1,3 @@
+Appearance textures and configurations imported from the locally supplied Arcade Alpha 1.13.1 distribution, by explicit user authorization.
+Original authors and rights holders retain ownership and all applicable licenses. These assets are not relicensed under the AffdataEdit MIT source-code license. Arcaea-related artwork remains the property of lowiro and its respective creators.
+Only assets required by the appearance selectors and complete presets are included.

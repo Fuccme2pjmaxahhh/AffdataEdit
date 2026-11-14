@@ -14,13 +14,14 @@ namespace Arcade.Compose
 {
 	public enum Side
 	{
-		Light, Conflict, Colorless, Lephon
+		Light, Conflict, Colorless, Lephon, DarkLephon
 	}
 
 	public static class SideExtension
 	{
 		public static int Id(this Side side)
 		{
+			if (side == Side.DarkLephon) return 4;
 			if (side == Side.Light)
 			{
 				return 0;
@@ -41,6 +42,7 @@ namespace Arcade.Compose
 		}
 		public static bool TryFromId(int id, out Side? side)
 		{
+			if (id == 4) { side = Side.DarkLephon; return true; }
 			if (id == 0)
 			{
 				side = Side.Light;
@@ -75,6 +77,7 @@ namespace Arcade.Compose
 		}
 		public static bool TryFromName(string name, out Side? side)
 		{
+			if (name == "dark_lephon") { side = Side.DarkLephon; return true; }
 			if (name == "light")
 			{
 				side = Side.Light;
@@ -293,6 +296,7 @@ namespace Arcade.Compose
 		}
 		public class BackgroundData
 		{
+			public bool FromPreset;
 			public Labelled<Sprite> background;
 			public Side? side;
 			public string theme;
@@ -305,6 +309,7 @@ namespace Arcade.Compose
 			public T Lephon;
 			public T SelectWithSide(Side side)
 			{
+				if (side == Side.DarkLephon) return Conflict;
 				if (side == Side.Light)
 				{
 					return Light;
@@ -841,8 +846,20 @@ namespace Arcade.Compose
 				skinData.BackgroundDatas.Add("\"DefaultLephon\"", new BackgroundData()
 				{
 					background = new Labelled<Sprite>() { value = rawDefaultData.BackgroundLight, label = "<internal:light>" },
-					side = Side.Colorless,
+					side = Side.Lephon,
 					theme = skinData.DefaultThemeData
+				});
+			}
+			// Full presets share the existing bounded background cache; discovery never decodes images.
+			foreach (var preset in AppearancePresetCatalog.All)
+			{
+				string path = AppearancePresetCatalog.BackgroundPath(preset.Background);
+				if (!File.Exists(path) || skinData.BackgroundDatas.ContainsKey(preset.Background)) continue;
+				skinData.BackgroundDatas.Add(preset.Background, new BackgroundData
+				{
+					FromPreset = true,
+					background = new Labelled<Sprite> { label = path },
+					side = (Side)preset.Side
 				});
 			}
 		}

@@ -15,7 +15,7 @@ public static class MacCiBuild
         EditorUserBuildSettings.SetPlatformSettings("Standalone", "OSXUniversal", "Architecture", "ARM64");
         BuildReport report = BuildPipeline.BuildPlayer(new BuildPlayerOptions
         {
-            scenes = new[] { "Assets/_Scenes/ArcEditor.unity" },
+            scenes = new[] { "Assets/_Scenes/Startup.unity", "Assets/_Scenes/ArcEditor.unity" },
             locationPathName = output,
             target = BuildTarget.StandaloneOSX,
             options = BuildOptions.StrictMode

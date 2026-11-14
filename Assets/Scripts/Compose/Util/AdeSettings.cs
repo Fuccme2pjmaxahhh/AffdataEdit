@@ -39,6 +39,7 @@ namespace Arcade.Compose
         private static readonly Entry[] Entries =
         {
             new Entry("ArcadeComposeManagerPreference", "general", typeof(ArcadePreference), "Preferences.json"),
+            new Entry(AdeWindowState.SettingsKey, "window", typeof(AdeWindowPlacement)),
             new Entry("AdeSoundDialog", "sound", typeof(SoundPreferences), "Sound.json"),
             new Entry("AdeGridManager", "grid", typeof(CustomGrid), "Grid.json"),
             new Entry("AdeSkinDialog", "skin", typeof(SkinPreference), "Skin.json"),

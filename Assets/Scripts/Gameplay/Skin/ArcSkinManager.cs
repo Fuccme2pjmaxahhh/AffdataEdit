@@ -186,7 +186,7 @@ namespace Arcade.Gameplay
 
         public void SetThemeSideSkin(AdeSkinHost.ThemeSideData themeSideData, Side side = Side.Light)
 		{
-            darkShadow = side == Side.Conflict;
+            darkShadow = side == Side.Conflict || (int)side == 4;
 			foreach (SpriteRenderer trackComponent in TrackComponents)
 			{
 				trackComponent.sprite = themeSideData.Track.value;
@@ -208,7 +208,14 @@ namespace Arcade.Gameplay
 			ArcEffectManager.Instance.SetTapEffectTexture(themeSideData.ParticleNote.value);
 			ArcEffectManager.Instance.SetTapEffectConflictBlend(side == Side.Conflict);
 			ArcEffectManager.Instance.SetParticleArcColor(themeSideData.ParticleArcStartColor, themeSideData.ParticleArcEndColor);
+            ArcLongNoteEffect.AppearanceScale = 1;
+            Appearance.CaptureBase(this, themeSideData, side);
 		}
+
+        private ArcAppearanceRenderer appearance;
+        private ArcAppearanceRenderer Appearance => appearance ? appearance : (appearance = gameObject.AddComponent<ArcAppearanceRenderer>());
+        public void ApplyAppearance(AppearanceSelection selection, Side side) => Appearance.Apply(selection, side);
+        public void ApplyPresetExtras(int note, string hitEffect, string particle, Side side) => Appearance.Extras(note, hitEffect, particle, side);
 
 		public void SetBackground(Sprite background)
 		{

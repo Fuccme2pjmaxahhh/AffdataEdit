@@ -1,0 +1,54 @@
+[
+  {
+    "Name": "base_light",
+    "Background": "base_light",
+    "Diamond": "diamond",
+    "Track": "Light",
+    "CriticalLine": "normal",
+    "SingleLine": "none",
+    "ComboColor": "",
+    "Note": 0,
+    "Particle": "normal",
+    "HitEffect": "light",
+    "Side": 0
+  },
+  {
+    "Name": "base_conflict",
+    "Background": "base_conflict",
+    "Diamond": "diamond",
+    "Track": "Dark",
+    "CriticalLine": "normal",
+    "SingleLine": "none",
+    "ComboColor": "",
+    "Note": 1,
+    "Particle": "normal",
+    "HitEffect": "conflict",
+    "Side": 1
+  },
+  {
+    "Name": "single_light",
+    "Background": "single_light",
+    "Diamond": "none",
+    "Track": "Light",
+    "CriticalLine": "normal",
+    "SingleLine": "light",
+    "ComboColor": "",
+    "Note": 1,
+    "Particle": "normal",
+    "HitEffect": "light",
+    "Side": 0
+  },
+  {
+    "Name": "single_conflict",
+    "Background": "single_conflict",
+    "Diamond": "none",
+    "Track": "Dark",
+    "CriticalLine": "normal",
+    "SingleLine": "dark",
+    "ComboColor": "",
+    "Note": 1,
+    "Particle": "normal",
+    "HitEffect": "conflict",
+    "Side": 1
+  }
+]

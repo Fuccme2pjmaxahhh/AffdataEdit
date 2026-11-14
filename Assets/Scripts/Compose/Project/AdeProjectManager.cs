@@ -55,6 +55,15 @@ namespace Arcade.Compose
 		public Image CoverImage;
 		public Image[] DifficultyImages;
         private Material difficultyNormal, difficultySelected, difficultyBeyondNormal;
+        private Image difficultyCut;
+        private Texture2D difficultyCutTexture;
+        private Sprite difficultyCutSprite;
+        // Main colours of the Past..Eternal difficulty artwork.
+        private static readonly Color32[] DifficultyCutHues =
+        {
+            new Color32(6, 155, 186, 255), new Color32(166, 196, 124, 255), new Color32(144, 48, 116, 255),
+            new Color32(98, 25, 43, 255), new Color32(102, 76, 128, 255),
+        };
 		public InputField Name, Composer, Diff, BaseBpm, AudioOffset;
 		public Button CurrentTimingGroup;
 		public Text OpenLabel;
@@ -109,7 +118,61 @@ namespace Arcade.Compose
 		{
 			Instance = this;
 			ConfigureHudInputNavigation(Name, Composer, Diff);
+			CreateDifficultyCut();
 		}
+
+        private void CreateDifficultyCut()
+        {
+            // AA marks the editable rating with a slanted, difficulty-coloured cut in the strip.
+            // Its 30-unit slant matches the difficulty buttons' angle and is kept unstretched.
+            const int width = 64, height = 60, slant = 29;
+            difficultyCutTexture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+            {
+                wrapMode = TextureWrapMode.Clamp,
+                filterMode = FilterMode.Bilinear,
+            };
+            var pixels = new Color32[width * height];
+            for (int y = 0; y < height; y++)
+                for (int x = 0; x < width; x++)
+                {
+                    int covered = 0;
+                    for (int sy = 0; sy < 4; sy++)
+                        for (int sx = 0; sx < 4; sx++)
+                            if (x + (sx + .5f) / 4 >= slant * (y + (sy + .5f) / 4) / height) covered++;
+                    pixels[y * width + x] = new Color32(255, 255, 255, (byte)(covered * 255 / 16));
+                }
+            difficultyCutTexture.SetPixels32(pixels);
+            difficultyCutTexture.Apply(false, true);
+            // 200 px per unit: the 60 px texture is the 30-unit strip height.
+            difficultyCutSprite = Sprite.Create(difficultyCutTexture, new Rect(0, 0, width, height), Vector2.one, 200,
+                0, SpriteMeshType.FullRect, new Vector4(slant + 1, 0, 0, 0));
+            var cut = new GameObject("DifficultyCut", typeof(RectTransform), typeof(Image));
+            var rect = (RectTransform)cut.transform;
+            rect.SetParent(Diff.transform.parent, false);
+            rect.SetSiblingIndex(Diff.transform.GetSiblingIndex());
+            rect.anchorMin = rect.anchorMax = rect.pivot = Vector2.one;
+            // Spans the strip from just after the Eternal button to the panel edge.
+            rect.sizeDelta = new Vector2(126, 30);
+            rect.anchoredPosition = new Vector2(0, -91);
+            difficultyCut = cut.GetComponent<Image>();
+            difficultyCut.sprite = difficultyCutSprite;
+            difficultyCut.type = Image.Type.Sliced;
+            difficultyCut.raycastTarget = false;
+            difficultyCut.enabled = false;
+        }
+
+        private static readonly string[] DifficultyNames = { "Past", "Present", "Future", "Beyond", "Eternal" };
+        internal static string DefaultRating(int difficulty) =>
+            difficulty >= 0 && difficulty < DifficultyNames.Length ? DifficultyNames[difficulty] + " ?" : "";
+
+        private static Color DifficultyCutColor(Color hue)
+        {
+            // DifficultyPalette-style RGB scaling, darker so the white rating text stays readable.
+            float luminance = hue.r * .2126f + hue.g * .7152f + hue.b * .0722f;
+            float peak = Mathf.Max(hue.r, Mathf.Max(hue.g, hue.b));
+            float gain = Mathf.Min(.13f / Mathf.Max(.0001f, luminance), .95f / Mathf.Max(.0001f, peak));
+            return new Color(hue.r * gain, hue.g * gain, hue.b * gain, .92f);
+        }
 
         internal static void ConfigureHudInputNavigation(params InputField[] fields)
         {
@@ -135,6 +198,11 @@ namespace Arcade.Compose
                 image.material = i == selected ? difficultySelected : i == 3 ? difficultyBeyondNormal : difficultyNormal;
                 image.color = new Color(1, 1, 1, i == selected ? 1 : .65f);
             }
+            if (difficultyCut)
+            {
+                difficultyCut.enabled = selected >= 0 && selected < DifficultyCutHues.Length;
+                if (difficultyCut.enabled) difficultyCut.color = DifficultyCutColor(DifficultyCutHues[selected]);
+            }
         }
 
         private void OnDestroy()
@@ -145,10 +213,13 @@ namespace Arcade.Compose
             if (difficultyNormal) Destroy(difficultyNormal);
             if (difficultySelected) Destroy(difficultySelected);
             if (difficultyBeyondNormal) Destroy(difficultyBeyondNormal);
+            if (difficultyCutSprite) Destroy(difficultyCutSprite);
+            if (difficultyCutTexture) Destroy(difficultyCutTexture);
         }
 
 		private void Start()
 		{
+            gameObject.AddComponent<AdeSongListExport>();
             RefreshDifficultyAppearance(-1);
 			watcher.NotifyFilter = NotifyFilters.LastWrite;
 			watcher.Changed += OnWatcherChanged;
@@ -578,7 +649,9 @@ namespace Arcade.Compose
 			ArcGameplayManager.Instance.Load(chart, chartAudio);
 			CurrentDifficulty = difficulty;
 
-			Diff.text = CurrentProjectMetadata.Difficulties[CurrentDifficulty] == null ? "" : CurrentProjectMetadata.Difficulties[CurrentDifficulty].Rating;
+			string rating = CurrentProjectMetadata.Difficulties[CurrentDifficulty]?.Rating;
+			// Unrated charts start from "<difficulty> ?", like "Future ?".
+			Diff.text = string.IsNullOrWhiteSpace(rating) ? DefaultRating(CurrentDifficulty) : rating;
 			RefreshDifficultyAppearance(difficulty);
 
 			AudioOffset.interactable = true;

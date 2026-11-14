@@ -35,6 +35,7 @@ namespace Arcade.Compose
             switch (name)
             {
                 case "Save": return "保存谱面";
+                case "ExportSongList": return "导出 songlist";
                 case "FileWatch": return "谱面文件实时同步";
                 case "SaveMode": return "保存模式";
                 case "Folder": return "打开谱面文件夹";

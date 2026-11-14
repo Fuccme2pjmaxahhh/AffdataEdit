@@ -7,6 +7,18 @@ namespace Arcade.Compose
 {
 	public static class AdeScreenResolution
 	{
+		public static void Apply(string resolution, bool fullscreen)
+		{
+			if (fullscreen)
+			{
+				DisplayInfo display = Screen.mainWindowDisplayInfo;
+				Screen.SetResolution(display.width, display.height, FullScreenMode.FullScreenWindow);
+				return;
+			}
+			Vector2Int size = GetWindowedSize(resolution, Screen.mainWindowDisplayInfo.workArea, ScaleFactor);
+			Screen.SetResolution(size.x, size.y, FullScreenMode.Windowed);
+		}
+
 		public static string GetDefaultResolution(RectInt workArea, float scaleFactor = 1)
 		{
 			// Match the window-fitting rules, including space for OS chrome.

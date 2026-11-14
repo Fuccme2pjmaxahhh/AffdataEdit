@@ -1,0 +1,2985 @@
+[
+  {
+    "ID": null,
+    "FilePath": null,
+    "MultiplyScale": 0.6667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0.0,
+      "AnchorPositionY": 0.0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "aegleseeker",
+    "FilePath": "aegleseeker_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "aethercrest",
+    "FilePath": "aethercrest_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 80,
+    "MaxOpacity": 250,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "alexandrite",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.7,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 2,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "alice_conflict",
+    "FilePath": "alice_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "alice_light",
+    "FilePath": "alice_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "alterego",
+    "FilePath": "alterego_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "altergate",
+    "FilePath": "altergate_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 60,
+    "MaxOpacity": 200,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "anima_conflict",
+    "FilePath": "anima_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 60,
+    "MaxOpacity": 200,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "anima_light",
+    "FilePath": "anima_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 60,
+    "MaxOpacity": 200,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "apophenia",
+    "FilePath": "apophenia_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "arcahv",
+    "FilePath": "arcahv_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "arcanaeden",
+    "FilePath": "arcanaeden_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "arghena",
+    "FilePath": "arghena_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "aterlbus",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 32,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "auxesia",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "axiumcrisis",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "axiumcrisis3",
+    "FilePath": "axiumcrisis3_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 76,
+    "MaxOpacity": 153,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "azalea",
+    "FilePath": "nextstage_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "base_conflict",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "base_light",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "byd_2_conflict",
+    "FilePath": "byd_2_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "byd_2_light",
+    "FilePath": "byd_2_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 140,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "byd_conflict",
+    "FilePath": "byd_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "byd_light",
+    "FilePath": "byd_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "cataclysmcry",
+    "FilePath": "cataclysmcry_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 180,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "chuni-garakuta",
+    "FilePath": "chuni-garakuta_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 180,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 2,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "chuni-ikazuchi",
+    "FilePath": "chuni-ikazuchi_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 180,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 2,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "chuni-worldvanquisher",
+    "FilePath": "chuni-worldvanquisher_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 180,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 2,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "chunithmnew_conflict",
+    "FilePath": "chunithmnew_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "chunithmnew_light",
+    "FilePath": "chunithmnew_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "chunithmthird_conflict",
+    "FilePath": "chunithmthird_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "codeoblivion",
+    "FilePath": "codeoblivion_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "cyaegha",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "cytus_boss",
+    "FilePath": "cytus_boss_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "cytus_conflict",
+    "FilePath": "cytus_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "cytus_dark",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "cytus_light",
+    "FilePath": "cytus_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "deinosphainein",
+    "FilePath": "deinosphainein_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "designant",
+    "FilePath": "designant_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 80,
+    "MaxOpacity": 250,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "djmax_conflict",
+    "FilePath": "djmax_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 80,
+    "MaxOpacity": 200,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "djmax_light",
+    "FilePath": "djmax_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 80,
+    "MaxOpacity": 200,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "djmax_nightmare",
+    "FilePath": "djmax_nightmare_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 80,
+    "MaxOpacity": 200,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "djmax_wagd",
+    "FilePath": "djmax_wagd_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 80,
+    "MaxOpacity": 200,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "dynamix_conflict",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 32,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "dynamix_light",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 180,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 32,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "eclipse_conflict",
+    "FilePath": "eclipse_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 60,
+    "MaxOpacity": 255,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "eclipse_light",
+    "FilePath": "eclipse_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 60,
+    "MaxOpacity": 255,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "eden_append_conflict",
+    "FilePath": "eden_append_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "eden_append_dark",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "eden_append_light",
+    "FilePath": "eden_append_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "eden_boss",
+    "FilePath": "eden_boss_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "eden_conflict",
+    "FilePath": "eden_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "eden_dark",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "eden_light",
+    "FilePath": "eden_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "epilogue",
+    "FilePath": "epilogue_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "etherstrike",
+    "FilePath": "etherstrike_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 180,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 2,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "extradimensional",
+    "FilePath": "anima_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 60,
+    "MaxOpacity": 200,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "felis",
+    "FilePath": "felis_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "finale_conflict",
+    "FilePath": "finale_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 2,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "finale_light",
+    "FilePath": "finale_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "fractureray",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.7,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 2,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "gc_buchigire",
+    "FilePath": "gc_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "gc_conflict",
+    "FilePath": "gc_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": -5
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 2,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "gc_lance",
+    "FilePath": "gc_lance_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "gc_light",
+    "FilePath": "gc_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "gc_ouroboros",
+    "FilePath": "gc_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": -5
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 2,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "gou",
+    "FilePath": "gou_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "grievouslady",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "hime_conflict",
+    "FilePath": "hime_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "hime_light",
+    "FilePath": "hime_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "konzetsu-a",
+    "FilePath": "konzetsu-a_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 180,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "konzetsu-b",
+    "FilePath": "konzetsu-b_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "lamentrain",
+    "FilePath": "lamentrain_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 80,
+    "MaxOpacity": 250,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "lamia",
+    "FilePath": "lamia_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "lanota-conflict",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "lanota-light",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "lephon",
+    "FilePath": "lephon_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 80,
+    "MaxOpacity": 250,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "lethaeus",
+    "FilePath": "lethaeus_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "macula_conflict_a",
+    "FilePath": "macula_conflict_a_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 60,
+    "MaxOpacity": 200,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "macula_light_a",
+    "FilePath": "macula_light_a_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 60,
+    "MaxOpacity": 200,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "magnolia",
+    "FilePath": "magnolia_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "maimai_boss",
+    "FilePath": "maimai_boss_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "maimai_conflict",
+    "FilePath": "maimai_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "maimai_light",
+    "FilePath": "maimai_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "megalovaniarmx",
+    "FilePath": "megalovaniarmx_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 80,
+    "MaxOpacity": 180,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "megarex_conflict",
+    "FilePath": "megarex_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "megarex_light",
+    "FilePath": "megarex_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "megarex_signal",
+    "FilePath": "megarex_signal_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "meta_mysteria",
+    "FilePath": "meta_mysteria_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "mirai_awakened",
+    "FilePath": "mirai_awakened_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "mirai_conflict",
+    "FilePath": "mirai_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "mirai_light",
+    "FilePath": "mirai_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "modelista",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "musedash_conflict",
+    "FilePath": "musedash_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "musedash_light",
+    "FilePath": "musedash_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "nextstage_conflict",
+    "FilePath": "nextstage_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "nextstage_light",
+    "FilePath": "nextstage_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "nihil",
+    "FilePath": "nihil_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "nijuusei-conflict-b",
+    "FilePath": "nijuusei-conflict-b_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "nijuusei-light-b",
+    "FilePath": "nijuusei-light-b_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "nijuusei2_conflict",
+    "FilePath": "nijuusei2_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "nijuusei2_light",
+    "FilePath": "nijuusei2_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 2,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "nirvluce",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "observer_conflict",
+    "FilePath": "observer_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "observer_light",
+    "FilePath": "observer_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "omatsuri_conflict",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "omatsuri_light",
+    "FilePath": "omatsuri_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "omegafour",
+    "FilePath": "omegafour_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "ongeki_conflict",
+    "FilePath": "ongeki_conflict_diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "ongeki_light",
+    "FilePath": "ongeki_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "pentiment",
+    "FilePath": "pentiment_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "pragmatism",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "pragmatism3",
+    "FilePath": "pragmatism3_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 2,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "prelude_conflict",
+    "FilePath": "prelude_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "prelude_light",
+    "FilePath": "prelude_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "quon",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "rei",
+    "FilePath": "triangle_light.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "ringedgenesis",
+    "FilePath": "ringedgenesis_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "rotaeno_conflict",
+    "FilePath": "rotaeno_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 20,
+    "MaxOpacity": 140,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "rotaeno_light",
+    "FilePath": "rotaeno_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 0,
+    "MaxOpacity": 110,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "sacrosanct",
+    "FilePath": "sacrosanct_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 25,
+    "MaxOpacity": 90,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "saikyostronger",
+    "FilePath": "saikyostronger_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 2,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "sheriruth",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "shiawase",
+    "FilePath": "shiawase_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 2,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "shiawase2",
+    "FilePath": "diamond_shiawase.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "single2_conflict",
+    "FilePath": "single2_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "single2_light",
+    "FilePath": "single2_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 140,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "solitarydream",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.7,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 2,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "spidersthread",
+    "FilePath": "spidersthread_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "tanoc_conflict",
+    "FilePath": "tanoc_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "tanoc_light",
+    "FilePath": "tanoc_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "tanoc_red",
+    "FilePath": "tanoc_red_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 2,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "tempestissimo",
+    "FilePath": "tempestissimo_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "temptation",
+    "FilePath": "temptation_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "testify",
+    "FilePath": "testify_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "tiferet",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 2,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "tonesphere-darksphere",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 2,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "tonesphere-solarsphere",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "touhou_conflict",
+    "FilePath": "touhou_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "touhou_light",
+    "FilePath": "touhou_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "undertale_conflict",
+    "FilePath": "undertale_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 80,
+    "MaxOpacity": 180,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "undertale_light",
+    "FilePath": "undertale_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 80,
+    "MaxOpacity": 180,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "viciousheroism3",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 1.25,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 65,
+    "MaxOpacity": 130,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "virtualsingers_conflict",
+    "FilePath": "virtualsingers_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 180,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "virtualsingers_light",
+    "FilePath": "virtualsingers_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 180,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "virtus",
+    "FilePath": "virtus_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 180,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "vs_conflict",
+    "FilePath": "vs_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 2,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "vs_light",
+    "FilePath": "vs_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 75,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "vulcanus",
+    "FilePath": "vulcanus_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 0,
+    "MaxOpacity": 55,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "wacca_boss",
+    "FilePath": "wacca_boss_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "wacca_conflict",
+    "FilePath": "wacca_conflict_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "wacca_light",
+    "FilePath": "wacca_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": true
+  },
+  {
+    "ID": "xterfusion",
+    "FilePath": "xterfusion_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 4,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "yugamu",
+    "FilePath": "diamond.png",
+    "MultiplyScale": 0.7,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 2,
+      "DstFactor": 10
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "zettai",
+    "FilePath": "zettai_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  },
+  {
+    "ID": "zettai_light",
+    "FilePath": "zettai_light_clear.png",
+    "MultiplyScale": 0.66667,
+    "PivotY": 1.0,
+    "CanvasRectUseDesignResolutionSize": false,
+    "MinOpacity": 50,
+    "MaxOpacity": 100,
+    "AnchorSettings": {
+      "AnchorType": 0,
+      "AnchorPositionX": 0,
+      "AnchorPositionY": 0
+    },
+    "BlendFactorSettings": {
+      "SrcFactor": 1,
+      "DstFactor": 1
+    },
+    "UseInternalBlendFactorSettings": false
+  }
+]

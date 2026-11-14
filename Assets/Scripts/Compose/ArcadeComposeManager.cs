@@ -158,7 +158,8 @@ namespace Arcade.Compose
 			{
 				ArcadePreference.Fullscreen = value;
 				ResolutionDropdown.interactable = !value;
-				SetResolution(ArcadePreference.ScreenResolution, ArcadePreference.Fullscreen);
+				if (!AdeWindowState.ChangeFullscreen(ArcadePreference.ScreenResolution, value))
+					SetResolution(ArcadePreference.ScreenResolution, value);
 				SavePreferences();
 			});
 			TargetFramerateDropdown.onValueChanged.AddListener((int value) =>
@@ -402,15 +403,8 @@ namespace Arcade.Compose
 
 		public void SetResolution(string resolution, bool fullscreen)
 		{
-			if (fullscreen)
-			{
-				Debug.Log($"[fullscreen]{Screen.currentResolution.width.ToString(CultureInfo.InvariantCulture)}x{Screen.currentResolution.height.ToString(CultureInfo.InvariantCulture)}");
-				Screen.SetResolution(Screen.currentResolution.width, Screen.currentResolution.height, FullScreenMode.FullScreenWindow);
-				return;
-			}
-			Vector2Int size = AdeScreenResolution.GetWindowedSize(resolution, Screen.mainWindowDisplayInfo.workArea, AdeScreenResolution.ScaleFactor);
-			Debug.Log($"[window] requested={resolution}, applied={size.x}x{size.y}");
-			Screen.SetResolution(size.x, size.y, FullScreenMode.Windowed);
+			AdeWindowState.BeforeResolutionChange(fullscreen);
+			AdeScreenResolution.Apply(resolution, fullscreen);
 		}
 		public void SetTargetFramerate(int fps)
 		{
@@ -514,6 +508,10 @@ namespace Arcade.Compose
         }
 
         private float hudPlayerBlend;
+        private RectTransform hudRating, hudName, hudComposer, hudDifficulties, hudDifficultyCut;
+        private readonly HudMarquee nameMarquee = new HudMarquee(), composerMarquee = new HudMarquee();
+        private float marqueeTime;
+        private bool marqueeActive;
 
         private void LateUpdate()
         {
@@ -544,8 +542,105 @@ namespace Arcade.Compose
                 rect.localScale = new Vector3(scale, scale, 1);
                 // AA places the legacy information artwork 30 units beyond the right edge.
                 rect.anchoredPosition = new Vector2(Mathf.Lerp(0, 30, hudPlayerBlend), -20) * scale;
+                // In play AA pushes the panel 30 units out, so the difficulty buttons, rating
+                // cut and info text shift left together to stay inside the visible edge.
+                if (!hudRating)
+                {
+                    hudRating = (RectTransform)rect.Find("Difficult");
+                    hudName = (RectTransform)rect.Find("Name");
+                    hudComposer = (RectTransform)rect.Find("Composer");
+                    hudDifficulties = (RectTransform)rect.Find("Difficulties");
+                    hudDifficultyCut = rect.Find("DifficultyCut") as RectTransform;
+                }
+                // Measure where the window actually cuts the panel instead of assuming the
+                // 30-unit offset; the gameplay camera's projection also moves this edge.
+                float shift = VisibleHudRight(rect, -30 * hudPlayerBlend);
+                hudDifficulties.anchoredPosition = new Vector2(-284 + shift, hudDifficulties.anchoredPosition.y);
+                if (hudDifficultyCut) hudDifficultyCut.anchoredPosition = new Vector2(shift, hudDifficultyCut.anchoredPosition.y);
+                // Centre the rating between the cut's near (upper) slant corner, 111.5 units
+                // in from its right edge, and the visible window edge, `shift` in panel space.
+                hudRating.anchoredPosition = new Vector2((shift - 111.5f + shift) / 2 - hudRating.sizeDelta.x / 2,
+                    hudRating.anchoredPosition.y);
+                // Text ends 20 units inside; fields have 10 units of padding on each side.
+                float fieldRight = shift - 10;
+                hudName.sizeDelta = new Vector2(fieldRight - hudName.anchoredPosition.x, hudName.sizeDelta.y);
+                hudComposer.sizeDelta = new Vector2(fieldRight - hudComposer.anchoredPosition.x, hudComposer.sizeDelta.y);
+                UpdateHudMarquee();
             }
         }
+        private readonly Vector3[] hudCorners = new Vector3[4];
+
+        private float VisibleHudRight(RectTransform panel, float fallback)
+        {
+            // Panel pivot is its top-right corner, so x = 0 is the panel's right edge.
+            var canvas = EditorCanvas ? EditorCanvas.GetComponent<Canvas>() : null;
+            if (!canvas) return fallback;
+            var camera = canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+            var output = camera ? camera.targetTexture : null;
+            float width = output ? output.width : Screen.width;
+            float height = output ? output.height : Screen.height;
+            var corners = hudCorners;
+            panel.GetWorldCorners(corners);
+            // Sample the screen edge at the panel's own height.
+            float y = RectTransformUtility.WorldToScreenPoint(camera, (corners[1] + corners[0]) / 2).y;
+            if (y < 0 || y > height
+                || !RectTransformUtility.ScreenPointToLocalPointInRectangle(panel, new Vector2(width, y), camera, out var edge))
+                return fallback;
+            return Mathf.Min(0, edge.x);
+        }
+
+        private void UpdateHudMarquee()
+        {
+            // In play mode, long titles and artists roll so the whole text can be read.
+            bool play = hudPlayerBlend > .999f;
+            if (play)
+            {
+                if (!marqueeActive) marqueeTime = 0;
+                marqueeTime += Time.unscaledDeltaTime;
+            }
+            else if (!marqueeActive) return;
+            marqueeActive = play;
+            if (!nameMarquee.Field) nameMarquee.Field = hudName.GetComponent<InputField>();
+            if (!composerMarquee.Field) composerMarquee.Field = hudComposer.GetComponent<InputField>();
+            nameMarquee.Update(play, marqueeTime);
+            composerMarquee.Update(play, marqueeTime);
+        }
+
+        private sealed class HudMarquee
+        {
+            private const float Hold = 2, Speed = 40;
+            public InputField Field;
+            private string measuredText;
+            private float textWidth;
+
+            public void Update(bool play, float time)
+            {
+                if (!Field) return;
+                var label = Field.textComponent;
+                float offset = 0;
+                if (play)
+                {
+                    if (measuredText != label.text)
+                    {
+                        measuredText = label.text;
+                        textWidth = label.GetPreferredValues(measuredText).x;
+                    }
+                    float overflow = textWidth - Field.textViewport.rect.width;
+                    if (overflow > 0)
+                    {
+                        // Hold, roll to the end, hold, roll back.
+                        float travel = overflow / Speed;
+                        float t = time % (2 * (Hold + travel));
+                        float progress = t < Hold + travel ? t - Hold : 2 * (Hold + travel) - t;
+                        offset = -Mathf.Clamp(progress, 0, travel) * Speed;
+                    }
+                }
+                var rect = label.rectTransform;
+                // Leaving play mode resets the roll; editing then scrolls as usual.
+                rect.anchoredPosition = new Vector2(offset, rect.anchoredPosition.y);
+            }
+        }
+
         public Rect GameplayViewRect { get; private set; } = new Rect(.05f, .05f, .9f, .9f);
 
         private void UpdateGameplayProjection()
@@ -611,12 +706,24 @@ namespace Arcade.Compose
 		}
 
 
+		internal static ArcadePreference ReadPreferences()
+		{
+			try
+			{
+				return JsonConvert.DeserializeObject<ArcadePreference>(AdeSettings.GetString("ArcadeComposeManagerPreference", ""))
+					?? new ArcadePreference();
+			}
+			catch (JsonException)
+			{
+				return new ArcadePreference();
+			}
+		}
+
 		public void LoadPreferences()
 		{
 			try
 			{
-				ArcadePreference = JsonConvert.DeserializeObject<ArcadePreference>(AdeSettings.GetString("ArcadeComposeManagerPreference", ""));
-				if (ArcadePreference == null) ArcadePreference = new ArcadePreference();
+				ArcadePreference = ReadPreferences();
 			}
 			catch (Exception)
 			{
@@ -664,7 +771,8 @@ namespace Arcade.Compose
 				}
 				ResolutionDropdown.interactable = !ArcadePreference.Fullscreen;
 				FullscreenToggle.SetIsOnWithoutNotify(ArcadePreference.Fullscreen);
-				SetResolution(ArcadePreference.ScreenResolution, ArcadePreference.Fullscreen);
+				if (!AdeWindowState.WasRestored(ArcadePreference.ScreenResolution, ArcadePreference.Fullscreen))
+					SetResolution(ArcadePreference.ScreenResolution, ArcadePreference.Fullscreen);
 				bool targetFramerateHit = false;
 				for (int i = 0; i < TargetFramerateDropdown.options.Count; i++)
 				{

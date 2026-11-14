@@ -12,6 +12,7 @@ namespace Arcade.Compose
 		public Text Label;
 		public string BackgroundName;
 		public bool External;
+		public string PresetName;
 		public Color SelectedColor;
 		public Color UnselectedColor;
 		private bool cachedPreview;
@@ -20,7 +21,8 @@ namespace Arcade.Compose
 
 		public void OnSelected()
 		{
-			AdeSkinDialogContent.Instance.SelectBackground(BackgroundName, External);
+			if (!string.IsNullOrEmpty(PresetName)) AdeSkinDialogContent.Instance.SelectPreset(PresetName);
+			else AdeSkinDialogContent.Instance.SelectBackground(BackgroundName, External);
 		}
 
 		public void Initialize(string bg, bool external, Sprite image)

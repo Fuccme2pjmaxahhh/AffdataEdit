@@ -1,0 +1,980 @@
+{
+  "Tracks": [
+    {
+      "Id": "Light",
+      "Name": "Light",
+      "Side": 0,
+      "Sprite": {
+        "File": "Images/Sprite-747.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    },
+    {
+      "Id": "Dark",
+      "Name": "Dark",
+      "Side": 1,
+      "Sprite": {
+        "File": "Images/Sprite-700.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    },
+    {
+      "Id": "Black",
+      "Name": "Black",
+      "Side": 1,
+      "Sprite": {
+        "File": "Images/Sprite-752.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    },
+    {
+      "Id": "Nijuusei",
+      "Name": "Nijuusei",
+      "Side": 1,
+      "Sprite": {
+        "File": "Images/Sprite-730.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    },
+    {
+      "Id": "Rei",
+      "Name": "Rei",
+      "Side": 0,
+      "Sprite": {
+        "File": "Images/Sprite-622.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    },
+    {
+      "Id": "VS",
+      "Name": "VS",
+      "Side": 1,
+      "Sprite": {
+        "File": "Images/Sprite-623.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    },
+    {
+      "Id": "Tempest",
+      "Name": "Tempest",
+      "Side": 1,
+      "Sprite": {
+        "File": "Images/Sprite-698.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    },
+    {
+      "Id": "Arcana",
+      "Name": "Arcana",
+      "Side": 1,
+      "Sprite": {
+        "File": "Images/Sprite-942.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    },
+    {
+      "Id": "Finale",
+      "Name": "Finale",
+      "Side": 1,
+      "Sprite": {
+        "File": "Images/Sprite-819.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    },
+    {
+      "Id": "Pentiment",
+      "Name": "Pentiment",
+      "Side": 1,
+      "Sprite": {
+        "File": "Images/Sprite-716.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    },
+    {
+      "Id": "Colorless",
+      "Name": "Colorless",
+      "Side": 2,
+      "Sprite": {
+        "File": "Images/Sprite-748.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    },
+    {
+      "Id": "Dark Lephon",
+      "Name": "Dark Lephon",
+      "Side": 4,
+      "Sprite": {
+        "File": "Images/Sprite-884.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    }
+  ],
+  "CriticalLines": [
+    {
+      "Id": "normal",
+      "Name": "normal",
+      "Sprite": {
+        "File": "Images/Sprite-823.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    },
+    {
+      "Id": "dynamix",
+      "Name": "dynamix",
+      "Sprite": {
+        "File": "Images/Sprite-853.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    },
+    {
+      "Id": "colorless",
+      "Name": "colorless",
+      "Sprite": {
+        "File": "Images/Sprite-952.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    },
+    {
+      "Id": "extra_light",
+      "Name": "extra_light",
+      "Sprite": {
+        "File": "Images/Sprite-794.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    },
+    {
+      "Id": "extra_dark",
+      "Name": "extra_dark",
+      "Sprite": {
+        "File": "Images/Sprite-846.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    }
+  ],
+  "SingleLines": [
+    {
+      "IsEmpty": 1,
+      "Scale": {
+        "x": 1.0,
+        "y": 1.2000000476837158
+      },
+      "PositionLeft": {
+        "x": -4.0,
+        "y": 7.300000190734863,
+        "z": 50.0
+      },
+      "PositionRight": {
+        "x": 4.0,
+        "y": 7.300000190734863,
+        "z": 50.0
+      },
+      "LightOpacity": 0,
+      "DarkOpacity": 0,
+      "Length": 50.0,
+      "SrcBlend": 1,
+      "DstBlend": 1,
+      "ScrollSpeed": 1.0,
+      "Features": 0,
+      "Id": "none",
+      "Name": "none",
+      "Left": null,
+      "Right": null
+    },
+    {
+      "IsEmpty": 0,
+      "Scale": {
+        "x": 1.0,
+        "y": 1.2000000476837158
+      },
+      "PositionLeft": {
+        "x": -4.0,
+        "y": 7.300000190734863,
+        "z": 8.0
+      },
+      "PositionRight": {
+        "x": 4.0,
+        "y": 7.300000190734863,
+        "z": 8.0
+      },
+      "LightOpacity": 120,
+      "DarkOpacity": 200,
+      "Length": 50.0,
+      "SrcBlend": 1,
+      "DstBlend": 1,
+      "ScrollSpeed": 1.0,
+      "Features": 0,
+      "Id": "light",
+      "Name": "light",
+      "Left": {
+        "File": "Images/Sprite-721.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.0
+        }
+      },
+      "Right": {
+        "File": "Images/Sprite-721.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.0
+        }
+      }
+    },
+    {
+      "IsEmpty": 0,
+      "Scale": {
+        "x": 1.0,
+        "y": 1.2000000476837158
+      },
+      "PositionLeft": {
+        "x": -4.0,
+        "y": 7.300000190734863,
+        "z": 8.0
+      },
+      "PositionRight": {
+        "x": 4.0,
+        "y": 7.300000190734863,
+        "z": 8.0
+      },
+      "LightOpacity": 120,
+      "DarkOpacity": 200,
+      "Length": 50.0,
+      "SrcBlend": 1,
+      "DstBlend": 1,
+      "ScrollSpeed": 1.0,
+      "Features": 0,
+      "Id": "dark",
+      "Name": "dark",
+      "Left": {
+        "File": "Images/Sprite-639.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.0
+        }
+      },
+      "Right": {
+        "File": "Images/Sprite-639.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.0
+        }
+      }
+    },
+    {
+      "IsEmpty": 0,
+      "Scale": {
+        "x": 1.0,
+        "y": 2.0
+      },
+      "PositionLeft": {
+        "x": -6.0,
+        "y": 6.300000190734863,
+        "z": 8.0
+      },
+      "PositionRight": {
+        "x": 6.0,
+        "y": 6.300000190734863,
+        "z": 8.0
+      },
+      "LightOpacity": 255,
+      "DarkOpacity": 200,
+      "Length": 50.0,
+      "SrcBlend": 1,
+      "DstBlend": 1,
+      "ScrollSpeed": 1.0,
+      "Features": 0,
+      "Id": "light_2",
+      "Name": "light_2",
+      "Left": {
+        "File": "Images/Sprite-967.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.0
+        }
+      },
+      "Right": {
+        "File": "Images/Sprite-967.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.0
+        }
+      }
+    },
+    {
+      "IsEmpty": 0,
+      "Scale": {
+        "x": 1.0,
+        "y": 2.0
+      },
+      "PositionLeft": {
+        "x": -6.0,
+        "y": 6.300000190734863,
+        "z": 8.0
+      },
+      "PositionRight": {
+        "x": 6.0,
+        "y": 6.300000190734863,
+        "z": 8.0
+      },
+      "LightOpacity": 255,
+      "DarkOpacity": 200,
+      "Length": 50.0,
+      "SrcBlend": 1,
+      "DstBlend": 1,
+      "ScrollSpeed": 1.0,
+      "Features": 0,
+      "Id": "dark_2",
+      "Name": "dark_2",
+      "Left": {
+        "File": "Images/Sprite-769.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.0
+        }
+      },
+      "Right": {
+        "File": "Images/Sprite-769.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.0
+        }
+      }
+    },
+    {
+      "IsEmpty": 0,
+      "Scale": {
+        "x": 1.2000000476837158,
+        "y": 1.5
+      },
+      "PositionLeft": {
+        "x": -6.0,
+        "y": 5.699999809265137,
+        "z": 8.0
+      },
+      "PositionRight": {
+        "x": 6.0,
+        "y": 5.699999809265137,
+        "z": 8.0
+      },
+      "LightOpacity": 150,
+      "DarkOpacity": 150,
+      "Length": 50.0,
+      "SrcBlend": 1,
+      "DstBlend": 1,
+      "ScrollSpeed": 1.0,
+      "Features": 0,
+      "Id": "touhou_light_wall",
+      "Name": "touhou_light_wall",
+      "Left": {
+        "File": "Images/Sprite-655.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.0
+        }
+      },
+      "Right": {
+        "File": "Images/Sprite-655.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.0
+        }
+      }
+    },
+    {
+      "IsEmpty": 0,
+      "Scale": {
+        "x": 1.2000000476837158,
+        "y": 1.5
+      },
+      "PositionLeft": {
+        "x": -6.0,
+        "y": 5.699999809265137,
+        "z": 8.0
+      },
+      "PositionRight": {
+        "x": 6.0,
+        "y": 5.699999809265137,
+        "z": 8.0
+      },
+      "LightOpacity": 150,
+      "DarkOpacity": 150,
+      "Length": 50.0,
+      "SrcBlend": 1,
+      "DstBlend": 1,
+      "ScrollSpeed": 1.0,
+      "Features": 0,
+      "Id": "touhou_bullet_wall",
+      "Name": "touhou_bullet_wall",
+      "Left": {
+        "File": "Images/Sprite-749.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.0
+        }
+      },
+      "Right": {
+        "File": "Images/Sprite-749.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.0
+        }
+      }
+    },
+    {
+      "IsEmpty": 0,
+      "Scale": {
+        "x": 1.0,
+        "y": 1.2000000476837158
+      },
+      "PositionLeft": {
+        "x": -4.0,
+        "y": 7.300000190734863,
+        "z": 8.0
+      },
+      "PositionRight": {
+        "x": 4.0,
+        "y": 7.300000190734863,
+        "z": 8.0
+      },
+      "LightOpacity": 255,
+      "DarkOpacity": 200,
+      "Length": 50.0,
+      "SrcBlend": 1,
+      "DstBlend": 1,
+      "ScrollSpeed": 1.0,
+      "Features": 0,
+      "Id": "undertale_light_wall",
+      "Name": "undertale_light_wall",
+      "Left": {
+        "File": "Images/Sprite-1004.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.0
+        }
+      },
+      "Right": {
+        "File": "Images/Sprite-1004.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.0
+        }
+      }
+    },
+    {
+      "IsEmpty": 0,
+      "Scale": {
+        "x": 1.0,
+        "y": 1.2000000476837158
+      },
+      "PositionLeft": {
+        "x": -4.0,
+        "y": 7.300000190734863,
+        "z": 8.0
+      },
+      "PositionRight": {
+        "x": 4.0,
+        "y": 7.300000190734863,
+        "z": 8.0
+      },
+      "LightOpacity": 255,
+      "DarkOpacity": 200,
+      "Length": 50.0,
+      "SrcBlend": 1,
+      "DstBlend": 1,
+      "ScrollSpeed": 1.0,
+      "Features": 0,
+      "Id": "undertale_conflict_wall",
+      "Name": "undertale_conflict_wall",
+      "Left": {
+        "File": "Images/Sprite-782.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.0
+        }
+      },
+      "Right": {
+        "File": "Images/Sprite-782.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.0
+        }
+      }
+    },
+    {
+      "IsEmpty": 0,
+      "Scale": {
+        "x": 1.0,
+        "y": 1.2000000476837158
+      },
+      "PositionLeft": {
+        "x": -4.0,
+        "y": 7.300000190734863,
+        "z": 8.0
+      },
+      "PositionRight": {
+        "x": 4.0,
+        "y": 7.300000190734863,
+        "z": 8.0
+      },
+      "LightOpacity": 255,
+      "DarkOpacity": 200,
+      "Length": 50.0,
+      "SrcBlend": 1,
+      "DstBlend": 1,
+      "ScrollSpeed": 1.0,
+      "Features": 0,
+      "Id": "undertale_megalovaniarmx_wall",
+      "Name": "undertale_megalovaniarmx_wall",
+      "Left": {
+        "File": "Images/Sprite-877.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.0
+        }
+      },
+      "Right": {
+        "File": "Images/Sprite-877.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.0
+        }
+      }
+    },
+    {
+      "IsEmpty": 0,
+      "Scale": {
+        "x": 1.0,
+        "y": 1.2000000476837158
+      },
+      "PositionLeft": {
+        "x": -4.0,
+        "y": 7.300000190734863,
+        "z": 8.0
+      },
+      "PositionRight": {
+        "x": 4.0,
+        "y": 7.300000190734863,
+        "z": 8.0
+      },
+      "LightOpacity": 255,
+      "DarkOpacity": 200,
+      "Length": 50.0,
+      "SrcBlend": 6,
+      "DstBlend": 1,
+      "ScrollSpeed": 1.0,
+      "Features": 0,
+      "Id": "macula_light_wall",
+      "Name": "macula_light_wall",
+      "Left": {
+        "File": "Images/Sprite-798.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.0
+        }
+      },
+      "Right": {
+        "File": "Images/Sprite-798.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.0
+        }
+      }
+    },
+    {
+      "IsEmpty": 0,
+      "Scale": {
+        "x": 1.0,
+        "y": 1.2000000476837158
+      },
+      "PositionLeft": {
+        "x": -4.0,
+        "y": 7.300000190734863,
+        "z": 8.0
+      },
+      "PositionRight": {
+        "x": 4.0,
+        "y": 7.300000190734863,
+        "z": 8.0
+      },
+      "LightOpacity": 255,
+      "DarkOpacity": 200,
+      "Length": 50.0,
+      "SrcBlend": 1,
+      "DstBlend": 10,
+      "ScrollSpeed": 1.0,
+      "Features": 0,
+      "Id": "macula_conflict_wall",
+      "Name": "macula_conflict_wall",
+      "Left": {
+        "File": "Images/Sprite-695.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.0
+        }
+      },
+      "Right": {
+        "File": "Images/Sprite-695.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.0
+        }
+      }
+    }
+  ],
+  "ComboColors": [
+    {
+      "Id": "light",
+      "Name": "light",
+      "Color": {
+        "r": 0.47058823704719543,
+        "g": 0.23529411852359772,
+        "b": 0.47058823704719543,
+        "a": 0.686274528503418
+      }
+    },
+    {
+      "Id": "conflict",
+      "Name": "conflict",
+      "Color": {
+        "r": 0.5882353186607361,
+        "g": 0.3921568691730499,
+        "b": 0.686274528503418,
+        "a": 0.686274528503418
+      }
+    },
+    {
+      "Id": "dynamix",
+      "Name": "dynamix",
+      "Color": {
+        "r": 0.0784313753247261,
+        "g": 0.5490196347236633,
+        "b": 0.5490196347236633,
+        "a": 1.0
+      }
+    },
+    {
+      "Id": "colorless",
+      "Name": "colorless",
+      "Color": {
+        "r": 0.3333333432674408,
+        "g": 0.1764705926179886,
+        "b": 0.45098039507865906,
+        "a": 0.686274528503418
+      }
+    }
+  ],
+  "Notes": [
+    {
+      "Tap": {
+        "File": "Images/Sprite-966.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "Hold": {
+        "File": "Images/Sprite-998.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "Highlight": {
+        "File": "Images/Sprite-631.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "ArcTap": {
+        "File": "Images/Sprite-973.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    },
+    {
+      "Tap": {
+        "File": "Images/Sprite-687.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "Hold": {
+        "File": "Images/Sprite-709.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "Highlight": {
+        "File": "Images/Sprite-699.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "ArcTap": {
+        "File": "Images/Sprite-971.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    },
+    {
+      "Tap": {
+        "File": "Images/Sprite-796.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "Hold": {
+        "File": "Images/Sprite-719.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "Highlight": {
+        "File": "Images/Sprite-940.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      },
+      "ArcTap": {
+        "File": "Images/Sprite-867.png",
+        "PixelsPerUnit": 100.0,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    }
+  ],
+  "HitEffects": [
+    {
+      "Id": "light",
+      "Name": "light",
+      "Sprite": {
+        "File": "Images/Texture2D-401.png",
+        "PixelsPerUnit": 100,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    },
+    {
+      "Id": "conflict",
+      "Name": "conflict",
+      "Sprite": {
+        "File": "Images/Texture2D-255.png",
+        "PixelsPerUnit": 100,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    },
+    {
+      "Id": "mirai_light",
+      "Name": "mirai_light",
+      "Sprite": {
+        "File": "Images/Texture2D-322.png",
+        "PixelsPerUnit": 100,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    },
+    {
+      "Id": "mirai_conflict",
+      "Name": "mirai_conflict",
+      "Sprite": {
+        "File": "Images/Texture2D-267.png",
+        "PixelsPerUnit": 100,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    },
+    {
+      "Id": "colorless",
+      "Name": "colorless",
+      "Sprite": {
+        "File": "Images/Texture2D-213.png",
+        "PixelsPerUnit": 100,
+        "Pivot": {
+          "x": 0.5,
+          "y": 0.5
+        }
+      }
+    }
+  ],
+  "Particles": [
+    {
+      "Name": "normal",
+      "Start": {
+        "r": 0.4000000059604645,
+        "g": 0.20000000298023224,
+        "b": 0.4000000059604645,
+        "a": 1.0
+      },
+      "End": {
+        "r": 0.4000000059604645,
+        "g": 0.20000000298023224,
+        "b": 0.800000011920929,
+        "a": 1.0
+      },
+      "Scale": 2.0999999046325684
+    },
+    {
+      "Name": "mirai_light",
+      "Start": {
+        "r": 0.4399999976158142,
+        "g": 0.6399999856948853,
+        "b": 0.8899999856948853,
+        "a": 1.0
+      },
+      "End": {
+        "r": 0.550000011920929,
+        "g": 0.6399999856948853,
+        "b": 0.8899999856948853,
+        "a": 1.0
+      },
+      "Scale": 1.899999976158142
+    },
+    {
+      "Name": "mirai_dark",
+      "Start": {
+        "r": 0.8999999761581421,
+        "g": 0.5,
+        "b": 0.25,
+        "a": 1.0
+      },
+      "End": {
+        "r": 0.8500000238418579,
+        "g": 0.4000000059604645,
+        "b": 0.05000000074505806,
+        "a": 1.0
+      },
+      "Scale": 1.899999976158142
+    }
+  ],
+  "BaseDiamond": {
+    "File": "Images/Sprite-751.png",
+    "PixelsPerUnit": 100.0,
+    "Pivot": {
+      "x": 0.5,
+      "y": 0.5
+    }
+  }
+}

@@ -10,7 +10,7 @@ namespace Arcade.Gameplay
         private static readonly List<ArcLongNoteEffect> activeEffects = new List<ArcLongNoteEffect>();
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        private static void ResetStaticState() => activeEffects.Clear();
+        private static void ResetStaticState() { activeEffects.Clear(); AppearanceScale = 1; }
 
 
         internal static void ResetAll()
@@ -18,6 +18,7 @@ namespace Arcade.Gameplay
             // ResetState disables each effect and removes it from the registry.
             for (int i = activeEffects.Count - 1; i >= 0; i--) activeEffects[i].ResetState();
         }
+        internal static float AppearanceScale = 1;
         public Color StartColor = new Color(.4f, .2f, .4f, 1);
         public Color EndColor = new Color(.4f, .2f, .8f, 1);
         public Texture Texture;
@@ -128,7 +129,7 @@ namespace Arcade.Gameplay
             // ignores the CanvasScaler parent: size AND velocity are world units.
             float worldUnitScale = height / 40f;
             particles.transform.SetPositionAndRotation(position, camera.transform.rotation);
-            float scale = 1.1f * Mathf.Min(camera.aspect / (16f / 9), 1);
+            float scale = 1.1f * AppearanceScale * Mathf.Min(camera.aspect / (16f / 9), 1);
             particles.transform.localScale = new Vector3(scale, scale, 1);
             // Match Alpha's screen-relative size and motion using the UI camera's
             // 40-unit visible height, not the canvas's 1080 logical pixels.

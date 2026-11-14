@@ -70,21 +70,27 @@ namespace Arcade.Compose
 
         private static void LayoutHudFields(RectTransform panel)
         {
-            // The player artwork is offset 30 units beyond the window. Keep editable
-            // text inside that visible edge. AE's rating contains only "10", not "Future 10".
+            // The free-text rating ("Future 10+") sits on AA's difficulty cut in the
+            // strip. ArcadeComposeManager places the difficulty buttons, cut and the
+            // shared text right edge for editor and player positions.
             var rating = (RectTransform)panel.Find("Difficult");
-            rating.anchoredPosition = new Vector2(-116, -85);
-            rating.sizeDelta = new Vector2(68, 40);
+            rating.anchoredPosition = new Vector2(rating.anchoredPosition.x, -86);
+            rating.sizeDelta = new Vector2(112, 40);
             var ratingInput = rating.GetComponent<TMP_InputField>();
-            ratingInput.textComponent.alignment = TextAlignmentOptions.MidlineRight;
-            if (ratingInput.placeholder is TMP_Text placeholder) placeholder.alignment = TextAlignmentOptions.MidlineRight;
-            ((RectTransform)panel.Find("Difficulties")).anchoredPosition = new Vector2(-284, -89);
+            ratingInput.characterLimit = 0;
+            ratingInput.textComponent.alignment = TextAlignmentOptions.Midline;
+            // Longer ratings shrink a little instead of running into the buttons.
+            ratingInput.textComponent.enableAutoSizing = true;
+            ratingInput.textComponent.fontSizeMin = 14;
+            ratingInput.textComponent.fontSizeMax = 18;
+            if (ratingInput.placeholder is TMP_Text placeholder) placeholder.alignment = TextAlignmentOptions.Midline;
+            // AA's title/artist lines (-145/-173) are centred on the cover (-113 to -203).
             var name = (RectTransform)panel.Find("Name");
-            name.anchoredPosition = new Vector2(-245, -122);
-            name.sizeDelta = new Vector2(197, 40);
+            name.anchoredPosition = new Vector2(-255, -125);
+            name.sizeDelta = new Vector2(name.sizeDelta.x, 40);
             var composer = (RectTransform)panel.Find("Composer");
-            composer.anchoredPosition = new Vector2(-245, -152);
-            composer.sizeDelta = new Vector2(197, 40);
+            composer.anchoredPosition = new Vector2(-255, -153);
+            composer.sizeDelta = new Vector2(composer.sizeDelta.x, 40);
         }
 
         private static bool IsPlaybackHud(Graphic graphic)

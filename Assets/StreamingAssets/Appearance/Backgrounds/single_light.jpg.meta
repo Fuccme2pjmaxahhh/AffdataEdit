@@ -1,0 +1,27 @@
+fileFormatVersion: 2
+guid: 44bd5a5be4ff4cc4a03dbb4167390eec
+TextureImporter:
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    enableMipMap: 0
+    sRGBTexture: 1
+  isReadable: 0
+  streamingMipmaps: 0
+  maxTextureSize: 64
+  nPOTScale: 0
+  spriteMode: 0
+  alphaUsage: 1
+  alphaIsTransparency: 0
+  textureType: 0
+  textureShape: 1
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 64
+    textureFormat: -1
+    textureCompression: 1
+    overridden: 0
+  userData: StreamingAssets file loaded directly at runtime
+  assetBundleName:
+  assetBundleVariant:
