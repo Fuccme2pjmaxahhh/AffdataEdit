@@ -28,6 +28,19 @@ namespace Arcade.Compose
             foreach (var icon in staleToolbarIcons) toolbarToggleStates.Remove(icon);
         }
 
+        private static ColorBlock ToolbarActiveStates()
+        {
+            Color tint = ToolbarActiveColor;
+            Color fill = Color.Lerp(Current.Chrome, new Color(tint.r, tint.g, tint.b, 1f), tint.a);
+            fill.a = 1f;
+            var colors = ColorBlock.defaultColorBlock;
+            colors.normalColor = colors.selectedColor = fill;
+            colors.highlightedColor = Color.Lerp(fill, Current.Text, .08f);
+            colors.pressedColor = Color.Lerp(fill, Current.Text, .16f);
+            colors.disabledColor = Color.Lerp(fill, Current.Chrome, .5f);
+            return colors;
+        }
+
         private void StyleToolbarToggle(Image icon, bool active)
         {
             var button = icon.GetComponentInParent<Button>();
@@ -37,10 +50,12 @@ namespace Arcade.Compose
             if (!button.GetComponent<AdeToolbarPointerFocus>())
                 button.gameObject.AddComponent<AdeToolbarPointerFocus>();
 
-            // Keep the original square tool sprite and the same translucent fill as AUTO.
-            button.image.color = active ? ToolbarActiveColor : Color.white;
+            // Keep the original square tool sprite. The blue fill lives in the opaque tint states
+            // (precomposited over Chrome), so toggling only crossfades dark<->blue and never passes
+            // through the white default tint on a white sprite.
+            button.image.color = Color.white;
             button.transition = Selectable.Transition.ColorTint;
-            if (active) button.colors = ColorBlock.defaultColorBlock;
+            if (active) button.colors = ToolbarActiveStates();
             else SetStates(button, ToolbarEntry);
             Color foreground = active ? Color.Lerp(IconColor, Dark ? Color.white : Color.black, .25f) : IconColor;
             icon.color = button.IsInteractable() ? foreground : Current.Muted;

@@ -57,6 +57,7 @@ namespace Arcade.Compose
         [SerializeField] private TMP_FontAsset font;
         [SerializeField] private CanvasGroup panelGroup;
         private MotionHandle panelMotion;
+        private Button timingEntryButton;
         private bool expanded;
         private bool timingLayoutDirty = true;
         private bool revealCurrentGroup;
@@ -105,7 +106,8 @@ namespace Arcade.Compose
             {
                 timingEntry.gameObject.SetActive(true);
                 timingEntry.SetAsFirstSibling();
-                AdeUiKit.SetOnClick(timingEntry.GetComponent<Button>(), () => Toggle(Page.Groups));
+                timingEntryButton = timingEntry.GetComponent<Button>();
+                AdeUiKit.SetOnClick(timingEntryButton, () => Toggle(Page.Groups));
             }
             ArcGameplayManager.Instance.OnChartLoad.AddListener(OnChartLoad);
             AdeCommandManager.Instance.onCommandExecuted += OnCommand;
@@ -258,6 +260,7 @@ namespace Arcade.Compose
 
         private void UpdateHighlights()
         {
+            if (timingEntryButton) AdeUiTheme.SetToolbarToggleState(timingEntryButton.image, expanded);
             for (int i = 0; i < tabs.Length; i++)
             {
                 Highlight(entries[i], expanded && i == (int)activePage);

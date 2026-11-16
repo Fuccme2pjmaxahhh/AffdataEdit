@@ -37,10 +37,31 @@ namespace Arcade.Compose
         [SerializeField] private Image background, closeIcon;
         public event Action Opened, Closed;
         public bool IsOpen { get; private set; }
+        // Right toolbar button that opens this card; it stays highlighted while the card is open.
+        public Button Entry { get; set; }
         private MotionHandle motion;
         private int themeRevision = -1;
 
-        private void Start() => view.gameObject.SetActive(false);
+        private void Start()
+        {
+            view.gameObject.SetActive(false);
+            if (!Entry) Entry = FindSceneEntry();
+        }
+
+        private Button FindSceneEntry()
+        {
+            var bar = ArcadeComposeManager.Instance ? ArcadeComposeManager.Instance.RightBarView : null;
+            if (!bar) return null;
+            foreach (var button in bar.GetComponentsInChildren<Button>(true))
+                for (int i = 0; i < button.onClick.GetPersistentEventCount(); i++)
+                    if (button.onClick.GetPersistentTarget(i) == this) return button;
+            return null;
+        }
+
+        private void SetEntryPressed(bool pressed)
+        {
+            if (Entry) AdeUiTheme.SetToolbarToggleState(Entry.image, pressed);
+        }
 
         private void LateUpdate()
         {
@@ -71,6 +92,7 @@ namespace Arcade.Compose
             AdeDialogManager.PoseSide(group, view, from);
             group.blocksRaycasts = true;
             motion = AdeDialogManager.AnimateSideView(group, view, from, 1, () => { });
+            SetEntryPressed(true);
             Opened?.Invoke();
         }
 
@@ -85,6 +107,7 @@ namespace Arcade.Compose
                 view.gameObject.SetActive(false);
                 AdeRightSideCards.Release(this);
             });
+            SetEntryPressed(false);
             Closed?.Invoke();
         }
 
@@ -96,6 +119,7 @@ namespace Arcade.Compose
             group.blocksRaycasts = false;
             view.gameObject.SetActive(false);
             AdeRightSideCards.Release(this);
+            SetEntryPressed(false);
             if (wasOpen) Closed?.Invoke();
         }
 

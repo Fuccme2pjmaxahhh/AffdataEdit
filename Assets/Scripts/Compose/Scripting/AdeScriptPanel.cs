@@ -167,6 +167,7 @@ namespace Arcade.Compose.Scripting
             var button = entry.GetComponent<Button>();
             button.onClick = new Button.ButtonClickedEvent();
             button.onClick.AddListener(card.Toggle);
+            card.Entry = button;
             var controls = new GameObject("ScriptControls", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(LayoutElement));
             controls.layer = view.gameObject.layer;
             controls.transform.SetParent(view, false);

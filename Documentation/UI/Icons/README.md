@@ -1,6 +1,6 @@
 # Tabler Outline UI icons
 
-Source: [Tabler Icons v3.49.0](https://github.com/tabler/tabler-icons/tree/v3.49.0/icons/outline), distributed under the [MIT license](LICENSE). The SVG files retain the upstream style; `folder-sync`, `mouse-right`, `user-bust` and `clock` are local adaptations using the same 24-unit, rounded 2-unit strokes.
+Source: [Tabler Icons v3.49.0](https://github.com/tabler/tabler-icons/tree/v3.49.0/icons/outline), distributed under the [MIT license](LICENSE). The SVG files retain the upstream style; `folder-sync`, `mouse-right`, `user-bust`, `clock` and `file-export-list` are local adaptations using the same 24-unit, rounded 2-unit strokes.
 
 ## Image mappings
 
@@ -16,6 +16,7 @@ Existing PNG paths and GUIDs are retained so scene and prefab references remain 
 | `Assets/Resources/AffdataEdit/Icons/Account.png` | [`user-bust`](user-bust.svg) |
 | `Assets/Resources/AffdataEdit/Icons/Edit.png` | [`pencil`](pencil.svg) |
 | `Assets/Resources/AffdataEdit/Icons/Spectrum.png` | [Local spectrum bars](spectrum.svg): three outlined bars built like Tabler `chart-bar`, same 24-unit 2-unit-stroke style |
+| `Assets/Resources/AffdataEdit/Icons/ExportSongList.png` | [Local songlist export](file-export-list.svg): Tabler `file-export` with two list lines inside the document |
 | `Assets/Textures/Icon/MDI/Undo.png` | [`arrow-back-up`](arrow-back-up.svg) |
 | `Assets/Textures/Icon/MDI/Redo.png` | [`arrow-forward-up`](arrow-forward-up.svg) |
 | `Assets/Textures/Icon/MDI/Refresh.png` | [`refresh`](refresh.svg) |
