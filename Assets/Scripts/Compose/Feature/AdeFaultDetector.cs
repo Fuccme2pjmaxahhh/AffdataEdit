@@ -231,7 +231,7 @@ namespace Arcade.Compose
 
         private sealed class Issue
         {
-            public string Reason;
+            public string Reason, Details;
             public ArcEvent Event, Related;
         }
 
@@ -313,7 +313,13 @@ namespace Arcade.Compose
                     check.Check(chart);
                     foreach (var overlap in check.Overlaps)
                         next.Add(new Issue { Reason = check.Reason, Event = overlap.Current, Related = overlap.Other });
-                    foreach (var item in check.Faults) next.Add(new Issue { Reason = check.Reason, Event = item });
+                    foreach (var item in check.Faults)
+                    {
+                        var issue = new Issue { Reason = check.Reason, Event = item };
+                        if (check is CrossTimingFault crossing && crossing.Crossed.TryGetValue(item, out var timings))
+                            issue.Details = DescribeCrossedTimings(timings);
+                        next.Add(issue);
+                    }
                     await UniTask.NextFrame(cancellation.Token);
                     if (version != revision || chart != ArcGameplayManager.Instance.Chart) return;
                 }
@@ -328,6 +334,10 @@ namespace Arcade.Compose
                 cancellation.Dispose();
             }
         }
+
+        private static string DescribeCrossedTimings(IEnumerable<ArcTiming> timings) => string.Join("\n",
+            timings.Select(t => "跨越：timing(" + t.Timing.ToString(CultureInfo.InvariantCulture) + ","
+                + Command.ChartControlText.Number(t.Bpm) + "," + Command.ChartControlText.Number(t.BeatsPerLine) + ");"));
 
         private void CancelCheck()
         {

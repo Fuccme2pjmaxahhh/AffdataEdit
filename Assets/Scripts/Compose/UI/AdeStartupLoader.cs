@@ -1,3 +1,6 @@
+using Cysharp.Threading.Tasks;
+using UnityEngine.EventSystems;
+using UnityEngine.InputSystem.UI;
 using System.Collections;
 using TMPro;
 using UnityEngine;
@@ -40,6 +43,38 @@ namespace Arcade.Compose
             var font = Resources.LoadAsync<TMP_FontAsset>("AffdataEdit/Fonts/EditorUI SDF");
             yield return font;
             BuildLabels();
+            if (AdeUpdateChecker.ShouldCheck)
+            {
+                var checker = new GameObject(nameof(AdeUpdateChecker)).AddComponent<AdeUpdateChecker>();
+                var eventObject = new GameObject("StartupInput", typeof(EventSystem), typeof(InputSystemUIInputModule));
+                eventObject.transform.SetParent(transform, false);
+                eventObject.GetComponent<InputSystemUIInputModule>().AssignDefaultActions();
+                var primary = UpdateButton("UpdateAction", -100, checker.RetryOrUpdate);
+                var secondary = UpdateButton("ContinueAction", 100, checker.ContinueOrQuit);
+                status.rectTransform.sizeDelta = new Vector2(440, 128);
+                status.alignment = TextAlignmentOptions.TopLeft;
+                progress.transform.parent.gameObject.SetActive(false);
+                percentage.gameObject.SetActive(false);
+                content.Find("Detail").gameObject.SetActive(false);
+                yield return checker.RunAtStartup((checking, required, message) =>
+                {
+                    status.text = message;
+                    primary.gameObject.SetActive(!checking);
+                    secondary.gameObject.SetActive(!checking);
+                    primary.GetComponentInChildren<TMP_Text>().text = required ? "立即更新" : "重试";
+                    secondary.GetComponentInChildren<TMP_Text>().text = required ? "退出" : "继续使用";
+                }).ToCoroutine();
+                Destroy(primary.gameObject);
+                Destroy(secondary.gameObject);
+                // Disable before scene activation so there is never more than one active EventSystem.
+                eventObject.SetActive(false);
+                Destroy(eventObject);
+                status.rectTransform.sizeDelta = new Vector2(340, 30);
+                status.alignment = TextAlignmentOptions.MidlineLeft;
+                progress.transform.parent.gameObject.SetActive(true);
+                percentage.gameObject.SetActive(true);
+                content.Find("Detail").gameObject.SetActive(true);
+            }
             // Present a complete frame before asking Unity to load the large scene.
             SetProgress(0, "正在准备编辑器");
             yield return null;
@@ -107,6 +142,23 @@ namespace Arcade.Compose
                 fillElapsed = 0;
             }
             if (status.text != message) status.text = message;
+        }
+
+        private Button UpdateButton(string name, float x, UnityEngine.Events.UnityAction action)
+        {
+            var image = Rectangle(name, content, AdeUiTheme.Current.Selection);
+            image.raycastTarget = true;
+            Place(image.rectTransform, 220 + x, 293, 180, 44);
+            image.rectTransform.pivot = new Vector2(.5f, 1);
+            var button = image.gameObject.AddComponent<Button>();
+            button.targetGraphic = image;
+            button.onClick.AddListener(action);
+            var label = Label("Label", image.transform, "", 18, AdeUiTheme.Current.Text);
+            Stretch(label.rectTransform);
+            label.alignment = TextAlignmentOptions.Center;
+            label.raycastTarget = false;
+            button.gameObject.SetActive(false);
+            return button;
         }
 
         private void BuildSurface()

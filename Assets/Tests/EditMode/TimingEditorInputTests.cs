@@ -57,15 +57,21 @@ public class TimingEditorInputTests
         }
     }
 
-    [TestCase(0)]
-    [TestCase(1)]
-    [TestCase(2)]
-    public void RefreshPreservesTypingUntilCommitOrRebind(int focused)
+    [TestCase(0, false)]
+    [TestCase(1, false)]
+    [TestCase(2, false)]
+    [TestCase(0, true)]
+    [TestCase(1, true)]
+    [TestCase(2, true)]
+    public void RefreshPreservesTypingUntilCommitOrRebind(int focused, bool large)
     {
         var rowType = typeof(AdeChartToolsPanel).GetNestedType("TimingRow", BindingFlags.NonPublic);
         object row = Activator.CreateInstance(rowType, true);
-        Set(row, "Timing", new ArcTiming { Timing = 1234, Bpm = 145.5f, BeatsPerLine = 3.5f });
-        string[] names = { "Time", "Bpm", "Beats" }, expected = { "1234", "145.5", "3.5" };
+        Set(row, "Timing", large
+            ? new ArcTiming { Timing = 1234567, Bpm = 1456789f, BeatsPerLine = 3456789f }
+            : new ArcTiming { Timing = 1234, Bpm = 145.5f, BeatsPerLine = 3.5f });
+        string[] names = { "Time", "Bpm", "Beats" };
+        string[] expected = large ? new[] { "1234567", "1456789", "3456789.0" } : new[] { "1234", "145.5", "3.5" };
         var fields = new TMP_InputField[3];
         for (int i = 0; i < fields.Length; i++)
         {

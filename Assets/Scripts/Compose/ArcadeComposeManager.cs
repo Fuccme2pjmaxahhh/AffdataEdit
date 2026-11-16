@@ -35,6 +35,7 @@ namespace Arcade.Compose
 		public bool ShowSpectrum = false;
 		public bool ShowJudgementDetails = false;
         public bool LowPrecisionArcAndSlide = false;
+        public bool LegacyArcGroupSelection = false;
         public const int AllArcColors = 0b11111; // Bits follow the blue/red/green/gray/black color IDs.
         public const int DefaultArcColors = 0b01111;
         public int ArcColorCycleMask = DefaultArcColors;
@@ -608,10 +609,11 @@ namespace Arcade.Compose
 
         private sealed class HudMarquee
         {
-            private const float Hold = 2, Speed = 40;
+            private const float Hold = 2, Speed = 40, Gap = 48;
             public InputField Field;
             private string measuredText;
             private float textWidth;
+            private Text continuation;
 
             public void Update(bool play, float time)
             {
@@ -628,13 +630,22 @@ namespace Arcade.Compose
                     float overflow = textWidth - Field.textViewport.rect.width;
                     if (overflow > 0)
                     {
-                        // Hold, roll to the end, hold, roll back.
-                        float travel = overflow / Speed;
-                        float t = time % (2 * (Hold + travel));
-                        float progress = t < Hold + travel ? t - Hold : 2 * (Hold + travel) - t;
-                        offset = -Mathf.Clamp(progress, 0, travel) * Speed;
+                        // Keep moving left; the next copy follows after a readable gap.
+                        // At the wrap boundary the two identical copies exchange places.
+                        float period = textWidth + Gap;
+                        offset = -Mathf.Repeat(Mathf.Max(0, time - Hold) * Speed, period);
+                        if (!continuation)
+                        {
+                            continuation = UnityEngine.Object.Instantiate(label, label.transform.parent);
+                            continuation.name = "MarqueeContinuation";
+                            continuation.raycastTarget = false;
+                        }
+                        continuation.text = measuredText;
+                        continuation.color = label.color;
+                        continuation.rectTransform.anchoredPosition = new Vector2(offset + period, label.rectTransform.anchoredPosition.y);
                     }
                 }
+                if (continuation) continuation.gameObject.SetActive(play && textWidth > Field.textViewport.rect.width);
                 var rect = label.rectTransform;
                 // Leaving play mode resets the roll; editing then scrolls as usual.
                 rect.anchoredPosition = new Vector2(offset, rect.anchoredPosition.y);

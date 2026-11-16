@@ -29,6 +29,13 @@ namespace Arcade.Compose.Operation
 		private readonly List<ArcNote> hits = new List<ArcNote>();
 		private readonly List<ArcNote> cycleNotes = new List<ArcNote>();
 		private readonly List<ArcSlide> slideChain = new List<ArcSlide>();
+        private ArcArc lastArcClick;
+        private float lastArcClickTime;
+        private Vector2 lastArcClickPosition;
+        private bool lastArcGroupSelected;
+        private readonly List<ArcNote> selectionAfterArcClick = new List<ArcNote>();
+        private ArcChart arcClickChart;
+        private uint arcClickSeekVersion;
 		private int cycleIndex;
 		private Vector2 cyclePosition;
 		private ArcChart cycleChart;
@@ -60,10 +67,19 @@ namespace Arcade.Compose.Operation
 			if (!AdeGameplayContentInputHandler.InputActive)
 			{
 				ResetCycle();
+                ResetArcClick();
 				return false;
 			}
 			bool multiple = AdeInputManager.Instance.Inputs.MultipleSelection.IsPressed();
 			bool range = AdeInputManager.Instance.Inputs.RangeSelection.IsPressed();
+            var game = ArcGameplayManager.Instance;
+            bool legacyArcSelection = ArcadeComposeManager.Instance.ArcadePreference.LegacyArcGroupSelection;
+            if (!multiple || range || legacyArcSelection || game.Chart != arcClickChart
+                || game.SeekVersion != arcClickSeekVersion || Time.unscaledTime - lastArcClickTime > .3f
+                || Mouse.current.rightButton.wasPressedThisFrame || Mouse.current.middleButton.wasPressedThisFrame)
+                ResetArcClick();
+            arcClickChart = game.Chart;
+            arcClickSeekVersion = game.SeekVersion;
 			var camera = AdeCursorManager.Instance.GameplayCamera;
 			Vector2 position = Mouse.current.position.ReadValue();
 			if (multiple || range || !CanContinueCycle(camera, position)) ResetCycle();
@@ -93,6 +109,7 @@ namespace Arcade.Compose.Operation
 				bool creating = !multiple && !range
 					&& create.Enable && create.Mode != ClickToCreateMode.Idle;
 				ArcNote n = multiple || range || creating ? ArcNoteRenderer.PickNote(camera, position) : PickCyclingNote(camera, position);
+                if (!(n is ArcArc)) ResetArcClick();
 				if (n != null)
 				{
 					if (creating && AdeSelectionManager.Instance.SelectedNotes.Contains(n))
@@ -115,18 +132,11 @@ namespace Arcade.Compose.Operation
 					else
 					{
 						var selection = AdeSelectionManager.Instance;
-						// As in Arcade Alpha, Ctrl-clicking a selected arc selects its whole arc group,
-						// or deselects the group once all of it is selected.
-						if (n is ArcArc arc && arc.ArcGroup != null && arc.ArcGroup.Count > 1 && selection.SelectedNotes.Contains(arc))
-						{
-							bool groupSelected = arc.ArcGroup.TrueForAll(a => selection.SelectedNotes.Contains(a));
-							foreach (var a in arc.ArcGroup)
-							{
-								if (groupSelected) selection.DeselectNote(a);
-								else selection.SelectNote(a);
-							}
-							return true;
-						}
+                        if (n is ArcArc arc)
+                        {
+                            SelectArc(selection, arc, legacyArcSelection, position, Time.unscaledTime);
+                            return true;
+                        }
 						if (n is ArcSlide slide && slide.GroupRoot != null && ArcSlideManager.Instance
 							&& selection.SelectedNotes.Contains(slide))
 						{
@@ -167,7 +177,50 @@ namespace Arcade.Compose.Operation
 		{
 			rangeSelectPosition = null;
 			ResetCycle();
+            ResetArcClick();
 		}
+
+        private void ResetArcClick()
+        {
+            lastArcClick = null;
+            selectionAfterArcClick.Clear();
+        }
+
+        private void SelectArc(AdeSelectionManager selection, ArcArc arc, bool legacy, Vector2 position, float now)
+        {
+            var group = arc.ArcGroup;
+            bool grouped = group != null && group.Count > 1;
+            bool doubleClick = !legacy && grouped && lastArcClick == arc
+                && now - lastArcClickTime <= .3f
+                && (position - lastArcClickPosition).sqrMagnitude <= CyclePositionTolerance * CyclePositionTolerance
+                && selection.SelectedNotes.Count == selectionAfterArcClick.Count;
+            for (int i = 0; doubleClick && i < selectionAfterArcClick.Count; i++)
+                doubleClick = selection.SelectedNotes.Contains(selectionAfterArcClick[i]);
+            bool groupSelected = grouped && group.TrueForAll(a => selection.SelectedNotes.Contains(a));
+            if (doubleClick || (legacy && grouped && selection.SelectedNotes.Contains(arc)))
+            {
+                // A double-click acts on the state before its first, immediately applied single-click.
+                bool deselect = doubleClick ? lastArcGroupSelected : groupSelected;
+                foreach (var member in group)
+                {
+                    if (deselect) selection.DeselectNote(member);
+                    else selection.SelectNote(member);
+                }
+                ResetArcClick();
+                return;
+            }
+            ResetArcClick();
+            if (selection.SelectedNotes.Contains(arc)) selection.DeselectNote(arc);
+            else selection.SelectNote(arc);
+            if (!legacy && grouped)
+            {
+                lastArcClick = arc;
+                lastArcClickTime = now;
+                lastArcClickPosition = position;
+                lastArcGroupSelected = groupSelected;
+                selectionAfterArcClick.AddRange(selection.SelectedNotes);
+            }
+        }
 
 		private async UniTask SelectTimeRange(CancellationTokenSource cancellation, bool spatial)
 		{

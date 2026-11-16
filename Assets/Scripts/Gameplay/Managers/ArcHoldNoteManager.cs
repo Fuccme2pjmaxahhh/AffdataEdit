@@ -83,31 +83,17 @@ namespace Arcade.Gameplay
 					t.Enable = false;
 					continue;
 				}
-				t.Position = timing.CalculatePositionByTiming(t.Timing, t.TimingGroup);
-				float endPosition = timing.CalculatePositionByTiming(t.EndTiming, t.TimingGroup);
-				if (!t.IsEditing && (t.Judging || (t.NoInput() && t.Timing < ArcGameplayManager.Instance.ChartTiming)))
-				{
-					t.Position = 0;
-				}
-				if (endPosition < t.Position)
-				{
-					var p = t.Position;
-					t.Position = endPosition;
-					endPosition = p;
-				}
-				if (t.Position > 100000 || endPosition < -100000)
-				{
-					t.Enable = false;
-					continue;
-				}
-				if (endPosition > 100000)
-				{
-					endPosition = 100000;
-				}
-				if (t.Position < -100000)
-				{
-					t.Position = -100000;
-				}
+                float head = timing.CalculatePositionByTiming(t.Timing, t.TimingGroup);
+                float tail = timing.CalculatePositionByTiming(t.EndTiming, t.TimingGroup);
+                Vector2 span = CalculateRenderSpan(head, tail, t.Judging, t.NoInput(),
+                    ArcGameplayManager.Instance.ChartTiming > t.EndTiming, t.IsEditing);
+                if (span.x >= span.y)
+                {
+                    t.Enable = false;
+                    continue;
+                }
+                t.Position = span.x;
+                float endPosition = span.y;
 				t.Enable = true;
                 RenderingHolds.Add(t);
 				float pos = t.Position / 1000f;
@@ -145,6 +131,25 @@ namespace Arcade.Gameplay
 				t.Alpha = alpha * 0.8627451f;
 			}
 		}
+        // Distances increase away from the judgement line here. Resolve the effective
+        // head before choosing the sprite base; a change of direction must not erase
+        // the remaining span. The existing positive-length mesh maps the native
+        // sprite's opposite depth axis without another mesh, material or draw call.
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.AggressiveInlining)]
+        internal static Vector2 CalculateRenderSpan(float head, float tail, bool judging,
+            bool noInput, bool ended, bool editing)
+        {
+            if (!editing)
+            {
+                if ((judging || noInput) && ended) return Vector2.zero;
+                if (judging || (noInput && head < 0)) head = 0;
+            }
+            if (tail < head) { float swap = head; head = tail; tail = swap; }
+            if (head < -100000) head = -100000;
+            if (tail > 100000) tail = 100000;
+            return new Vector2(head, tail);
+        }
+
 		private void JudgeHoldNotes()
 		{
 			ArcTimingManager timing = ArcTimingManager.Instance;
