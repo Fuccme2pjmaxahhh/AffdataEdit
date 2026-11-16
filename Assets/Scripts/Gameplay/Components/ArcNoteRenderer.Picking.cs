@@ -100,10 +100,12 @@ namespace Arcade.Gameplay
                 var item = items[itemIndex];
                 var data = nativeInputs[itemIndex].Data;
                 Bounds bounds = geometryState.Bounds;
-                if (onlyNote != null && item.Note != onlyNote) continue;
-                if (item.Note == null || (!item.Note.Enable && !(item.Note is ArcSlide)) || data.Options.y <= 0) continue;
-                if (tracesOnly && !(item.Note is ArcArc arc && arc.IsVoid)) continue;
-                bool alreadyHit = pickingHits.TryGetValue(item.Note, out var previous);
+                // A scaled ArcTap model represents the Arc event itself, not a nested ArcTap.
+                ArcNote note = item.Note is ArcArcTap tap && tap.IsConvertedVariousSizedArctap ? tap.Arc : item.Note;
+                if (onlyNote != null && note != onlyNote) continue;
+                if (note == null || (!item.Note.Enable && !(note is ArcSlide)) || data.Options.y <= 0) continue;
+                if (tracesOnly && !(note is ArcArc arc && arc.IsVoid)) continue;
+                bool alreadyHit = pickingHits.TryGetValue(note, out var previous);
                 float itemDistance = collectAll && alreadyHit ? previous.Distance : closest;
                 if (!bounds.IntersectRay(ray, out float entry)
                     || (!bounds.Contains(ray.origin) && entry > itemDistance)) continue;
@@ -136,14 +138,14 @@ namespace Arcade.Gameplay
                             + geometry.Uv[b].y * barycentric.x + geometry.Uv[c].y * barycentric.y;
                         if (v < data.ClipHeight.x || v > data.ClipHeight.y) continue;
                     }
-                    if (item.Note is ArcSlide && !ArcSlideVisual.IsWithinRenderDistance(ray.GetPoint(distance).z)) continue;
+                    if (note is ArcSlide && !ArcSlideVisual.IsWithinRenderDistance(ray.GetPoint(distance).z)) continue;
                     itemDistance = distance;
                     hitItem = true;
                     if (!collectAll) closest = distance;
-                    result = item.Note;
+                    result = note;
                 }
                 if (collectAll && hitItem)
-                    pickingHits[item.Note] = new PickingHit { Distance = itemDistance, Order = alreadyHit ? previous.Order : pickingHits.Count };
+                    pickingHits[note] = new PickingHit { Distance = itemDistance, Order = alreadyHit ? previous.Order : pickingHits.Count };
             }
             return result;
         }
