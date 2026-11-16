@@ -49,6 +49,7 @@ namespace Arcade.Compose
                     string location = item.Event.Timing.ToString(CultureInfo.InvariantCulture) + " ms · "
                         + (group == null ? "默认组" : "组 " + group.Id);
                     if (item.Related != null) location += " · 相关物件 " + item.Related.Timing.ToString(CultureInfo.InvariantCulture) + " ms";
+                    if (!string.IsNullOrEmpty(item.Details)) location += "\n" + item.Details;
                     rows[i].transform.Find("Location").GetComponent<TMP_Text>().text = location;
                     StyleRow(rows[i]);
                     if (i % 24 == 23) await UniTask.NextFrame(cancellation.Token);

@@ -243,7 +243,7 @@ namespace Arcade.Compose
                 row.Bpm = row.Root.Find("BPM").GetComponent<TMP_InputField>();
                 row.Beats = row.Root.Find("Beats").GetComponent<TMP_InputField>();
                 foreach (var field in new[] { row.Time, row.Bpm, row.Beats })
-                { controls.Add(field); labels.Add(field.textComponent); }
+                { field.characterLimit = 0; controls.Add(field); labels.Add(field.textComponent); }
                 row.Time.onEndEdit.AddListener(_ => ApplyTiming(row, row.Time));
                 row.Bpm.onEndEdit.AddListener(_ => ApplyTiming(row, row.Bpm));
                 row.Beats.onEndEdit.AddListener(_ => ApplyTiming(row, row.Beats));
@@ -298,7 +298,7 @@ namespace Arcade.Compose
                 || !ArcTimingManager.Instance.GetTiming(lastGroup).Contains(row.Timing)) return;
             var next = (ArcTiming)row.Timing.Clone();
             if (field == row.Time && ChartControlText.Integer(field.text, out int time)) next.Timing = time;
-            else if (field == row.Bpm && ChartControlText.Float(field.text, out float bpm) && Mathf.Abs(bpm) <= 1000000)
+            else if (field == row.Bpm && ChartControlText.Float(field.text, out float bpm))
                 next.Bpm = (float)Math.Round(bpm, 3, MidpointRounding.AwayFromZero);
             else if (field == row.Beats && ChartControlText.Float(field.text, out float beats) && beats >= 0)
                 next.BeatsPerLine = beats;

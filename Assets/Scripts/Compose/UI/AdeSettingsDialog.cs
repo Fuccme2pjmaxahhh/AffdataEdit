@@ -22,7 +22,7 @@ namespace Arcade.Compose
         private static readonly HashSet<string> EditingRows = new HashSet<string>
         {
             "CancelLimit", "FixNotesTimeOnPaste", "EnableTapWidthEditing", "ChartSortMode", "DragEditMode",
-            "ShowJudgementDetails", "LowPrecisionArcAndSlide"
+            "ShowJudgementDetails", "LowPrecisionArcAndSlide", "LegacyArcGroupSelection"
         };
         private readonly RectTransform[] pages = new RectTransform[Titles.Length];
         private readonly Button[] navigation = new Button[Titles.Length];
@@ -94,6 +94,7 @@ namespace Arcade.Compose
             BuildPasteTimingSetting(settings.Find("Wraper"));
             BuildTapWidthSetting(settings.Find("Wraper"));
             BuildCoordinatePrecisionSetting(settings.Find("Wraper"));
+            BuildArcGroupSelectionSetting(settings.Find("Wraper"));
             BuildContextMenuSetting(settings.Find("Wraper"));
             BuildChartSortSetting(settings.Find("Wraper"));
             BuildDragEditingSettings(settings.Find("Wraper"));
@@ -147,6 +148,22 @@ namespace Arcade.Compose
                 compose.ArcadePreference.EnableTapWidthEditing = value;
                 compose.SavePreferences();
                 Editing.AdeValueEditor.Instance.UpdateFields();
+            });
+        }
+
+        private void BuildArcGroupSelectionSetting(Transform parent)
+        {
+            var compose = ArcadeComposeManager.Instance;
+            var template = compose.PlaybackSyncToggle.GetComponentInParent<HorizontalLayoutGroup>(true).transform;
+            var row = AdeUiKit.CloneRow(template, parent, "LegacyArcGroupSelection");
+            row.GetComponentInChildren<TMP_Text>(true).text = "Ctrl 单击已选 Arc 切换整组（旧版）";
+            var toggle = row.GetComponentInChildren<Toggle>(true);
+            toggle.SetIsOnWithoutNotify(compose.ArcadePreference.LegacyArcGroupSelection);
+            toggle.onValueChanged.AddListener(value =>
+            {
+                compose.ArcadePreference.LegacyArcGroupSelection = value;
+                Operation.AdeSelectNoteOperation.Instance?.Reset();
+                compose.SavePreferences();
             });
         }
 

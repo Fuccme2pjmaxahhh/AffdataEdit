@@ -86,7 +86,7 @@ namespace Arcade.Compose
             LayoutRebuilder.ForceRebuildLayoutImmediate(pages[0]);
         }
 
-        // The scene's list scrollbars had no handle graphic (only a grey track), so nothing visible moved.
+        // Some scene handles keep their visible Thumb on a child of the drag rect.
         private void FixScrollbar(ScrollRect scroll)
         {
             var bar = scroll ? scroll.verticalScrollbar : null;
@@ -96,7 +96,16 @@ namespace Arcade.Compose
             rect.sizeDelta = new Vector2(6, 0); rect.anchoredPosition = Vector2.zero;
             var track = bar.GetComponent<Image>();
             if (track) track.color = Color.clear;
-            var handle = bar.handleRect.GetComponent<Image>() ?? bar.handleRect.gameObject.AddComponent<Image>();
+            var handle = bar.targetGraphic as Image;
+            if (!handle || !handle.transform.IsChildOf(bar.handleRect))
+                handle = bar.handleRect.GetComponentInChildren<Image>(true)
+                    ?? bar.handleRect.gameObject.AddComponent<Image>();
+            if (handle.rectTransform != bar.handleRect)
+            {
+                handle.rectTransform.anchorMin = Vector2.zero;
+                handle.rectTransform.anchorMax = Vector2.one;
+                handle.rectTransform.offsetMin = handle.rectTransform.offsetMax = Vector2.zero;
+            }
             handle.raycastTarget = true;
             bar.targetGraphic = handle;
             bar.transition = Selectable.Transition.None;
