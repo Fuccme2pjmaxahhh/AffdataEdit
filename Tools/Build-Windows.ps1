@@ -70,7 +70,11 @@ try {
     # native crashes while loading editor GUI materials/resources on this machine.
     $taskArguments = '-batchmode -nographics -quit -job-worker-count 2 -desiredWorkerCount 1 -projectPath "' + $BuildWorkspace +
         '" -executeMethod WindowsCiBuild.Build -logFile "' + $taskLog + '"'
-    $taskUnity = Start-Process -FilePath $UnityPath -ArgumentList $taskArguments -WindowStyle Hidden -PassThru -Wait
+    # Wait for Unity itself only. Start-Process -Wait also waits for every child process,
+    # and Unity can leave background helpers running after a successful batchmode exit.
+    $taskUnity = Start-Process -FilePath $UnityPath -ArgumentList $taskArguments -WindowStyle Hidden -PassThru
+    $null = $taskUnity.Handle  # keeps ExitCode readable after the process exits
+    $taskUnity.WaitForExit()
     if ($taskUnity.ExitCode -ne 0) {
         if (Test-Path -LiteralPath $taskLog) {
             $taskBuildErrors = @(Select-String -LiteralPath $taskLog -Pattern 'error CS\d+|warning CS\d+|Shader error|Shader warning|Fatal Error!|BuildFailedException:' | Select-Object -First 8)
