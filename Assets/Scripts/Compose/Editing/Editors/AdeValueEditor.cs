@@ -110,8 +110,13 @@ namespace Arcade.Compose.Editing
                             if (result > 0) return null;
                         }
                         return new ValueChangeErrorMessage { message = "宽度须至少为 0.01，保留两位小数（1 为普通大小）" };
-                    }, (value, note) => note is ArcTap ? (ValueChangeErrorMessage?)null : new ValueChangeErrorMessage { message = "请选择地键" },
-                    (value, note) => ((ArcTap)note).Width = value);
+                    }, (value, note) => note is ArcTap || note is ArcHold ? (ValueChangeErrorMessage?)null
+                        : new ValueChangeErrorMessage { message = "请选择地键或 Hold" },
+                    (value, note) =>
+                    {
+                        if (note is ArcTap tap) tap.Width = value;
+                        else ((ArcHold)note).Width = value;
+                    });
             });
             tapWidthRow.SetSiblingIndex(TimingGroup.GetSiblingIndex());
             tapWidthRow.gameObject.SetActive(false);
@@ -167,8 +172,8 @@ namespace Arcade.Compose.Editing
 		{
 			List<ArcNote> selected = AdeSelectionManager.Instance.SelectedNotes;
             if (tapWidthRow)
-                UpdateField(note => note is ArcTap && ArcadeComposeManager.Instance.ArcadePreference.EnableTapWidthEditing,
-                    note => ((ArcTap)note).Width.ToString("f2", CultureInfo.InvariantCulture), "-",
+                UpdateField(note => (note is ArcTap || note is ArcHold) && ArcadeComposeManager.Instance.ArcadePreference.EnableTapWidthEditing,
+                    note => (note is ArcTap tap ? tap.Width : ((ArcHold)note).Width).ToString("f2", CultureInfo.InvariantCulture), "-",
                     active => tapWidthRow.gameObject.SetActive(active), text => tapWidthInput.SetTextWithoutNotify(text));
             if (smoothnessRow)
             {
