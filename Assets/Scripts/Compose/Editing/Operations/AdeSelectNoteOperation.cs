@@ -33,7 +33,9 @@ namespace Arcade.Compose.Operation
         private float lastArcClickTime;
         private Vector2 lastArcClickPosition;
         private bool lastArcGroupSelected;
-        private readonly List<ArcNote> selectionAfterArcClick = new List<ArcNote>();
+        private List<ArcNote> lastArcSelection;
+        private uint lastArcSelectionVersion;
+        private int lastArcSelectionCount;
         private ArcChart arcClickChart;
         private uint arcClickSeekVersion;
 		private int cycleIndex;
@@ -183,7 +185,7 @@ namespace Arcade.Compose.Operation
         private void ResetArcClick()
         {
             lastArcClick = null;
-            selectionAfterArcClick.Clear();
+            lastArcSelection = null;
         }
 
         private void SelectArc(AdeSelectionManager selection, ArcArc arc, bool legacy, Vector2 position, float now)
@@ -193,10 +195,13 @@ namespace Arcade.Compose.Operation
             bool doubleClick = !legacy && grouped && lastArcClick == arc
                 && now - lastArcClickTime <= .3f
                 && (position - lastArcClickPosition).sqrMagnitude <= CyclePositionTolerance * CyclePositionTolerance
-                && selection.SelectedNotes.Count == selectionAfterArcClick.Count;
-            for (int i = 0; doubleClick && i < selectionAfterArcClick.Count; i++)
-                doubleClick = selection.SelectedNotes.Contains(selectionAfterArcClick[i]);
-            bool groupSelected = grouped && group.TrueForAll(a => selection.SelectedNotes.Contains(a));
+                && ReferenceEquals(selection.SelectedNotes, lastArcSelection)
+                && selection.SelectionVersion == lastArcSelectionVersion
+                && selection.SelectedNotes.Count == lastArcSelectionCount;
+            bool groupSelected = grouped;
+            if (grouped)
+                foreach (var member in group)
+                    if (!member.Selected) { groupSelected = false; break; }
             if (doubleClick || (legacy && grouped && selection.SelectedNotes.Contains(arc)))
             {
                 // A double-click acts on the state before its first, immediately applied single-click.
@@ -218,7 +223,9 @@ namespace Arcade.Compose.Operation
                 lastArcClickTime = now;
                 lastArcClickPosition = position;
                 lastArcGroupSelected = groupSelected;
-                selectionAfterArcClick.AddRange(selection.SelectedNotes);
+                lastArcSelection = selection.SelectedNotes;
+                lastArcSelectionVersion = selection.SelectionVersion;
+                lastArcSelectionCount = selection.SelectedNotes.Count;
             }
         }
 

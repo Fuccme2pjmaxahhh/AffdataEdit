@@ -22,7 +22,7 @@ namespace Arcade.Compose.Command
         {
             if (note == null) return 0;
             long bytes = 512;
-            if (note is ArcLongNote hold) bytes += 4L * hold.JudgeTimings.Capacity;
+            if (note is ArcLongNote hold) bytes += 4L * hold.JudgeTimings.Capacity + (hold.DenseJudgements != null ? 64 : 0);
             if (note is ArcArc arc)
                 bytes += 8L * arc.ArcTaps.Capacity + arc.ArcTaps.Sum(tap => Estimate(tap)) + 2L * (arc.Effect?.Length ?? 0);
             if (note is ArcSceneControl control)

@@ -24,6 +24,7 @@ namespace Arcade.Compose
 
 		[System.NonSerialized]
 		public List<ArcNote> SelectedNotes = new List<ArcNote>();
+        internal uint SelectionVersion { get; private set; }
 
 		public List<INoteSelectEvent> NoteEventListeners = new List<INoteSelectEvent>();
 
@@ -107,6 +108,7 @@ namespace Arcade.Compose
 			if (!SelectedNotes.Contains(note))
 			{
 				SelectedNotes.Add(note);
+                SelectionVersion++;
                 var timing = Editing.AdeTimingEditor.Instance;
                 var owner = TimingGroupOwner(note);
                 if (timing && owner is IHasTimingGroup grouped)
@@ -120,15 +122,16 @@ namespace Arcade.Compose
 		public void DeselectNote(ArcNote note)
 		{
 			note.Selected = false;
-			if (SelectedNotes.Contains(note))
+			if (SelectedNotes.Remove(note))
 			{
-				SelectedNotes.Remove(note);
+                SelectionVersion++;
 				foreach (var l in NoteEventListeners) l.OnNoteDeselect(note);
 			}
 		}
 		public void DeselectAllNotes()
 		{
 			foreach (var note in SelectedNotes) note.Selected = false;
+			if (SelectedNotes.Count > 0) SelectionVersion++;
 			SelectedNotes.Clear();
 			foreach (var l in NoteEventListeners) l.OnNoteDeselectAll();
 		}
@@ -141,6 +144,7 @@ namespace Arcade.Compose
 				else deleteCommands.Add(new RemoveArcEventCommand(s));
 			}
 			if (deleteCommands.Count != 0) AdeCommandManager.Instance.Add(new BatchCommand(deleteCommands.ToArray(), "删除"));
+			if (SelectedNotes.Count > 0) SelectionVersion++;
 			SelectedNotes.Clear();
 		}
 		// A single ArcTap's 1ms void arc only exists to hold it, so it follows once all its ArcTaps are selected.
