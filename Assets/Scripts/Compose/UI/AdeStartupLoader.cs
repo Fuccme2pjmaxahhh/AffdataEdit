@@ -85,7 +85,7 @@ namespace Arcade.Compose
                 else fadeNextStatus = true;
                 Run(sweepFader, false, 0);
                 Run(loadInfo, true, 0);
-                Destroy(prompt.Group.gameObject, .25f);
+                yield return RemovePromptAfterFade();
             }
             // Present a complete frame before asking Unity to load the large scene.
             SetProgress(0, "正在准备编辑器");
@@ -138,6 +138,13 @@ namespace Arcade.Compose
                 yield return null;
             }
             Destroy(gameObject);
+        }
+
+        private IEnumerator RemovePromptAfterFade()
+        {
+            // Fade advances by a capped step per frame, so a fixed destruction delay can expire first.
+            if (prompt.Running != null) yield return prompt.Running;
+            Destroy(prompt.Group.gameObject);
         }
 
         private void ShowCheckState(bool checking, bool required, string message)
