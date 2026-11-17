@@ -119,7 +119,7 @@ namespace Arcade.Gameplay
 						}
 						else
 						{
-							int firstJudge = t.JudgeTimings.Count > 0 ? t.JudgeTimings[0] : t.Timing;
+							int firstJudge = t.FirstJudgementTiming;
 							if (firstJudge < ArcGameplayManager.Instance.ChartTiming)
 							{
 								alpha = 0.5f;

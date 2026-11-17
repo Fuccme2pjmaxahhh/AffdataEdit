@@ -91,10 +91,7 @@ namespace Arcade.Gameplay
         internal void ShowLongNote(ArcLongNote note, Vector3 position)
         {
             if (!CanSpawn || !Continuous) return;
-            int index = note.JudgeTimings.BinarySearch(previousTiming);
-            if (index < 0) index = ~index;
-            else while (index < note.JudgeTimings.Count && note.JudgeTimings[index] <= previousTiming) index++;
-            if (index < note.JudgeTimings.Count && note.JudgeTimings[index] <= ArcGameplayManager.Instance.ChartTiming)
+            if (note.HasJudgementBetween(previousTiming, ArcGameplayManager.Instance.ChartTiming))
                 ShowPure(position, true);
         }
 

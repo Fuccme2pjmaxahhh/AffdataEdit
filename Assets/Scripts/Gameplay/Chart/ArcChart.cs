@@ -502,6 +502,70 @@ namespace Arcade.Gameplay.Chart
 
 		// The times where combo increase
 		public List<int> JudgeTimings = new List<int>();
+        internal ArcDenseJudgements DenseJudgements { get; private set; }
+        public double JudgementCount => DenseJudgements?.Count ?? JudgeTimings.Count;
+        public int FirstJudgementTiming => DenseJudgements != null ? (DenseJudgements.Count > 0 ? DenseJudgements.First : Timing)
+            : JudgeTimings.Count > 0 ? JudgeTimings[0] : Timing;
+
+        internal void ClearJudgeTimings()
+        {
+            JudgeTimings.Clear();
+            DenseJudgements = null;
+        }
+
+        protected void BuildJudgeTimings(double interval, int firstIndex)
+        {
+            double total = Math.Floor(((long)EndTiming - Timing) / interval);
+            if (firstIndex >= total || double.IsNaN(interval) || interval <= 0)
+            {
+                JudgeTimings.Add((int)(Timing + ((long)EndTiming - Timing) * .5f));
+                return;
+            }
+            const int MaterializedLimit = 4096;
+            if (total > MaterializedLimit)
+            {
+                DenseJudgements = new ArcDenseJudgements(Timing, EndTiming, interval, firstIndex, total);
+                // Drop the old array when an edited note switches to a dense run.
+                if (JudgeTimings.Capacity > 0) JudgeTimings.Capacity = 0;
+                return;
+            }
+            for (int n = firstIndex; n < (int)total; n++)
+            {
+                int t = (int)(Timing + n * interval);
+                if (t < EndTiming) JudgeTimings.Add(t);
+            }
+        }
+
+        internal double CountJudgementsAtOrBefore(int timing)
+        {
+            if (timing < Timing) return 0;
+            if (DenseJudgements != null) return DenseJudgements.CountAtOrBefore(timing);
+            int low = 0, high = JudgeTimings.Count;
+            while (low < high)
+            {
+                int middle = low + (high - low) / 2;
+                if (JudgeTimings[middle] <= timing) low = middle + 1;
+                else high = middle;
+            }
+            return low;
+        }
+
+        internal bool HasJudgementBetween(int previous, int current)
+        {
+            // Visual effects use raw tick times; score clamping to the note start
+            // remains in CountJudgementsAtOrBefore / the normal score cache.
+            if (DenseJudgements != null)
+                return DenseJudgements.CountAtOrBefore(current) > DenseJudgements.CountAtOrBefore(previous);
+            int low = 0, high = JudgeTimings.Count;
+            while (low < high)
+            {
+                int middle = low + (high - low) / 2;
+                if (JudgeTimings[middle] <= previous) low = middle + 1;
+                else high = middle;
+            }
+            return low < JudgeTimings.Count && JudgeTimings[low] <= current;
+        }
+
 
 	}
 	public class ArcTap : ArcNote, IIntoRawItem, IHasTimingGroup, ISetableTimingGroup
@@ -655,7 +719,7 @@ namespace Arcade.Gameplay.Chart
 		{
 			base.Destroy();
             if (ArcEffectManager.Instance) ArcEffectManager.Instance.RemoveFloatHoldNoteEffect(this);
-			JudgeTimings.Clear();
+			ClearJudgeTimings();
 		}
 		public override ArcEvent Clone()
 		{
@@ -684,32 +748,14 @@ namespace Arcade.Gameplay.Chart
             CalculateJudgeTimings();
         }
 
-		public void CalculateJudgeTimings()
-		{
-			ArcScoreManager.Invalidate();
-			JudgeTimings.Clear();
-			int u = 0;
-			double bpm = ArcTimingManager.Instance.CalculateBpmByTiming(Timing, TimingGroup);
-			bpm = Math.Abs(bpm);
-			double interval = 60000f / bpm / (bpm >= 255 ? 1 : 2) / ArcGameplayManager.Instance.TimingPointDensityFactor;
-			int total = (int)((EndTiming - Timing) / interval);
-			if ((u ^ 1) >= total)
-			{
-				JudgeTimings.Add((int)(Timing + (EndTiming - Timing) * 0.5f));
-				return;
-			}
-			int n = u ^ 1;
-			int t = Timing;
-			while (true)
-			{
-				t = (int)(Timing + n * interval);
-				if (t < EndTiming)
-				{
-					JudgeTimings.Add(t);
-				}
-				if (total == ++n) break;
-			}
-		}
+        public void CalculateJudgeTimings()
+        {
+            ArcScoreManager.Invalidate();
+            ClearJudgeTimings();
+            double bpm = Math.Abs(ArcTimingManager.Instance.CalculateBpmByTiming(Timing, TimingGroup));
+            double interval = 60000f / bpm / (bpm >= 255 ? 1 : 2) / ArcGameplayManager.Instance.TimingPointDensityFactor;
+            BuildJudgeTimings(interval, 1);
+        }
 		public float From { get; set; } = 0;
 		public float To { get; set; } = 1;
 		public float Alpha { get; set; } = 1;
@@ -1159,40 +1205,16 @@ namespace Arcade.Gameplay.Chart
 			InstantiateArcTaps();
 		}
 
-		public void CalculateJudgeTimings()
-		{
-			ArcScoreManager.Invalidate();
-			JudgeTimings.Clear();
-			if (IsVoid) return;
-			if (EndTiming == Timing) return;
-			int u = RenderHead ? 0 : 1;
-			double bpm = ArcTimingManager.Instance.CalculateBpmByTiming(Timing, TimingGroup);
-			bpm = Math.Abs(bpm);
-			if (bpm == 0)
-			{
-				JudgeTimings.Add(Timing);
-				return;
-			}
-			;
-			double interval = 60000f / bpm / (bpm >= 255 ? 1 : 2) / ArcGameplayManager.Instance.TimingPointDensityFactor;
-			int total = (int)((EndTiming - Timing) / interval);
-			if ((u ^ 1) >= total)
-			{
-				JudgeTimings.Add((int)(Timing + (EndTiming - Timing) * 0.5f));
-				return;
-			}
-			int n = u ^ 1;
-			int t = Timing;
-			while (true)
-			{
-				t = (int)(Timing + n * interval);
-				if (t < EndTiming)
-				{
-					JudgeTimings.Add(t);
-				}
-				if (total == ++n) break;
-			}
-		}
+        public void CalculateJudgeTimings()
+        {
+            ArcScoreManager.Invalidate();
+            ClearJudgeTimings();
+            if (IsVoid || EndTiming == Timing) return;
+            double bpm = Math.Abs(ArcTimingManager.Instance.CalculateBpmByTiming(Timing, TimingGroup));
+            if (bpm == 0) { JudgeTimings.Add(Timing); return; }
+            double interval = 60000f / bpm / (bpm >= 255 ? 1 : 2) / ArcGameplayManager.Instance.TimingPointDensityFactor;
+            BuildJudgeTimings(interval, RenderHead ? 1 : 0);
+        }
 		public void Rebuild()
 		{
 			ArcScoreManager.Invalidate();
