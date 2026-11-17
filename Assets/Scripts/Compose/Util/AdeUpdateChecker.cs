@@ -15,6 +15,7 @@ using Debug = UnityEngine.Debug;
 namespace Arcade.Compose
 {
     // The startup surface owns presentation; checking requires no editor scene or dialogs.
+    // Prompt messages use their first line as the heading and the rest as the explanation.
     // Only a confirmed newer version blocks startup. Offline checks may be retried or skipped.
     public sealed class AdeUpdateChecker : MonoBehaviour
     {
@@ -137,7 +138,7 @@ namespace Arcade.Compose
                 return;
             }
             updateRequired = true;
-            SetState(false, "当前版本不是最新版，请先更新。\n\n点击“立即更新”后 AffdataEdit 会退出，\n更新器完成更新后会重新启动它。");
+            SetState(false, "发现新版本\n当前版本不是最新版，请先更新。\n点击「立即更新」后会退出，更新完成后自动重新启动。");
         }
 
         // Replaces the updater beside AffdataEdit when its manifest lists a different file.
@@ -239,13 +240,13 @@ namespace Arcade.Compose
                 || error is System.ComponentModel.Win32Exception)
             {
                 Debug.Log($"Updater launch failed: {error.Message}");
-                SetState(false, $"无法启动更新器，请关闭 AffdataEdit 后手动运行\n{updater}");
+                SetState(false, $"无法启动更新器\n请关闭 AffdataEdit 后手动运行：\n{updater}");
             }
         }
 
         private void FailCheck()
         {
-            SetState(false, "无法检查更新，可能是网络不可用或服务器暂时无响应。\n可以重试，或先继续使用当前版本。");
+            SetState(false, "无法检查更新\n可能是网络不可用或服务器暂时无响应。\n可以重试，或先继续使用当前版本。");
         }
     }
 }
