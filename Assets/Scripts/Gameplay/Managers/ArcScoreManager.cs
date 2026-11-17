@@ -25,6 +25,7 @@ namespace Arcade.Gameplay
 
 		private int combo;
 		private readonly List<int> judgeTimings = new List<int>();
+        private readonly List<ArcLongNote> denseNotes = new List<ArcLongNote>();
 		private ArcChart cachedChart;
 		private bool scoreDirty = true;
 		private double singleScore;
@@ -92,6 +93,7 @@ namespace Arcade.Gameplay
 			cachedChart = chart;
 			scoreDirty = false;
 			judgeTimings.Clear();
+            denseNotes.Clear();
 			singleScore = 0;
 			if (chart == null) return;
 			foreach (var tap in chart.Taps)
@@ -99,22 +101,25 @@ namespace Arcade.Gameplay
 			foreach (var hold in chart.Holds)
 			{
 				if (hold.NoInput()) continue;
-				foreach (int timing in hold.JudgeTimings) judgeTimings.Add(Math.Max(hold.Timing, timing));
+				if (hold.DenseJudgements != null) denseNotes.Add(hold);
+                else foreach (int timing in hold.JudgeTimings) judgeTimings.Add(Math.Max(hold.Timing, timing));
 			}
 			foreach (var arc in chart.Arcs)
 			{
 				if (arc.NoInput() || arc.Designant) continue;
-				foreach (int timing in arc.JudgeTimings) judgeTimings.Add(Math.Max(arc.Timing, timing));
+				if (arc.DenseJudgements != null) denseNotes.Add(arc);
+                else foreach (int timing in arc.JudgeTimings) judgeTimings.Add(Math.Max(arc.Timing, timing));
 				foreach (var tap in arc.ArcTaps) judgeTimings.Add(Math.Max(arc.Timing, tap.Timing));
 				if (arc.IsVariousSizedArctap) judgeTimings.Add(arc.Timing);
 			}
 			judgeTimings.Sort();
-			long total = judgeTimings.Count;
+			double total = judgeTimings.Count;
+            foreach (var note in denseNotes) total += note.JudgementCount;
 			foreach (var slide in chart.Slides) total += CountSlideJudgements(slide, slide.EndTiming);
 			if (total > 0) singleScore = 10000000d / total;
 		}
 
-		private int CalculateCombo(int timing)
+		private double CalculateCombo(int timing)
 		{
 			int low = 0, high = judgeTimings.Count;
 			while (low < high)
@@ -123,7 +128,8 @@ namespace Arcade.Gameplay
 				if (judgeTimings[middle] <= timing) low = middle + 1;
 				else high = middle;
 			}
-			int count = low;
+			double count = low;
+            foreach (var note in denseNotes) count += note.CountJudgementsAtOrBefore(timing);
 			foreach (var slide in cachedChart.Slides) count += CountSlideJudgements(slide, timing);
 			return count;
 		}
@@ -142,8 +148,9 @@ namespace Arcade.Gameplay
 				combo = 0;
 				return 0;
 			}
-			combo = CalculateCombo(timing);
-			return (int)Math.Round((combo * single + combo));
+			double count = CalculateCombo(timing);
+            combo = (int)Math.Min(count, int.MaxValue);
+            return (int)Math.Min(Math.Round(count * single + count), int.MaxValue);
 		}
 	}
 }
