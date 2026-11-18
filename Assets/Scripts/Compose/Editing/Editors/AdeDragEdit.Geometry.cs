@@ -10,6 +10,29 @@ namespace Arcade.Compose.Editing
     {
         private static readonly Plane Ground = new Plane(Vector3.up, Vector3.zero);
 
+        private static bool HasFloatLane(ArcNote target) => target is ArcTap tap && tap.FloatLane.HasValue
+            || target is ArcHold hold && hold.FloatLane.HasValue;
+
+        private static bool UsesPositionGrid(ArcNote target) => target is ArcArc || target is ArcSlide || HasFloatLane(target);
+
+        private Plane PositionPlane()
+        {
+            float z = -ArcTimingManager.Instance.CalculatePositionByTiming(endpointTiming,
+                AdeTimingEditor.Instance.currentTimingGroup) / 1000;
+            return new Plane(Vector3.forward, new Vector3(0, 0, z));
+        }
+
+        private static bool TryGetGroundGroupX(Ray ray, Ray startRay, Vector3 anchor, out float x)
+        {
+            x = anchor.x;
+            var grid = AdeGridManager.Instance;
+            var plane = grid.EnableVertical ? new Plane(Vector3.forward, anchor) : Ground;
+            if (!plane.Raycast(ray, out float distance) || !plane.Raycast(startRay, out float startDistance)) return false;
+            x += ray.GetPoint(distance).x - startRay.GetPoint(startDistance).x;
+            if (grid.EnableVertical && !Mathf.Approximately(x, anchor.x)) x = grid.AttachDragWorldX(x);
+            return true;
+        }
+
         private static bool TryGroundTiming(Ray ray, int reference, out int timing, out Vector3 point)
         {
             timing = reference; point = default;

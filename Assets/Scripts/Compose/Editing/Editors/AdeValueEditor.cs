@@ -1230,15 +1230,17 @@ namespace Arcade.Compose.Editing
 			AdeCommandManager.Instance.Prepare(command);
 			try
 			{
-                bool isFloat = note is ArcTap ? ((ArcTap)note).FloatLane.HasValue : ((ArcHold)note).FloatLane.HasValue;
-                if (isFloat)
+                float? floatLane = note is ArcTap groundTap ? groundTap.FloatLane : ((ArcHold)note).FloatLane;
+                if (floatLane.HasValue)
                 {
                     Action<float> updateLane = lane =>
                     {
                         if (note is ArcTap tap) { tap.FloatLane = lane; ((ArcTap)newNote).FloatLane = lane; tap.SetupArcTapConnection(); }
                         if (note is ArcHold hold) { hold.FloatLane = lane; ((ArcHold)newNote).FloatLane = lane; }
                     };
-                    updateLane(await AdeCursorManager.Instance.SelectFloatLane(Progress.Create(updateLane), cancellationToken));
+                    var timingGroup = ((IHasTimingGroup)note).TimingGroup;
+                    updateLane(await AdeCursorManager.Instance.SelectFloatLane(note.Timing, timingGroup, floatLane.Value,
+                        Progress.Create(updateLane), cancellationToken));
                 }
                 else
 
