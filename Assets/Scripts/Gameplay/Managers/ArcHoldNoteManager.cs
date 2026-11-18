@@ -99,8 +99,10 @@ namespace Arcade.Gameplay
 				float pos = t.Position / 1000f;
 				float length = (endPosition - t.Position) / 1000f;
                 Vector3 position = new Vector3(t.WorldX, pos, 0);
-                Vector3 scale = new Vector3(widthScale, length / 3.79f, 1);
-                t.RenderMatrix = parentMatrix * Matrix4x4.TRS(position, rotation, new Vector3(-scale.x, scale.y, scale.z));
+                float width = widthScale * t.Width;
+                if (float.IsNaN(width) || float.IsInfinity(width)) width = widthScale;
+                Vector3 scale = new Vector3(-width, length / 3.79f, 1);
+                t.RenderMatrix = parentMatrix * Matrix4x4.TRS(position, rotation, scale);
 
 				float alpha = 1;
 				if (t.Judging)

@@ -704,7 +704,6 @@ namespace Arcade.Gameplay.Chart
 		private int track;
         public int Track { get => track; set { track = value; FloatLane = null; } }
         public float? FloatLane;
-        // Kept so the chart saves unchanged; drawing still uses the default size.
         public float Width = 1;
         public float WorldX => LanePosition.WorldX(Track, FloatLane);
 		private ArcTimingGroup timingGroup;
