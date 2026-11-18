@@ -460,13 +460,13 @@ namespace Arcade.Compose
 
 		internal Vector2 AttachDragCoordinate(Vector2 coordinate)
 		{
-			if (EnableVertical)
-			{
-				coordinate.x = ClampToGrid(coordinate.x, verticalXPositions);
-				coordinate.y = ClampToGrid(coordinate.y, verticalYPositions);
-			}
-			return new Vector2(AttachVerticalX(coordinate.x), AttachVerticalY(coordinate.y));
+			float y = EnableVertical ? ClampToGrid(coordinate.y, verticalYPositions) : coordinate.y;
+			return new Vector2(AttachDragX(coordinate.x), AttachVerticalY(y));
 		}
+
+		private float AttachDragX(float x) => AttachVerticalX(EnableVertical ? ClampToGrid(x, verticalXPositions) : x);
+
+		internal float AttachDragWorldX(float x) => ArcAlgorithm.ArcXToWorld(AttachDragX(ArcAlgorithm.WorldXToArc(x)));
 
 		private static float ClampToGrid(float value, List<float> lines)
 		{

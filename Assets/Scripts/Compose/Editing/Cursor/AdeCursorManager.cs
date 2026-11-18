@@ -463,34 +463,55 @@ namespace Arcade.Compose
 			}
 		}
 
-		public async UniTask<float> SelectFloatLane(IProgress<float> progress, CancellationToken cancellationToken)
+		public async UniTask<float> SelectFloatLane(int timing, ArcTimingGroup timingGroup, float lane,
+			IProgress<float> progress, CancellationToken cancellationToken)
 		{
-			if (currentSelectTaskType != null)
+			if (!BeginDragCursor(coordinate: true, sky: false))
 			{
 				throw new Exception("Cannot select two thing at the same time");
 			}
 
-			currentSelectTaskType = SelectTaskType.Track;
 			try
 			{
 				while (true)
 				{
+					float z = -ArcTimingManager.Instance.CalculatePositionByTiming(timing, timingGroup) / 1000f;
+					UpdateDragCursor(timing, new Vector3(LanePosition.WorldX(0, lane), 0, z));
 					await UniTask.NextFrame(cancellationToken);
-					if (AdeGameplayContentInputHandler.InputActive && IsTrackHit)
-					{
-						progress.Report((8.5f - trackHit.point.x) / 17f);
-						if (Mouse.current.leftButton.wasPressedThisFrame)
-						{
-							return (8.5f - trackHit.point.x) / 17f;
-						}
-					}
+					var mouse = Mouse.current;
+					if (!AdeGameplayContentInputHandler.InputActive || mouse == null) continue;
+					var ray = GameplayCamera.ScreenPointToRay(mouse.position.ReadValue());
+					if (!TryGetFloatLaneX(ray, z, out float x)) continue;
+					lane = LanePosition.FloatLaneFromWorldX(x);
+					progress.Report(lane);
+					if (mouse.leftButton.wasPressedThisFrame) return lane;
 				}
 			}
 			finally
 			{
-				currentSelectTaskType = null;
+				EndDragCursor();
 			}
 		}
+
+		private bool TryGetFloatLaneX(Ray ray, float z, out float x)
+		{
+			x = 0;
+			var grid = AdeGridManager.Instance;
+			if (grid.EnableVertical)
+			{
+				var plane = new Plane(Vector3.forward, new Vector3(0, 0, z));
+				if (!plane.Raycast(ray, out float distance)) return false;
+				x = grid.AttachDragWorldX(ray.GetPoint(distance).x);
+				return true;
+			}
+
+			float xEdgePos = 8.5f * (1 + ArcTimingManager.Instance.BeatlineEnwidenRatio * 0.5f);
+			TrackCollider.transform.localScale = new Vector3(xEdgePos * 2f, 100f, 1);
+			if (!TrackCollider.Raycast(ray, out var hit, 120)) return false;
+			x = hit.point.x;
+			return true;
+		}
+
 		public async UniTask<int> SelectTrack(IProgress<int> progress, CancellationToken cancellationToken, bool timingForArc = false)
 		{
 			if (currentSelectTaskType != null)

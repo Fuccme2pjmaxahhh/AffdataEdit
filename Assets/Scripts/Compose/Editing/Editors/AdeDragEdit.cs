@@ -109,12 +109,15 @@ namespace Arcade.Compose.Editing
         private async UniTask MoveSelection(ArcNote[] targets, DragMode mode, CancellationToken cancellationToken)
         {
             bool time = mode == DragMode.Time;
-            if (targets.Any(n => time ? !(n is ArcArc || n is ArcSlide || n is ArcTap || n is ArcHold || n is ArcArcTap)
-                : !(n is ArcArc || n is ArcSlide)))
-            { AdeToast.Instance.Show("整体位置移动请选择 Arc、Trace、Slide 或单 ArcTap"); return; }
+            bool floatingGround = !time && targets.All(HasFloatLane);
+            bool supported = time ? targets.All(n => n is ArcArc || n is ArcSlide || n is ArcTap || n is ArcHold || n is ArcArcTap)
+                : floatingGround || targets.All(n => n is ArcArc || n is ArcSlide);
+            if (!supported)
+            { AdeToast.Instance.Show("整体位置移动请选择浮点 Tap／Hold，或选择 Arc、Trace、Slide、单 ArcTap"); return; }
             var cursor = AdeCursorManager.Instance;
             var camera = cursor.GameplayCamera;
-            if (!TryChooseGroupAnchor(targets, camera, Mouse.current.position.ReadValue(), out var anchor, out int timing, out var group)) return;
+            Vector2 startPointer = Mouse.current.position.ReadValue();
+            if (!TryChooseGroupAnchor(targets, camera, startPointer, out var anchor, out int timing, out var group)) return;
             // Arc.Assign deliberately does not assign its child taps. Move each live child once with its own undo command.
             var edits = time ? targets.Concat(targets.OfType<ArcArc>().SelectMany(a => a.ArcTaps)).Distinct().ToArray() : targets;
             var originals = edits.Select(n => (ArcNote)n.Clone()).ToArray();
@@ -129,7 +132,8 @@ namespace Arcade.Compose.Editing
             if (!cursor.BeginDragCursor(!time, true)) return;
             AdeTimingEditor.Instance.SetCurrentTimingGroup(group);
             var start = new Vector2(ArcAlgorithm.WorldXToArc(anchor.x), ArcAlgorithm.WorldYToArc(anchor.y));
-            bool preparedBatch = false, changed = false;
+            bool preparedBatch = false, changed = false, movedGround = false;
+            float groundPreviewX = anchor.x;
             IsDragging = true;
             finishGroup = commit =>
             {
@@ -138,14 +142,17 @@ namespace Arcade.Compose.Editing
             };
             try
             {
+                if (floatingGround) cursor.UpdateDragCursor(timing, anchor);
                 while (IsDragging)
                 {
                     await UniTask.NextFrame(cancellationToken);
                     if (!IsDragging || !Application.isFocused || Mouse.current == null || ArcGameplayManager.Instance.Chart != sourceChart) return;
-                    var ray = camera.ScreenPointToRay(Mouse.current.position.ReadValue());
+                    Vector2 pointer = Mouse.current.position.ReadValue();
+                    var ray = camera.ScreenPointToRay(pointer);
                     float z = -ArcTimingManager.Instance.CalculatePositionByTiming(timing, group) / 1000;
                     var display = anchor; display.z = z;
                     int displayTiming = timing;
+                    Vector2 positionOffset = default;
                     bool valid = false;
                     if (time)
                     {
@@ -171,16 +178,33 @@ namespace Arcade.Compose.Editing
                             }
                         }
                     }
+                    else if (floatingGround)
+                    {
+                        movedGround |= (pointer - startPointer).sqrMagnitude >= 4;
+                        if (movedGround && TryGetGroundGroupX(ray, camera.ScreenPointToRay(startPointer), display, out float x))
+                        {
+                            display.x = groundPreviewX = x;
+                            positionOffset.x = ArcAlgorithm.WorldXToArc(x) - start.x;
+                            valid = true;
+                        }
+                        else
+                        {
+                            display.x = groundPreviewX;
+                            cursor.UpdateDragCursor(timing, display);
+                        }
+                    }
                     else if (new Plane(Vector3.forward, new Vector3(0, 0, z)).Raycast(ray, out float distance))
                     {
                         var hit = ray.GetPoint(distance);
                         var point = AdeGridManager.Instance.AttachDragCoordinate(new Vector2(ArcAlgorithm.WorldXToArc(hit.x), ArcAlgorithm.WorldYToArc(hit.y)));
-                        for (int i = 0; i < values.Length; i++) OffsetNote(values[i], originals[i], point - start);
+                        positionOffset = point - start;
                         display = new Vector3(ArcAlgorithm.ArcXToWorld(point.x), ArcAlgorithm.ArcYToWorld(point.y), z);
                         valid = true;
                     }
                     if (valid)
                     {
+                        if (!time)
+                            for (int i = 0; i < values.Length; i++) OffsetNote(values[i], originals[i], positionOffset);
                         changed = values.Where((value, i) => Changed(value, originals[i])).Any();
                         if (changed && !preparedBatch) { AdeCommandManager.Instance.Prepare(batch); preparedBatch = true; }
                         else if (preparedBatch) batch.Do();
@@ -212,6 +236,11 @@ namespace Arcade.Compose.Editing
                 slide.StartCenter = source.StartCenter + delta.x;
                 slide.EndCenter = source.EndCenter + delta.x;
             }
+            // An AFF float lane spans 17 world units; one Arc X unit spans 8.5.
+            else if (value is ArcTap tap && original is ArcTap sourceTap)
+                tap.FloatLane = sourceTap.FloatLane + delta.x * .5f;
+            else if (value is ArcHold hold && original is ArcHold sourceHold)
+                hold.FloatLane = sourceHold.FloatLane + delta.x * .5f;
         }
 
         internal bool BeginDrag(ArcNote target, DragMode mode, Vector2 pointer)
@@ -226,7 +255,7 @@ namespace Arcade.Compose.Editing
                 slideRange = AdeSlideEditor.EditingRange(slide, isEnd);
             }
             else if (!TryChooseEndpoint(target, mode, pointer, out isEnd)) return false;
-            if (!AdeCursorManager.Instance.BeginDragCursor(mode == DragMode.Position && (target is ArcArc || target is ArcSlide),
+            if (!AdeCursorManager.Instance.BeginDragCursor(mode == DragMode.Position && UsesPositionGrid(target),
                 target is ArcArc || target is ArcSlide)) return false;
             note = target; before = (ArcNote)target.Clone(); draft = (ArcNote)target.Clone();
             if (draft is ArcArcTap draftTap) draftTap.Arc = ((ArcArcTap)target).Arc;
@@ -257,7 +286,7 @@ namespace Arcade.Compose.Editing
                 {
                     await UniTask.NextFrame(cancellation.Token);
                     if (!Application.isFocused || Mouse.current == null || ArcGameplayManager.Instance.Chart != chart) return;
-                    bool constrainedPosition = activeMode == DragMode.Position && (note is ArcArc || note is ArcSlide)
+                    bool constrainedPosition = activeMode == DragMode.Position && UsesPositionGrid(note)
                         && AdeGridManager.Instance.EnableVertical;
                     if (AdeGameplayContentInputHandler.InputActive || constrainedPosition) ApplyPointer(Mouse.current.position.ReadValue());
                     else UpdateCursor();
@@ -285,26 +314,28 @@ namespace Arcade.Compose.Editing
             }
             else if (note is ArcTap || note is ArcHold)
             {
-                if (!Ground.Raycast(ray, out float distance)) return;
+                var grid = AdeGridManager.Instance;
+                bool useGrid = HasFloatLane(draft) && grid.EnableVertical;
+                var plane = useGrid ? PositionPlane() : Ground;
+                if (!plane.Raycast(ray, out float distance)) return;
                 float x = ray.GetPoint(distance).x;
+                if (useGrid) x = grid.AttachDragWorldX(x);
                 int track = Mathf.Clamp((int)(x / -4.25f + 3), 0, 5);
                 if (draft is ArcTap tap)
                 {
-                    if (tap.FloatLane.HasValue) tap.FloatLane = (8.5f - x) / 17f;
+                    if (tap.FloatLane.HasValue) tap.FloatLane = LanePosition.FloatLaneFromWorldX(x);
                     else tap.Track = track;
                 }
                 else
                 {
                     var hold = (ArcHold)draft;
-                    if (hold.FloatLane.HasValue) hold.FloatLane = (8.5f - x) / 17f;
+                    if (hold.FloatLane.HasValue) hold.FloatLane = LanePosition.FloatLaneFromWorldX(x);
                     else hold.Track = track;
                 }
             }
             else
             {
-                float z = -ArcTimingManager.Instance.CalculatePositionByTiming(endpointTiming,
-                    AdeTimingEditor.Instance.currentTimingGroup) / 1000;
-                if (!new Plane(Vector3.forward, new Vector3(0, 0, z)).Raycast(ray, out float distance)) return;
+                if (!PositionPlane().Raycast(ray, out float distance)) return;
                 Vector3 point = ray.GetPoint(distance);
                 var grid = AdeGridManager.Instance;
                 Vector2 coordinate = grid.AttachDragCoordinate(new Vector2(ArcAlgorithm.WorldXToArc(point.x),

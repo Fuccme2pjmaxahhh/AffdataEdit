@@ -21,6 +21,8 @@ namespace Arcade.Gameplay.Chart
         public static float WorldX(int track, float? lane) => lane.HasValue
             ? 8.5f - 17f * lane.Value : 10.625f - 4.25f * track;
 
+        internal static float FloatLaneFromWorldX(float x) => (8.5f - x) / 17f;
+
         public static string Format(int track, float? lane) => lane.HasValue
             ? lane.Value.ToString("0.0########", CultureInfo.InvariantCulture)
             : track.ToString(CultureInfo.InvariantCulture);
