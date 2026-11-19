@@ -10,7 +10,8 @@ namespace Arcade.Audio
         private byte[] externalData;
         private float? duration;
         private long fileSize, modifiedTicks;
-        internal string FilePath => filePath;
+        // Null when playback, spectrum and slow rendering should use Bytes.
+        internal string FilePath { get; private set; }
         internal bool IsOpusFile { get; private set; }
         internal byte[] Bytes
         {
@@ -39,7 +40,9 @@ namespace Arcade.Audio
                 return duration.Value;
             }
         }
-        public static BassClip Load(string path)
+        public static BassClip Load(string path) => Load(path, null);
+
+        internal static BassClip Load(string path, string projectBackupFolder)
         {
             if (!File.Exists(path)) return null;
             var clip = CreateInstance<BassClip>();
@@ -50,14 +53,88 @@ namespace Arcade.Audio
                 var info = new FileInfo(path);
                 clip.fileSize = info.Length;
                 clip.modifiedTicks = info.LastWriteTimeUtc.Ticks;
-                // Music stays file-backed, including Opus; only short sample playback asks for Bytes.
                 var header = new byte[36];
-                using (var stream = File.OpenRead(path)) stream.Read(header, 0, header.Length);
-                clip.IsOpusFile = IsOpus(header);
+                using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete))
+                {
+                    stream.Read(header, 0, header.Length);
+                    if (header[0] == 'O' && header[1] == 'g' && header[2] == 'g' && header[3] == 'S')
+                    {
+                        stream.Position = 0;
+                        clip.externalData = OggAudioTrack.ExtractTheoraVorbis(stream, out bool onlyVideoRemoved);
+                        if (onlyVideoRemoved && projectBackupFolder != null)
+                        {
+                            try { clip.ReplaceWithAudioTrack(info, projectBackupFolder); }
+                            catch (System.Exception e) when (e is IOException || e is System.UnauthorizedAccessException ||
+                                e is System.NotSupportedException)
+                            {
+                                Debug.Log($"未能原地清理「{info.Name}」，本次使用内存音轨。\n{e}");
+                            }
+                        }
+                    }
+                }
+                clip.FilePath = clip.externalData == null ? clip.filePath : null;
+                clip.IsOpusFile = clip.FilePath != null && IsOpus(header);
                 _ = clip.length;
                 return clip;
             }
+            catch (System.Exception e) when (e is IOException || e is InvalidDataException ||
+                e is System.UnauthorizedAccessException || e is System.InvalidOperationException)
+            {
+                Destroy(clip);
+                throw new InvalidDataException($"无法读取音频「{Path.GetFileName(path)}」\n{e.Message}", e);
+            }
             catch { Destroy(clip); throw; }
+        }
+
+        private void ReplaceWithAudioTrack(FileInfo original, string backupFolder)
+        {
+            if ((original.Attributes & (FileAttributes.ReadOnly | FileAttributes.ReparsePoint)) != 0)
+            {
+                Debug.Log($"「{original.Name}」为只读文件或链接，本次使用内存音轨。");
+                return;
+            }
+
+            string id = System.Guid.NewGuid().ToString("N");
+            string temporary = Path.Combine(original.DirectoryName, $".affdata-{id}.tmp");
+            string backup = Path.Combine(backupFolder, $"{Path.GetFileNameWithoutExtension(filePath)}-{id}{original.Extension}");
+            var output = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            try
+            {
+                using (output)
+                {
+                    output.Write(externalData, 0, externalData.Length);
+                    output.Flush(true);
+                }
+                FilePath = temporary;
+                using (var voice = new BassVoice(this, false))
+                {
+                    var buffer = new byte[65536];
+                    int read = BassNative.BASS_ChannelGetData(voice.Handle, buffer, buffer.Length);
+                    BassNative.Check(read > 0, "validate extracted audio");
+                    do { read = BassNative.BASS_ChannelGetData(voice.Handle, buffer, buffer.Length); } while (read > 0);
+                    BassNative.Check(read < 0 && BassNative.BASS_ErrorGetCode() == 45, "finish validating extracted audio");
+                    duration = (float)voice.Length;
+                }
+                Directory.CreateDirectory(backupFolder);
+                if (!MatchesFile(filePath)) throw new IOException("读取期间源文件已更改。");
+                try { File.Replace(temporary, filePath, backup); }
+                catch (IOException) when (!File.Exists(filePath) && File.Exists(backup))
+                {
+                    // Windows can move the original to the backup before a replacement fails.
+                    File.Move(backup, filePath);
+                    throw;
+                }
+                original.Refresh();
+                fileSize = original.Length;
+                modifiedTicks = original.LastWriteTimeUtc.Ticks;
+                externalData = null;
+                Debug.Log($"已清理「{original.Name}」的视频轨，原文件已备份至 {backup}");
+            }
+            finally
+            {
+                FilePath = null;
+                if (File.Exists(temporary)) File.Delete(temporary);
+            }
         }
         public static BassClip CreateSilence(string name, int frames, int channels, int frequency)
         {

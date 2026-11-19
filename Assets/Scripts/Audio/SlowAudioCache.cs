@@ -57,6 +57,8 @@ namespace Arcade.Audio
                 var info = new FileInfo(clip.name);
                 if (!info.Exists) return null;
                 string id = $"{RenderVersion}|{info.FullName}|{info.Length}|{info.LastWriteTimeUtc.Ticks}";
+                // An older platform decoder may have rendered the video container with a different duration.
+                if (clip.FilePath == null) id += "|audio-track";
                 using (var sha = SHA1.Create())
                 {
                     string hash = BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(id))).Replace("-", "").Substring(0, 20);

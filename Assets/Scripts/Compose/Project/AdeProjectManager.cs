@@ -394,10 +394,18 @@ namespace Arcade.Compose
             try
             {
                 await AdeShutterManager.Instance.CloseAsync(destroyCancellationToken);
-                load();
-                if (checkChart && !ArcGameplayManager.Instance.IsLoaded)
-                    SetTutorialMessage("无法加载谱面文件，请修正谱面文件格式或删除谱面文件后重新打开谱面文件夹");
-                await AdeShutterManager.Instance.OpenAsync(destroyCancellationToken);
+                try
+                {
+                    load();
+                    if (checkChart && !ArcGameplayManager.Instance.IsLoaded)
+                        SetTutorialMessage("无法加载谱面文件，请修正谱面文件格式或删除谱面文件后重新打开谱面文件夹");
+                }
+                catch (InvalidDataException ex)
+                {
+                    Debug.Log(ex);
+                    AdeBasicSingleDialogContent.Instance.Show(ex.Message, "加载失败");
+                }
+                finally { await AdeShutterManager.Instance.OpenAsync(destroyCancellationToken); }
             }
             finally { loading = false; }
         }
@@ -573,7 +581,7 @@ namespace Arcade.Compose
 					audioOverrided = audioPath.overrided;
 					return;
 				}
-				BassClip clip = Loader.LoadAudioFile(audioPath.path);
+				BassClip clip = BassClip.Load(audioPath.path, ProjectBackupFolder);
 				if (clip != null)
 				{
 					ArcAudioManager.Instance.ReleaseVoice();
