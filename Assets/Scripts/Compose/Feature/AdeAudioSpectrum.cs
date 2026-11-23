@@ -1,5 +1,6 @@
 using Arcade.Audio;
 using Arcade.Gameplay;
+using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -43,7 +44,7 @@ namespace Arcade.Compose
                 Release();
                 if (current) Load(current);
             }
-            else if (current && (wantLogScale != logScale || logRangeChanged))
+            else if (texture && (wantLogScale != logScale || logRangeChanged))
             {
                 // The audio samples do not change with the row layout. Reuse the upload instead of
                 // decoding and allocating another whole song whenever a frequency option changes.
@@ -129,22 +130,39 @@ namespace Arcade.Compose
             }
         }
 
+        private void UploadSamples(BassClip source)
+        {
+            // Map once. Thousands of partial SetData calls on the same immutable buffer
+            // can keep whole-buffer copies alive on Metal until the frame is submitted.
+            NativeArray<float> samples = default;
+            int written = 0;
+            try
+            {
+                sampleCount = source.ReadSpectrumSamples(
+                    (rate, count) =>
+                    {
+                        sampleRate = rate;
+                        int capacity = Mathf.Max(1, count);
+                        samplesBuffer = new ComputeBuffer(capacity, sizeof(float), ComputeBufferType.Default, ComputeBufferMode.SubUpdates);
+                        samples = samplesBuffer.BeginWrite<float>(0, capacity);
+                    },
+                    (chunk, offset, count) => NativeArray<float>.Copy(chunk, 0, samples, offset, count));
+                if (sampleCount == 0) samples[0] = 0;
+                written = Mathf.Max(1, sampleCount);
+            }
+            finally
+            {
+                if (samples.IsCreated) samplesBuffer.EndWrite<float>(written);
+            }
+        }
+
         private void Load(BassClip source)
         {
             try
             {
                 compute = Instantiate(Resources.Load<ComputeShader>("AffdataEdit/Spectrum"));
                 kernel = compute.FindKernel("CSMain");
-                // Decode into a small reused staging chunk and upload it immediately. In particular,
-                // long songs no longer leave a full-song float[] in the managed heap after upload.
-                sampleCount = source.ReadSpectrumSamples(
-                    (rate, count) =>
-                    {
-                        sampleRate = rate;
-                        samplesBuffer = new ComputeBuffer(Mathf.Max(1, count), sizeof(float));
-                    },
-                    (chunk, offset, count) => samplesBuffer.SetData(chunk, 0, offset, count));
-                if (sampleCount == 0) samplesBuffer.SetData(new float[1]);
+                UploadSamples(source);
 
                 var reversal = new int[FftSize];
                 for (int i = 0; i < FftSize; i++)
@@ -191,6 +209,8 @@ namespace Arcade.Compose
             catch
             {
                 Release();
+                // Retry on a new clip or after toggling the spectrum, rather than on every frame.
+                clip = source;
                 throw;
             }
         }
