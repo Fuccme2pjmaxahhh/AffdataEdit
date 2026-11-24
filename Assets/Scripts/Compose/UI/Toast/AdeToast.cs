@@ -29,9 +29,9 @@ namespace Arcade.Compose
 		private const string SaveIconPath = "ArcaeaEditor/EditorCanvas/Bars/Left/View/Top/Save/Image";
 		private MotionHandle saveIconMotion;
 		private bool glowActive;
-		private Image savedGlow, saveIcon;
-		private Texture2D glowTexture;
-		private Sprite glowSprite;
+		private Image savedGlow, savedRim, saveIcon;
+		private Texture2D glowTexture, rimTexture;
+		private Sprite glowSprite, rimSprite;
 		private Sprite saveSprite, checkSprite, rippleSprite;
 		private Texture2D rippleTexture;
 		private Image saveRipple;
@@ -71,6 +71,8 @@ namespace Arcade.Compose
 			toastMotion.TryCancel();
 			if (glowSprite) Destroy(glowSprite);
 			if (glowTexture) Destroy(glowTexture);
+			if (rimSprite) Destroy(rimSprite);
+			if (rimTexture) Destroy(rimTexture);
 			if (rippleSprite) Destroy(rippleSprite);
 			if (rippleTexture) Destroy(rippleTexture);
 			RestoreSaveIcon();
@@ -104,71 +106,96 @@ namespace Arcade.Compose
 			PlaySavedGlow();
 			PlaySaveIconCheck();
 		}
-		// Accent light shining down from the top bar's lower edge into the chart view.
+		// Accent light from the top bar's lower edge: the edge lights up and the light pours
+		// down into the chart view, then drains back up into the bar. It runs on the notice's
+		// fade, and every save replays it from the start.
 		private void PlaySavedGlow()
 		{
 			if (!savedGlow)
 			{
-				CreateGlowSprite();
 				// Bars/Top/View ends at the visible lower edge of the bar (the bar sprite's last
-				// 20 units are transparent); outside the notice group so the light can linger.
+				// 20 units are transparent).
 				var bar = transform.parent as RectTransform;
 				if (!bar) return;
-				var glow = new GameObject("Saved glow", typeof(RectTransform), typeof(LayoutElement), typeof(Image));
-				glow.GetComponent<LayoutElement>().ignoreLayout = true;
-				glow.transform.SetParent(bar, false);
-				glow.transform.SetAsFirstSibling();
-				savedGlow = glow.GetComponent<Image>();
-				savedGlow.sprite = glowSprite;
-				savedGlow.raycastTarget = false;
-				var rect = savedGlow.rectTransform;
-				rect.anchorMin = rect.anchorMax = new Vector2(.5f, 0f);
-				rect.pivot = new Vector2(.5f, 1f);
+				CreateGlowSprites();
+				savedGlow = CreateGlowImage(bar, "Saved glow", glowSprite);
+				savedRim = CreateGlowImage(bar, "Saved glow rim", rimSprite);
 			}
 			glowActive = true;
-			savedGlow.enabled = true;
-			SyncGlow(noticeGroup.alpha, true);
+			savedGlow.enabled = savedRim.enabled = true;
+			SyncGlow(0f, true);
 		}
-		// Driven by the notice fade, so light and banner share one clock.
-		private void SyncGlow(float alpha, bool rising)
+		private static Image CreateGlowImage(RectTransform parent, string name, Sprite sprite)
 		{
-			if (!glowActive || !savedGlow) return;
-			var glowRect = savedGlow.rectTransform;
+			var go = new GameObject(name, typeof(RectTransform), typeof(LayoutElement), typeof(Image));
+			go.GetComponent<LayoutElement>().ignoreLayout = true;
+			go.transform.SetParent(parent, false);
+			go.transform.SetAsFirstSibling();
+			var image = go.GetComponent<Image>();
+			image.sprite = sprite;
+			image.raycastTarget = false;
+			var rect = image.rectTransform;
+			rect.anchorMin = rect.anchorMax = new Vector2(.5f, 0f);
+			rect.pivot = new Vector2(.5f, 1f);
+			return image;
+		}
+		// progress: eased 0 to 1 while the notice fades in, then the notice alpha (1 to 0) while it fades out.
+		private void SyncGlow(float progress, bool rising)
+		{
+			if (!glowActive || !savedGlow || !savedRim) return;
 			// Centred under the notice, top edge on the bar's visible edge.
-			var parentRect = (RectTransform)glowRect.parent;
+			var parentRect = (RectTransform)savedGlow.rectTransform.parent;
 			float centre = parentRect.InverseTransformPoint(panel.position).x - parentRect.rect.center.x;
-			glowRect.anchoredPosition = new Vector2(centre, 0f);
-			float reach = rising ? Mathf.Lerp(.35f, 1f, alpha) : 1f;
 			float width = Mathf.Max(720f, panel.rect.width * 1.8f);
-			glowRect.sizeDelta = new Vector2(width * Mathf.Lerp(.7f, 1f, reach), 150f * reach);
+			float reach = Mathf.Clamp01(progress);
+			// The edge lights quickly as the light starts to pour, and dims as it drains away.
+			float rim = rising ? Mathf.Clamp01(progress * 3f) : reach;
 			Color accent = AdeUiTheme.Current.Accent;
-			savedGlow.color = new Color(accent.r, accent.g, accent.b, .85f * alpha);
+			var body = savedGlow.rectTransform;
+			body.anchoredPosition = new Vector2(centre, 0f);
+			body.sizeDelta = new Vector2(width, 150f * reach);
+			savedGlow.color = new Color(accent.r, accent.g, accent.b, reach > 0f ? .85f : 0f);
+			var edge = savedRim.rectTransform;
+			edge.anchoredPosition = new Vector2(centre, 0f);
+			edge.sizeDelta = new Vector2(width, 2f);
+			savedRim.color = new Color(accent.r, accent.g, accent.b, .85f * rim);
 		}
 		private void EndGlow()
 		{
 			glowActive = false;
 			if (savedGlow) savedGlow.enabled = false;
+			if (savedRim) savedRim.enabled = false;
 		}
-		private void CreateGlowSprite()
+		private void CreateGlowSprites()
 		{
 			const int width = 256, height = 128;
 			var pixels = new Color[width * height];
 			for (int y = 0; y < height; y++)
 				for (int x = 0; x < width; x++)
 				{
-					// y = height - 1 is the bar edge: a crisp bright rim, then a soft light falling
-					// off downward and toward both ends.
+					// y = height - 1 touches the bar edge; the light falls off downward and toward both ends.
 					float u = Mathf.Abs((x + .5f) / width * 2f - 1f), v = 1f - (y + .5f) / height;
 					float across = Mathf.Pow(Mathf.Clamp01(1f - u * u), 1.6f);
-					float body = across * Mathf.Pow(1f - v, 3.2f) * .45f;
-					float rim = Mathf.Clamp01(1f - v * 90f) * Mathf.Pow(Mathf.Clamp01(1f - u), .5f);
-					pixels[y * width + x] = new Color(1, 1, 1, Mathf.Clamp01(body + rim * .95f));
+					pixels[y * width + x] = new Color(1, 1, 1, across * Mathf.Pow(1f - v, 3.2f) * .45f);
 				}
 			glowTexture = new Texture2D(width, height, TextureFormat.RGBA32, false)
 				{ name = "Saved glow", filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
 			glowTexture.SetPixels(pixels);
 			glowTexture.Apply(false, true);
 			glowSprite = Sprite.Create(glowTexture, new Rect(0, 0, width, height), new Vector2(.5f, .5f));
+			// Crisp bright edge, brightest under the notice.
+			var rimPixels = new Color[width * 4];
+			for (int y = 0; y < 4; y++)
+				for (int x = 0; x < width; x++)
+				{
+					float u = Mathf.Abs((x + .5f) / width * 2f - 1f);
+					rimPixels[y * width + x] = new Color(1, 1, 1, Mathf.Pow(Mathf.Clamp01(1f - u), .5f) * .95f);
+				}
+			rimTexture = new Texture2D(width, 4, TextureFormat.RGBA32, false)
+				{ name = "Saved glow rim", filterMode = FilterMode.Bilinear, wrapMode = TextureWrapMode.Clamp };
+			rimTexture.SetPixels(rimPixels);
+			rimTexture.Apply(false, true);
+			rimSprite = Sprite.Create(rimTexture, new Rect(0, 0, width, 4), new Vector2(.5f, .5f));
 		}
 		// Unsaved-changes dot on the Save button. Returns false until the button can be found.
 		public bool SetUnsaved(bool value)
@@ -393,17 +420,20 @@ namespace Arcade.Compose
 		private static string SingleLine(string text) => text.Replace("\r\n", " ").Replace('\r', ' ').Replace('\n', ' ');
 		private void FadeNotice(float alpha, Action onComplete, float delay = 0f, bool quick = false)
 		{
-			bool rising = alpha > noticeGroup.alpha;
+			bool rising = alpha > 0f;
 			bool soft = savedFade && !quick;
 			float duration = !soft ? Duration : rising ? SavedFadeIn : SavedFadeOut;
 			Ease ease = !soft ? Ease.OutQuad : rising ? Ease.OutCubic : Ease.InOutSine;
-			toastMotion = LMotion.Create(noticeGroup.alpha, alpha, duration)
+			float from = noticeGroup.alpha;
+			// Driven by progress, so the light pours again even when the notice is already visible.
+			toastMotion = LMotion.Create(0f, 1f, duration)
 				.WithEase(ease).WithScheduler(MotionScheduler.UpdateIgnoreTimeScale)
 				.WithDelay(delay).WithOnComplete(onComplete)
-				.Bind(value =>
+				.Bind(progress =>
 				{
+					float value = Mathf.Lerp(from, alpha, progress);
 					noticeGroup.alpha = value;
-					SyncGlow(value, alpha > 0f);
+					SyncGlow(rising ? progress : value, rising);
 				});
 		}
 		private void FitMessage()
