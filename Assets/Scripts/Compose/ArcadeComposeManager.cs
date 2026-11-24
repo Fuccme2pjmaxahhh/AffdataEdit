@@ -118,6 +118,7 @@ namespace Arcade.Compose
 		public Sprite DefaultSliderSprite, GlowSliderSprite;
 		[Header("Auto")]
 		public Button AutoButton;
+		private int autoThemeRevision = -1;
 		[Header("Misc")]
 
 		public UnityEvent OnPlay = new UnityEvent();
@@ -313,12 +314,18 @@ namespace Arcade.Compose
 			if (GameplayManager.ChartTiming != Mathf.RoundToInt(timing))
 			{
 				GameplayManager.ChartTiming = Mathf.RoundToInt(timing);
-				GameplayManager.ResetJudge();
+				GameplayManager.ResetJudge(afterScroll: true);
 			}
 		}
 
 		private void Update()
 		{
+			// AUTO keeps its own tint, so repaint it with the new preset's accent after a theme change.
+			if (autoThemeRevision != AdeUiTheme.Revision && AutoButton && ArcGameplayManager.Instance)
+			{
+				autoThemeRevision = AdeUiTheme.Revision;
+				if (ArcGameplayManager.Instance.Auto) UpdateAutoButton();
+			}
 			CheckScroll();
 			if (AdeDragEdit.Instance && AdeDragEdit.Instance.IsDragging)
 			{

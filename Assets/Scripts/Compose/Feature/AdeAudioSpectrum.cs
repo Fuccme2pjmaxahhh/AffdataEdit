@@ -1,6 +1,8 @@
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Arcade.Audio;
 using Arcade.Gameplay;
-using Unity.Collections;
 using UnityEngine;
 using UnityEngine.Rendering;
 
@@ -11,8 +13,19 @@ namespace Arcade.Compose
     {
         // FftSize is the longest of the shader's FFTs (log scale uses 2048/1024/512, linear 512); its tables serve all.
         private const int Width = 1024, Height = 128, FftSize = 2048;
+        private const int UploadChunkFrames = 256 * 1024;
         private BassClip clip;
         private ComputeShader compute;
+        private BassClip.SpectrumReader reader;
+        private float[] chunk;
+        private ComputeBuffer chunkBuffer;
+        private int uploadKernel;
+        private Task<int> decode;
+        private ComputeShader computeAsset;
+        private Shader materialShaderAsset;
+        private CancellationTokenSource uploadCancellation;
+        private double retryAt;
+        private int retryDelay;
         private ComputeBuffer samplesBuffer, reversalBuffer, twiddleBuffer, bandRangesBuffer, columnTimesBuffer;
         // Audio time of each column's centre; the spectrum scrolls with the chart's BPM like the notes,
         // with the BPM factor capped to 0.1..2.5 x base BPM (keeps zero/negative/extreme BPM usable).
@@ -25,6 +38,23 @@ namespace Arcade.Compose
         private int kernel, sampleRate, sampleCount;
         private bool hasColumnTimes, logScale;
         private float logMin, logMax; // log-axis range the current texture was built with
+
+        private void Awake()
+        {
+            // The settings UI adds this component during editor startup. Prime the same kernels
+            // and material here so first-use shader creation doesn't interrupt the playhead.
+            if (!SystemInfo.supportsComputeShaders) return;
+            try
+            {
+                sampleRate = 44100;
+                samplesBuffer = new ComputeBuffer(1, sizeof(float));
+                chunkBuffer = new ComputeBuffer(1, sizeof(float));
+                UploadChunk(new float[1], 1);
+                CreateSpectrum();
+            }
+            catch (Exception error) { Debug.Log($"频谱预加载未完成，开启时将重新加载。\n{error}", this); }
+            finally { Release(); }
+        }
 
         private void LateUpdate()
         {
@@ -39,20 +69,20 @@ namespace Arcade.Compose
                 && (tuning.LogMinFrequency != logMin || tuning.LogMaxFrequency != logMax);
             if (!ReferenceEquals(clip, current))
             {
-                logScale = wantLogScale;
-                if (tuning != null) { logMin = tuning.LogMinFrequency; logMax = tuning.LogMaxFrequency; }
                 Release();
-                if (current) Load(current);
+                clip = current;
+                retryAt = 0;
+                retryDelay = 0;
             }
-            else if (texture && (wantLogScale != logScale || logRangeChanged))
+            if (!current) return;
+            bool profileChanged = wantLogScale != logScale || logRangeChanged;
+            logScale = wantLogScale;
+            if (tuning != null) { logMin = tuning.LogMinFrequency; logMax = tuning.LogMaxFrequency; }
+            if (!texture)
             {
-                // The audio samples do not change with the row layout. Reuse the upload instead of
-                // decoding and allocating another whole song whenever a frequency option changes.
-                logScale = wantLogScale;
-                if (tuning != null) { logMin = tuning.LogMinFrequency; logMax = tuning.LogMaxFrequency; }
-                ProfileBands();
+                if (!AdvanceLoad(current)) return;
             }
-            if (!texture) return;
+            else if (profileChanged) ProfileBands();
 
             material.SetFloat("_Opacity", Mathf.Clamp01(compose.ArcadePreference.SpectrumOpacity));
             // Applied even while paused; both intensity values share the same FFT texture.
@@ -130,89 +160,141 @@ namespace Arcade.Compose
             }
         }
 
-        private void UploadSamples(BassClip source)
+        private bool AdvanceLoad(BassClip current)
         {
-            // Map once. Thousands of partial SetData calls on the same immutable buffer
-            // can keep whole-buffer copies alive on Metal until the frame is submitted.
-            NativeArray<float> samples = default;
-            int written = 0;
+            if (Time.realtimeSinceStartupAsDouble < retryAt) return false;
             try
             {
-                sampleCount = source.ReadSpectrumSamples(
-                    (rate, count) =>
-                    {
-                        sampleRate = rate;
-                        int capacity = Mathf.Max(1, count);
-                        samplesBuffer = new ComputeBuffer(capacity, sizeof(float), ComputeBufferType.Default, ComputeBufferMode.SubUpdates);
-                        samples = samplesBuffer.BeginWrite<float>(0, capacity);
-                    },
-                    (chunk, offset, count) => NativeArray<float>.Copy(chunk, 0, samples, offset, count));
-                if (sampleCount == 0) samples[0] = 0;
-                written = Mathf.Max(1, sampleCount);
+                if (reader == null) StartUpload(current);
+                if (!UploadNextChunk()) return false;
+                CloseReader();
+                CreateSpectrum();
+                retryDelay = 0;
+                return true;
             }
-            finally
+            catch (Exception error)
             {
-                if (samples.IsCreated) samplesBuffer.EndWrite<float>(written);
+                Release();
+                clip = current;
+                computeAsset = null;
+                materialShaderAsset = null;
+                if (retryDelay == 0)
+                {
+                    Debug.Log($"频谱加载失败，将自动重试。\n{error}", this);
+                    AdeToast.Instance?.Show("频谱加载失败，将自动重试");
+                }
+                retryDelay = retryDelay == 0 ? 1 : Mathf.Min(8, retryDelay * 2);
+                retryAt = Time.realtimeSinceStartupAsDouble + retryDelay;
+                return false;
             }
         }
 
-        private void Load(BassClip source)
+        private void StartUpload(BassClip source)
         {
-            try
-            {
-                compute = Instantiate(Resources.Load<ComputeShader>("AffdataEdit/Spectrum"));
-                kernel = compute.FindKernel("CSMain");
-                UploadSamples(source);
+            reader = new BassClip.SpectrumReader(source);
+            sampleRate = reader.SampleRate;
+            int capacity = Mathf.Max(1, reader.FrameCount);
+            samplesBuffer = new ComputeBuffer(capacity, sizeof(float));
+            chunk = new float[Mathf.Min(UploadChunkFrames, capacity)];
+            chunkBuffer = new ComputeBuffer(chunk.Length, sizeof(float));
+            uploadCancellation = new CancellationTokenSource();
+            BassAudio.ShuttingDown += Release;
+            StartChunk();
+        }
 
-                var reversal = new int[FftSize];
-                for (int i = 0; i < FftSize; i++)
-                {
-                    int reversed = 0;
-                    for (int bit = FftSize >> 1, value = i; bit > 0; bit >>= 1, value >>= 1)
-                        reversed = (reversed << 1) | (value & 1);
-                    reversal[i] = reversed;
-                }
-                reversalBuffer = new ComputeBuffer(FftSize, sizeof(int));
-                reversalBuffer.SetData(reversal);
-                var twiddles = new Vector2[FftSize / 2];
-                for (int i = 0; i < twiddles.Length; i++)
-                {
-                    float angle = -2 * Mathf.PI * i / FftSize;
-                    twiddles[i] = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
-                }
-                twiddleBuffer = new ComputeBuffer(twiddles.Length, sizeof(float) * 2);
-                twiddleBuffer.SetData(twiddles);
+        private void StartChunk()
+        {
+            int count = Mathf.Min(chunk.Length, reader.FrameCount - sampleCount);
+            var token = uploadCancellation.Token;
+            decode = Task.Run(() => reader.Read(chunk, count, token), token);
+        }
 
-                // This is numeric dB data, not sRGB artwork: keep sampling linear.
-                texture = new RenderTexture(Width, Height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear)
-                {
-                    name = "Audio spectrum", enableRandomWrite = true,
-                    wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Point // crisp cells: no smoothing between time columns
-                };
-                if (!texture.Create()) throw new System.InvalidOperationException("Unable to create the audio spectrum texture.");
-                compute.SetBuffer(kernel, "_AudioSamples", samplesBuffer);
-                compute.SetBuffer(kernel, "_BitReversalTable", reversalBuffer);
-                compute.SetBuffer(kernel, "_TwiddleFactors", twiddleBuffer);
-                compute.SetTexture(kernel, "_ResultTexture", texture);
-                compute.SetInt("_TotalSamples", sampleCount);
-                compute.SetFloat("_SampleRate", sampleRate);
-                // Build a stable per-frequency opacity range once per song.
-                // Reuse the same texture; no CPU readback or extra audio cache.
-                bandRangesBuffer = new ComputeBuffer(Height, sizeof(float) * 2);
-                compute.SetBuffer(kernel, "_BandRanges", bandRangesBuffer);
-                columnTimesBuffer = new ComputeBuffer(Width, sizeof(float));
-                compute.SetBuffer(kernel, "_ColumnTimes", columnTimesBuffer);
-                ProfileBands();
-                CreateSurface();
-                clip = source;
-            }
-            catch
+        private bool UploadNextChunk()
+        {
+            if (!decode.IsCompleted) return false;
+            var finished = decode;
+            decode = null;
+            int count = finished.GetAwaiter().GetResult();
+            if (count > 0 || sampleCount == 0) UploadChunk(chunk, Mathf.Max(1, count));
+            sampleCount += count;
+            if (count < chunk.Length || sampleCount >= reader.FrameCount) return true;
+            StartChunk();
+            return false;
+        }
+
+        private void UploadChunk(float[] samples, int written)
+        {
+            // Only the small staging buffer is CPU-updated. The full-song buffer stays on
+            // the GPU, including on drivers that would copy a whole buffer for a partial write.
+            if (!compute)
             {
-                Release();
-                // Retry on a new clip or after toggling the spectrum, rather than on every frame.
-                clip = source;
-                throw;
+                if (!computeAsset) computeAsset = Resources.Load<ComputeShader>("AffdataEdit/Spectrum");
+                compute = Instantiate(computeAsset);
+                uploadKernel = compute.FindKernel("UploadSamples");
+                compute.SetBuffer(uploadKernel, "_UploadSource", chunkBuffer);
+                compute.SetBuffer(uploadKernel, "_UploadTarget", samplesBuffer);
             }
+            chunkBuffer.SetData(samples, 0, 0, written);
+            compute.SetInt("_UploadOffset", sampleCount);
+            compute.SetInt("_UploadCount", written);
+            compute.Dispatch(uploadKernel, (written + 127) / 128, 1, 1);
+        }
+
+        private void CloseReader()
+        {
+            BassAudio.ShuttingDown -= Release;
+            uploadCancellation?.Dispose();
+            uploadCancellation = null;
+            reader?.Dispose();
+            reader = null;
+            chunk = null;
+            chunkBuffer?.Release();
+            chunkBuffer = null;
+        }
+
+        private void CreateSpectrum()
+        {
+            kernel = compute.FindKernel("CSMain");
+            var reversal = new int[FftSize];
+            for (int i = 0; i < FftSize; i++)
+            {
+                int reversed = 0;
+                for (int bit = FftSize >> 1, value = i; bit > 0; bit >>= 1, value >>= 1)
+                    reversed = (reversed << 1) | (value & 1);
+                reversal[i] = reversed;
+            }
+            reversalBuffer = new ComputeBuffer(FftSize, sizeof(int));
+            reversalBuffer.SetData(reversal);
+            var twiddles = new Vector2[FftSize / 2];
+            for (int i = 0; i < twiddles.Length; i++)
+            {
+                float angle = -2 * Mathf.PI * i / FftSize;
+                twiddles[i] = new Vector2(Mathf.Cos(angle), Mathf.Sin(angle));
+            }
+            twiddleBuffer = new ComputeBuffer(twiddles.Length, sizeof(float) * 2);
+            twiddleBuffer.SetData(twiddles);
+
+            // This is numeric dB data, not sRGB artwork: keep sampling linear.
+            texture = new RenderTexture(Width, Height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear)
+            {
+                name = "Audio spectrum", enableRandomWrite = true,
+                wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Point // crisp cells: no smoothing between time columns
+            };
+            if (!texture.Create()) throw new System.InvalidOperationException("Unable to create the audio spectrum texture.");
+            compute.SetBuffer(kernel, "_AudioSamples", samplesBuffer);
+            compute.SetBuffer(kernel, "_BitReversalTable", reversalBuffer);
+            compute.SetBuffer(kernel, "_TwiddleFactors", twiddleBuffer);
+            compute.SetTexture(kernel, "_ResultTexture", texture);
+            compute.SetInt("_TotalSamples", sampleCount);
+            compute.SetFloat("_SampleRate", sampleRate);
+            // Build a stable per-frequency opacity range once per song.
+            // Reuse the same texture; no CPU readback or extra audio cache.
+            bandRangesBuffer = new ComputeBuffer(Height, sizeof(float) * 2);
+            compute.SetBuffer(kernel, "_BandRanges", bandRangesBuffer);
+            columnTimesBuffer = new ComputeBuffer(Width, sizeof(float));
+            compute.SetBuffer(kernel, "_ColumnTimes", columnTimesBuffer);
+            ProfileBands();
+            CreateSurface();
         }
 
         private void ProfileBands()
@@ -237,7 +319,8 @@ namespace Arcade.Compose
 
         private void CreateSurface()
         {
-            material = new Material(Resources.Load<Shader>("AffdataEdit/Spectrum"))
+            if (!materialShaderAsset) materialShaderAsset = Resources.Load<Shader>("AffdataEdit/Spectrum");
+            material = new Material(materialShaderAsset)
             {
                 name = "Audio spectrum", mainTexture = texture
             };
@@ -265,6 +348,16 @@ namespace Arcade.Compose
 
         private void Release()
         {
+            // The decoder owns its BASS stream until the current read has stopped.
+            if (decode != null)
+            {
+                uploadCancellation.Cancel();
+                try { decode.GetAwaiter().GetResult(); }
+                catch (OperationCanceledException) { }
+                catch (Exception error) { Debug.LogException(error, this); }
+                decode = null;
+            }
+            CloseReader();
             clip = null;
             sampleCount = 0;
             hasColumnTimes = false;

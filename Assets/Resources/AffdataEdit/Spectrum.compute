@@ -5,6 +5,7 @@
 //   above, so sliding bass lines show as curves while the upper rows keep sharp onsets.
 #pragma kernel CSMain
 #pragma kernel ProfileBands
+#pragma kernel UploadSamples
 
 #define LONG_FFT 2048
 #define MID_FFT 1024
@@ -15,6 +16,17 @@
 // Crossovers where each FFT's bin spacing roughly matches the row spacing (~4% per row).
 #define LONG_BELOW 760.0
 #define MID_BELOW 1530.0
+
+StructuredBuffer<float> _UploadSource;
+RWStructuredBuffer<float> _UploadTarget;
+int _UploadOffset, _UploadCount;
+
+[numthreads(128, 1, 1)]
+void UploadSamples(uint3 id : SV_DispatchThreadID)
+{
+    if (id.x < (uint)_UploadCount)
+        _UploadTarget[(uint)_UploadOffset + id.x] = _UploadSource[id.x];
+}
 
 StructuredBuffer<float> _AudioSamples;
 // Tables for the 2048-point FFT; the shorter ones reuse them (bit reversal shifted, same twiddle index).
@@ -40,7 +52,7 @@ groupshared float2 longData[LONG_FFT];
 groupshared float2 midData[MID_FFT];
 groupshared float2 shortData[SHORT_FFT];
 
-float ReadSample(int index) { return index >= 0 && index < _TotalSamples - 1 ? _AudioSamples[index] : 0; }
+float ReadSample(int index) { return index >= 0 && index < _TotalSamples ? _AudioSamples[index] : 0; }
 
 // Periodic Hann window of an FFT that is (LONG_FFT >> shift) long, read from the twiddle cosines:
 // cos(2 pi j / 2048) is twiddle[j].x for the first half and -twiddle[j - 1024].x for the second.

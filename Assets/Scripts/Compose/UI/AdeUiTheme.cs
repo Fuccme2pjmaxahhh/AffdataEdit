@@ -297,6 +297,8 @@ namespace Arcade.Compose
                 // Cloned controls may already use the selected palette.
                 matches |= (text || entry.Sprite != null) && (!tinted || Same(color, Color.white))
                     && Same(tinted ? normal : color, Resolve(entry));
+                // Icons cloned after a sweep already carry the preset-derived icon color.
+                matches |= !text && !tinted && entry.Sprite == null && Same(entry.Light, C(0x7F7F7F)) && Same(color, IconColor);
                 if (!matches) continue;
                 Paint(graphic, selectable, sprite, entry);
                 return;
@@ -375,9 +377,9 @@ namespace Arcade.Compose
 						Color.Lerp(Current.Input, Color.black, Dark ? .55f : .25f), Current.Border);
 					dialog.LeftButton.spriteState = leftState;
 					var rightState = dialog.RightButton.spriteState;
-					// Neutral gray preserves contrast with either light or dark accent labels.
+					// Pressed keeps the accent hue, pushed toward the chrome like other primary buttons.
 					rightState.pressedSprite = Shape("ThemeOpenCloudPressed", ControlRadius,
-						Current.AccentText.grayscale > .5f ? C(0x626262) : C(0xABABAB), Current.Border);
+						Color.Lerp(Current.Accent, Current.Chrome, .2f), Current.Border);
 					dialog.RightButton.spriteState = rightState;
 				}
 				Apply(dialog.LeftButtonText);
@@ -470,6 +472,9 @@ namespace Arcade.Compose
 			if (label) label.fontSize = 26;
 		}
 
+		// Light secondary surfaces cannot brighten further, so the press darkens there.
+		private static Color ClosePressedColor => Dark ? new Color(1.2f, 1.2f, 1.2f, 1) : new Color(.9f, .9f, .9f, 1);
+
 		private void LayoutClose(AdeDialog dialog)
 		{
 			if (darkSprites == null) return;
@@ -479,6 +484,10 @@ namespace Arcade.Compose
 			{
 				existing.gameObject.SetActive(true);
                 existing.GetComponent<Image>().sprite = darkSprites[5];
+                var closeButton = existing.GetComponent<Button>();
+                var closeColors = closeButton.colors;
+                closeColors.pressedColor = ClosePressedColor;
+                closeButton.colors = closeColors;
                 existing.Find("Icon").GetComponent<Image>().color = Current.Text;
 				// Cloned dialogs copy the button with its listeners stripped.
 				existing.SetAsLastSibling();
@@ -500,7 +509,7 @@ namespace Arcade.Compose
 			colors.normalColor = new Color(1, 1, 1, 0);
 			colors.selectedColor = new Color(1, 1, 1, 0);
 			colors.highlightedColor = Color.white;
-			colors.pressedColor = new Color(1.2f, 1.2f, 1.2f, 1);
+			colors.pressedColor = ClosePressedColor;
 			button.colors = colors;
 			AdeUiKit.SetOnClick(button, dialog.Close);
 			var icon = new GameObject("Icon", typeof(RectTransform), typeof(Image));

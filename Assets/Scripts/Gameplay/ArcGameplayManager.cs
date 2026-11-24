@@ -50,7 +50,13 @@ namespace Arcade.Gameplay
 			{
 				SeekVersion++;
 				audioTiming = value / 1000f;
-				ArcAudioManager.Instance.Timing = Mathf.Max(0, audioTiming);
+                var audio = ArcAudioManager.Instance;
+                float transportTiming = AudioTimingWithoutGlobalOffset;
+                if (IsPlaying && audio.Clip && (transportTiming < 0 || audio.StartScheduled))
+                    Play();
+                else
+                    audio.Timing = Mathf.Max(0, transportTiming);
+                lastDspTime = BassAudio.Clock;
 			}
 		}
 		private float AudioTimingWithoutGlobalOffset
@@ -248,25 +254,38 @@ namespace Arcade.Gameplay
 			Length = 0;
 		}
 
-		public void ResetJudge()
+        public void ResetJudge() => ResetJudge(false);
+
+        internal void ResetJudge(bool afterScroll)
 		{
-            if (ArcTapNoteManager.Instance) ArcTapNoteManager.Instance.ResetJudgement();
-            if (ArcArcManager.Instance) ArcArcManager.Instance.ResetJudgement();
+            int soundStart = afterScroll ? SoundChartTiming : int.MinValue;
+            if (ArcTapNoteManager.Instance) ArcTapNoteManager.Instance.ResetJudgement(soundStart);
+            if (ArcArcManager.Instance) ArcArcManager.Instance.ResetJudgement(soundStart);
             if (ArcEffectManager.Instance) ArcEffectManager.Instance.ResetHitSoundDeduplication();
             ArcLongNoteEffect.ResetAll();
 			if (ArcSlideManager.Instance) ArcSlideManager.Instance.ResetFeedback();
+            if (afterScroll && ArcSlideManager.Instance) ArcSlideManager.Instance.ResumeSoundFrom(soundStart);
 			if (Chart != null)
 			{
 				foreach (var t in Chart.Arcs)
 				{
 					foreach (var a in t.ArcTaps) { a.Judged = false; }
-					t.Judged = false; t.Judging = false; t.AudioPlayed = false;
+					t.Judged = false; t.Judging = false; t.AudioPlayed = t.Timing < soundStart;
+                    if (afterScroll)
+                    {
+                        t.ShouldPlayAudio = !t.AudioPlayed;
+                        if (t.CreationPreviewSoundTiming.HasValue) t.CreationPreviewSoundTiming = soundStart;
+                    }
 					if (t.ConvertedVariousSizedArctap != null)
 					{
 						t.ConvertedVariousSizedArctap.Judged = false;
 					}
 				};
-				foreach (var t in Chart.Holds) { t.Judged = false; t.Judging = false; t.AudioPlayed = false; };
+                foreach (var t in Chart.Holds)
+                {
+                    t.Judged = false; t.Judging = false; t.AudioPlayed = t.Timing < soundStart;
+                    if (afterScroll) t.ShouldPlayAudio = !t.AudioPlayed;
+                }
 				foreach (var t in Chart.Taps) { t.Judged = false; };
 			}
 		}

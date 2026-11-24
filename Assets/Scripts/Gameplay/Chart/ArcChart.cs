@@ -1053,6 +1053,7 @@ namespace Arcade.Gameplay.Chart
 	}
 	public class ArcArc : ArcLongNote, IIntoRawItem, IHasTimingGroup, ISetableTimingGroup
 	{
+        internal int? CreationPreviewSoundTiming;
         internal int RenderEndTiming = int.MinValue;
 		private ArcTimingGroup timingGroup;
         public ArcTimingGroup TimingGroup

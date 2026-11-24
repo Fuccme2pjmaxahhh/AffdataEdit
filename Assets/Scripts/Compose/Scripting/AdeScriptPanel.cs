@@ -475,7 +475,7 @@ namespace Arcade.Compose.Scripting
             if (!status) return;
             status.text = message;
             status.gameObject.SetActive(message.Length > 0);
-            status.color = error ? new Color32(232, 113, 113, 255) : AdeUiTheme.Current.Muted;
+            status.color = error ? AdeUiTheme.ErrorText : AdeUiTheme.Current.Muted;
             if (error && AdeToast.Instance) AdeToast.Instance.Show(message.Split('\n')[0]);
         }
 

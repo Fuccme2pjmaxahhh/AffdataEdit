@@ -59,6 +59,17 @@ namespace Arcade.Compose.Command
         internal const long HistoryMemoryLimitBytes = 128L * 1024 * 1024;
         private readonly Dictionary<ICommand, (long Cost, int References)> memoryCosts = new Dictionary<ICommand, (long, int)>();
         internal long HistoryMemoryBytes { get; private set; }
+        // Edit position for the unsaved-changes indicator. A saved position of -1 can no longer be reached.
+        private long editPosition, savedPosition;
+        public bool HasUnsavedChanges => editPosition != savedPosition;
+        public void MarkSaved() => savedPosition = editPosition;
+        public void MarkChanged() => savedPosition = -1;
+        private void AdvanceEdit()
+        {
+            // A new edit after undoing past the saved state discards that state from redo.
+            if (editPosition < savedPosition) savedPosition = -1;
+            editPosition++;
+        }
 
 		private void Update()
 		{
@@ -84,6 +95,7 @@ namespace Arcade.Compose.Command
 			onCommandExecuted(command, false);
 			Debug.Log($"Add: {command.Name}");
 			undo.AddLast(command);
+            AdvanceEdit();
             Remember(command);
             ClearRedo();
             TrimHistory();
@@ -104,6 +116,7 @@ namespace Arcade.Compose.Command
 			ICommand cmd = undo.Last.Value;
 			undo.RemoveLast();
 			cmd.Undo();
+			editPosition--;
 			onCommandExecuted(preparing, true);
 			Debug.Log($"Undo: {cmd.Name}");
 			redo.AddLast(cmd);
@@ -119,6 +132,7 @@ namespace Arcade.Compose.Command
 			ICommand cmd = redo.Last.Value;
 			redo.RemoveLast();
 			cmd.Do();
+			editPosition++;
 			onCommandExecuted(cmd, false);
 			Debug.Log($"Redo: {cmd.Name}");
 			undo.AddLast(cmd);
@@ -129,6 +143,7 @@ namespace Arcade.Compose.Command
 			undo.Clear();
 			redo.Clear();
             memoryCosts.Clear(); HistoryMemoryBytes = 0;
+            editPosition = savedPosition = 0;
 		}
 
 		public void SetBufferSize(uint size)
@@ -151,6 +166,7 @@ namespace Arcade.Compose.Command
 			{
 				Debug.Log($"Add: {preparing.Name}");
 				undo.AddLast(preparing);
+                AdvanceEdit();
                 Remember(preparing);
                 ClearRedo();
                 TrimHistory();

@@ -27,7 +27,7 @@ namespace Arcade.Gameplay
         // Hit sounds run on their own cursor at SoundChartTiming (ahead of the drawn time by the visual delay).
         private readonly ArcJudgementCursor<ArcTap> soundJudgement = new ArcJudgementCursor<ArcTap>();
         private readonly List<ArcTap> soundCrossedTaps = new List<ArcTap>();
-        internal void ResetJudgement() { judgement.Reset(); soundJudgement.Reset(); }
+        internal void ResetJudgement(int soundStart) { judgement.Reset(); soundJudgement.Reset(soundStart); }
         private readonly Dictionary<(ArcTimingGroup, int), (float position, float length)> framePositions
             = new Dictionary<(ArcTimingGroup, int), (float, float)>();
         private readonly ArcVisibleNoteIndex<ArcTap> renderIndex = new ArcVisibleNoteIndex<ArcTap>(n => n.Timing);

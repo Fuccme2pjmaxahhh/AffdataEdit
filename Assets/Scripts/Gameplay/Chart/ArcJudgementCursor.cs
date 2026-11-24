@@ -11,8 +11,9 @@ namespace Arcade.Gameplay.Chart
         private IReadOnlyList<T> source;
         private long version = -1;
         private int next;
-        public void Reset() => next = 0;
-        public void Clear() { ordered = Array.Empty<T>(); source = null; version = -1; next = 0; }
+        private int earliestTiming = int.MinValue;
+        public void Reset(int start = int.MinValue) { earliestTiming = start; next = 0; }
+        public void Clear() { ordered = Array.Empty<T>(); source = null; version = -1; Reset(); }
         public void Advance(IReadOnlyList<T> notes, int timing, List<T> crossed)
         {
             if (!ReferenceEquals(source, notes) || version != ArcEvent.RenderIndexVersion || ordered.Length != notes.Count)
@@ -21,6 +22,7 @@ namespace Arcade.Gameplay.Chart
                 source = notes; version = ArcEvent.RenderIndexVersion; next = 0;
             }
             crossed.Clear();
+            while (next < ordered.Length && ordered[next].Timing < earliestTiming) next++;
             while (next < ordered.Length && ordered[next].Timing < timing) crossed.Add(ordered[next++]);
         }
     }

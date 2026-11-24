@@ -21,7 +21,8 @@ namespace Arcade.Compose
         internal static Sprite InputSurface => Instance.Shape("ThemeInput", ControlRadius, Current.Input, Current.Border);
         internal static Sprite ContextMenuSurface(bool highlighted) => Instance.Shape(
             highlighted ? "ThemeContextMenuHover" : "ThemeContextMenu", ControlRadius,
-            highlighted ? ContextMenuSelection : Current.Panel, highlighted ? Current.Accent : Current.Border);
+            highlighted ? ContextMenuSelection : Current.Panel,
+            highlighted ? Color.Lerp(Current.Accent, Current.Text, Dark ? 0 : .25f) : Current.Border);
         internal static Sprite VerticalContextMenuSurface => Instance.Shape(
             "ThemeVerticalContextMenu", PanelRadius, Current.Panel, Current.Border);
 		internal static Sprite VerticalContextMenuHighlight(int corners) => Instance.Shape(
@@ -106,9 +107,10 @@ namespace Arcade.Compose
 			image.type = UnityEngine.UI.Image.Type.Sliced;
 			image.color = Color.white;
 			var colors = ColorBlock.defaultColorBlock;
-			colors.highlightedColor = new Color(1.15f, 1.15f, 1.15f);
-			colors.pressedColor = new Color(0.9f, 0.9f, 0.9f);
-			colors.selectedColor = new Color(1.08f, 1.08f, 1.08f);
+			// Light surfaces are already near white, so brightening shows nothing there: darken instead.
+			colors.highlightedColor = Dark ? new Color(1.15f, 1.15f, 1.15f) : new Color(.94f, .94f, .94f);
+			colors.pressedColor = Dark ? new Color(0.9f, 0.9f, 0.9f) : new Color(.86f, .86f, .86f);
+			colors.selectedColor = Dark ? new Color(1.08f, 1.08f, 1.08f) : new Color(.97f, .97f, .97f);
 			colors.disabledColor = new Color(0.7f, 0.7f, 0.7f, 0.6f);
 			selectable.colors = colors;
 		}

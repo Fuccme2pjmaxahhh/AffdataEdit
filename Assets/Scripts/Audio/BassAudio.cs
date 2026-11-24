@@ -19,12 +19,15 @@ namespace Arcade.Audio
         {
             instance = null;
             outputLatencyMs = 0;
+            ShuttingDown = null;
             samples.Clear();
             voices.Clear();
             musicVolume = .7f;
             effectVolume = 0;
             guideVolume = 1;
         }
+
+        internal static event System.Action ShuttingDown;
 
         public enum Bus { Effect, Music, Guide }
         public static double Clock => Stopwatch.GetTimestamp() / (double)Stopwatch.Frequency;
@@ -111,6 +114,7 @@ namespace Arcade.Audio
         private void Shutdown()
         {
             if (instance != this) return;
+            ShuttingDown?.Invoke();
             SlowAudioCache.Shutdown();
             Gameplay.ArcAudioManager.Instance?.ReleaseVoice();
             voices.Clear(); samples.Clear();

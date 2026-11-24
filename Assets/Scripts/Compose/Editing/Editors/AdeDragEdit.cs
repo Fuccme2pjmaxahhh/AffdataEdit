@@ -109,11 +109,12 @@ namespace Arcade.Compose.Editing
         private async UniTask MoveSelection(ArcNote[] targets, DragMode mode, CancellationToken cancellationToken)
         {
             bool time = mode == DragMode.Time;
-            bool floatingGround = !time && targets.All(HasFloatLane);
+            bool horizontalGroup = !time && targets.Any(HasFloatLane);
+            bool hasSlide = horizontalGroup && targets.Any(n => n is ArcSlide);
             bool supported = time ? targets.All(n => n is ArcArc || n is ArcSlide || n is ArcTap || n is ArcHold || n is ArcArcTap)
-                : floatingGround || targets.All(n => n is ArcArc || n is ArcSlide);
+                : targets.All(n => n is ArcSlide || (horizontalGroup ? HasFloatLane(n) : n is ArcArc));
             if (!supported)
-            { AdeToast.Instance.Show("整体位置移动请选择浮点 Tap／Hold，或选择 Arc、Trace、Slide、单 ArcTap"); return; }
+            { AdeToast.Instance.Show("浮点 Tap／Hold 可与 Slide 混选横移；Arc、Trace、Slide、单 ArcTap 可整体移动"); return; }
             var cursor = AdeCursorManager.Instance;
             var camera = cursor.GameplayCamera;
             Vector2 startPointer = Mouse.current.position.ReadValue();
@@ -132,8 +133,8 @@ namespace Arcade.Compose.Editing
             if (!cursor.BeginDragCursor(!time, true)) return;
             AdeTimingEditor.Instance.SetCurrentTimingGroup(group);
             var start = new Vector2(ArcAlgorithm.WorldXToArc(anchor.x), ArcAlgorithm.WorldYToArc(anchor.y));
-            bool preparedBatch = false, changed = false, movedGround = false;
-            float groundPreviewX = anchor.x;
+            bool preparedBatch = false, changed = false, movedHorizontally = false;
+            float previewX = anchor.x;
             IsDragging = true;
             finishGroup = commit =>
             {
@@ -142,7 +143,7 @@ namespace Arcade.Compose.Editing
             };
             try
             {
-                if (floatingGround) cursor.UpdateDragCursor(timing, anchor);
+                if (horizontalGroup) cursor.UpdateDragCursor(timing, anchor);
                 while (IsDragging)
                 {
                     await UniTask.NextFrame(cancellationToken);
@@ -178,18 +179,19 @@ namespace Arcade.Compose.Editing
                             }
                         }
                     }
-                    else if (floatingGround)
+                    else if (horizontalGroup)
                     {
-                        movedGround |= (pointer - startPointer).sqrMagnitude >= 4;
-                        if (movedGround && TryGetGroundGroupX(ray, camera.ScreenPointToRay(startPointer), display, out float x))
+                        movedHorizontally |= (pointer - startPointer).sqrMagnitude >= 4;
+                        if (movedHorizontally && TryGetHorizontalGroupPosition(ray, camera.ScreenPointToRay(startPointer),
+                            display, hasSlide, out float x, out float offsetX))
                         {
-                            display.x = groundPreviewX = x;
-                            positionOffset.x = ArcAlgorithm.WorldXToArc(x) - start.x;
+                            display.x = previewX = x;
+                            positionOffset.x = offsetX;
                             valid = true;
                         }
                         else
                         {
-                            display.x = groundPreviewX;
+                            display.x = previewX;
                             cursor.UpdateDragCursor(timing, display);
                         }
                     }

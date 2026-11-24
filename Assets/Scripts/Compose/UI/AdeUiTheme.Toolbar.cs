@@ -8,7 +8,17 @@ namespace Arcade.Compose
     {
         private static readonly Dictionary<Image, bool> toolbarToggleStates = new Dictionary<Image, bool>();
         private readonly List<Image> staleToolbarIcons = new List<Image>();
-        internal static Color ToolbarActiveColor => new Color(0f, .47f, .83f, .4f);
+        // Follows the preset accent; neutral accents get a lighter wash so the icon stays readable.
+        internal static Color ToolbarActiveColor
+        {
+            get
+            {
+                Color accent = Current.Accent;
+                Color.RGBToHSV(accent, out _, out float saturation, out _);
+                accent.a = saturation > .2f ? .4f : .22f;
+                return accent;
+            }
+        }
 
         public static void SetToolbarToggleState(Image icon, bool active)
         {
@@ -58,7 +68,7 @@ namespace Arcade.Compose
             if (active) button.colors = ToolbarActiveStates();
             else SetStates(button, ToolbarEntry);
             Color foreground = active ? Color.Lerp(IconColor, Dark ? Color.white : Color.black, .25f) : IconColor;
-            icon.color = button.IsInteractable() ? foreground : Current.Muted;
+            icon.color = button.IsInteractable() ? foreground : Color.Lerp(IconColor, Current.Chrome, .55f);
         }
     }
 }

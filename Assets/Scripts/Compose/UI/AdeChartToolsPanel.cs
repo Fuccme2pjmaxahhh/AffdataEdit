@@ -284,7 +284,7 @@ namespace Arcade.Compose
         {
             status.text = text;
             status.gameObject.SetActive(text.Length > 0);
-            status.color = error ? new Color32(232, 113, 113, 255) : Foreground;
+            status.color = error ? AdeUiTheme.ErrorText : Foreground;
         }
         private void ClearMessage() => Message("");
     }

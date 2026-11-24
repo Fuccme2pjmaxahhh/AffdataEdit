@@ -45,7 +45,7 @@ namespace Arcade.Gameplay
         // Hit sounds run on their own cursor at SoundChartTiming (ahead of the drawn time by the visual delay).
         private readonly ArcJudgementCursor<ArcArcTap> soundJudgement = new ArcJudgementCursor<ArcArcTap>();
         private readonly List<ArcArcTap> soundCrossedArcTaps = new List<ArcArcTap>();
-        internal void ResetJudgement() { judgement.Reset(); soundJudgement.Reset(); }
+        internal void ResetJudgement(int soundStart) { judgement.Reset(); soundJudgement.Reset(soundStart); }
         private readonly HashSet<ArcArc> candidateArcs = new HashSet<ArcArc>();
         private readonly Dictionary<int, ArcArc> hiddenEffectOwners = new Dictionary<int, ArcArc>();
 
@@ -464,12 +464,25 @@ namespace Arcade.Gameplay
                 if (!tap.Arc.NoInput() && !tap.Arc.Designant) JudgeArcTap(tap);
 			foreach (ArcArc arc in Arcs)
 			{
+                int? previousPreviewTiming = arc.CreationPreviewSoundTiming;
+                if (previousPreviewTiming.HasValue) arc.CreationPreviewSoundTiming = soundTiming;
 				if (arc.NoInput() || arc.Designant)
 				{
 					continue;
 				}
 				// The sound follows the music's time (ahead of the drawn time by the visual delay).
-				if (!arc.IsVoid && !arc.AudioPlayed && soundTiming > arc.Timing && soundTiming <= arc.EndTiming)
+                if (previousPreviewTiming.HasValue)
+                {
+                    // Moving the tail can extend across the playhead repeatedly. Only crossing the head makes a sound.
+                    if (soundTiming <= arc.Timing) arc.AudioPlayed = false;
+                    else if (previousPreviewTiming.Value <= arc.Timing)
+                    {
+                        if (!arc.IsVoid && !arc.IsVariousSizedArctap && ArcGameplayManager.Instance.IsPlaying)
+                            ArcEffectManager.Instance.PlayArcSound();
+                        arc.AudioPlayed = true;
+                    }
+                }
+				else if (!arc.IsVoid && !arc.AudioPlayed && soundTiming > arc.Timing && soundTiming <= arc.EndTiming)
 				{
 					if (ArcGameplayManager.Instance.IsPlaying && arc.ShouldPlayAudio) ArcEffectManager.Instance.PlayArcSound();
 					arc.AudioPlayed = true;

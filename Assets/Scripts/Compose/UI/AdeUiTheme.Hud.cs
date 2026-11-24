@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Arcade.Gameplay;
 using TMPro;
 using UnityEngine;
@@ -8,6 +9,21 @@ namespace Arcade.Compose
     public sealed partial class AdeUiTheme
     {
         private Material hudMaterial;
+        private static TMP_FontAsset ratingFont;
+
+        // AA draws the rating in Kazesawa Semibold (SIL OFL; Resources/AffdataEdit/Fonts).
+        private static TMP_FontAsset RatingFont()
+        {
+            if (ratingFont) return ratingFont;
+            var source = Resources.Load<Font>("AffdataEdit/Fonts/Kazesawa-Semibold");
+            if (!source) return null;
+            ratingFont = TMP_FontAsset.CreateFontAsset(source);
+            if (!ratingFont) return null;
+            ratingFont.name = "Kazesawa-Semibold SDF";
+            // CJK ratings fall back to the editor font.
+            if (AdeEditorText.Font) ratingFont.fallbackFontAssetTable = new List<TMP_FontAsset> { AdeEditorText.Font };
+            return ratingFont;
+        }
 
         private void StylePlaybackHud()
         {
@@ -74,16 +90,27 @@ namespace Arcade.Compose
             // strip. ArcadeComposeManager places the difficulty buttons, cut and the
             // shared text right edge for editor and player positions.
             var rating = (RectTransform)panel.Find("Difficult");
-            rating.anchoredPosition = new Vector2(rating.anchoredPosition.x, -86);
+            // The 40-unit field is centred on the 30-unit cut (-91 to -121); like AA, the
+            // capitals sit centred on it, one unit low.
+            rating.anchoredPosition = new Vector2(rating.anchoredPosition.x, -87);
             rating.sizeDelta = new Vector2(112, 40);
             var ratingInput = rating.GetComponent<TMP_InputField>();
             ratingInput.characterLimit = 0;
-            ratingInput.textComponent.alignment = TextAlignmentOptions.Midline;
-            // Longer ratings shrink a little instead of running into the buttons.
-            ratingInput.textComponent.enableAutoSizing = true;
-            ratingInput.textComponent.fontSizeMin = 14;
-            ratingInput.textComponent.fontSizeMax = 18;
-            if (ratingInput.placeholder is TMP_Text placeholder) placeholder.alignment = TextAlignmentOptions.Midline;
+            var ratingText = ratingInput.textComponent;
+            var font = RatingFont();
+            if (font) ratingText.font = font;
+            // Capline centres the capitals; Midline also counted descender room and sat high.
+            ratingText.alignment = TextAlignmentOptions.Capline;
+            // Capitals take about 0.42 of the strip height (AA's 3/8 read too small in
+            // Kazesawa). Longer ratings shrink a little instead of running into the buttons.
+            ratingText.enableAutoSizing = true;
+            ratingText.fontSizeMin = 14;
+            ratingText.fontSizeMax = 18;
+            if (ratingInput.placeholder is TMP_Text placeholder)
+            {
+                if (font) placeholder.font = font;
+                placeholder.alignment = TextAlignmentOptions.Capline;
+            }
             // AA's title/artist lines (-145/-173) are centred on the cover (-113 to -203).
             var name = (RectTransform)panel.Find("Name");
             name.anchoredPosition = new Vector2(-255, -125);

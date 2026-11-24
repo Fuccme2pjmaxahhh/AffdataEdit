@@ -35,6 +35,7 @@ namespace Arcade.Gameplay
         private RectTransform progressFill;
         private Image progressTrack, progressFillImage;
         private double scheduledStart = -1;
+        internal bool StartScheduled => scheduledStart >= 0;
         private float playBackSpeed = 1;
         // Changes when playback moves between the original and a rendered stream (sync recalibrates).
         public uint VoiceVersion { get; private set; }
@@ -226,7 +227,11 @@ namespace Arcade.Gameplay
             SlowAudioCache.SetPlaybackState(true, playBackSpeed);
             liveResume = false;
             EnsureLive();
-            if (voice != null) BassNative.Check(BassNative.BASS_ChannelPlay(ActiveVoice.Handle, false), "play music");
+            if (voice != null)
+            {
+                ActiveVoice.PreparePlayback();
+                BassNative.Check(BassNative.BASS_ChannelPlay(ActiveVoice.Handle, false), "play music");
+            }
         }
         // Live rendering is prepared now, so the scheduled start does not wait for it.
         public void PlayDelayed(float seconds) { EnsureLive(); scheduledStart = BassAudio.Clock + Mathf.Max(0, seconds); }

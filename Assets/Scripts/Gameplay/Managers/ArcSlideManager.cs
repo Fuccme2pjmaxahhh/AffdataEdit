@@ -127,6 +127,11 @@ namespace Arcade.Gameplay
             previousSoundTime = int.MinValue; previousSoundPlaying = false;
             previousSeekVersion = ArcGameplayManager.Instance ? ArcGameplayManager.Instance.SeekVersion : 0;
         }
+        internal void ResumeSoundFrom(int timing)
+        {
+            previousSoundTime = timing;
+            previousSoundPlaying = true;
+        }
         private void ResetVisualFeedback()
         {
             previousTime = int.MinValue;

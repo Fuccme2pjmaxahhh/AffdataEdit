@@ -1,4 +1,5 @@
 ﻿using System;
+using Arcade.Aff;
 using Arcade.Gameplay;
 using Arcade.Gameplay.Chart;
 using Arcade.Compose.UI;
@@ -22,14 +23,24 @@ namespace Arcade.Compose.Editing
             return new Plane(Vector3.forward, new Vector3(0, 0, z));
         }
 
-        private static bool TryGetGroundGroupX(Ray ray, Ray startRay, Vector3 anchor, out float x)
+        private static bool TryGetHorizontalGroupPosition(Ray ray, Ray startRay, Vector3 anchor, bool hasSlide,
+            out float x, out float offsetX)
         {
             x = anchor.x;
+            offsetX = 0;
             var grid = AdeGridManager.Instance;
-            var plane = grid.EnableVertical ? new Plane(Vector3.forward, anchor) : Ground;
+            var plane = grid.EnableVertical || hasSlide ? new Plane(Vector3.forward, anchor) : Ground;
             if (!plane.Raycast(ray, out float distance) || !plane.Raycast(startRay, out float startDistance)) return false;
             x += ray.GetPoint(distance).x - startRay.GetPoint(startDistance).x;
             if (grid.EnableVertical && !Mathf.Approximately(x, anchor.x)) x = grid.AttachDragWorldX(x);
+            float startX = ArcAlgorithm.WorldXToArc(anchor.x);
+            offsetX = ArcAlgorithm.WorldXToArc(x) - startX;
+            if (hasSlide)
+            {
+                // Slides store three decimal places. Round the common offset before moving any note.
+                offsetX = RawAffSlide.RoundCoordinate(offsetX);
+                x = offsetX == 0 ? anchor.x : ArcAlgorithm.ArcXToWorld(startX + offsetX);
+            }
             return true;
         }
 

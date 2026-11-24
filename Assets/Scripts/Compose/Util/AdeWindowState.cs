@@ -147,6 +147,16 @@ namespace Arcade.Compose
 #endif
         }
 
+        // Returns false until the native window exists, so callers can retry.
+        public static bool SetTitle(string title)
+        {
+#if UNITY_STANDALONE_WIN && !UNITY_EDITOR
+            return instance && instance.TryGetWindow(out IntPtr window) && SetWindowText(window, title);
+#else
+            return true;
+#endif
+        }
+
         public static bool ChangeFullscreen(string resolution, bool fullscreen)
         {
 #if UNITY_STANDALONE_WIN && !UNITY_EDITOR
@@ -314,6 +324,8 @@ namespace Arcade.Compose
         private static extern uint GetWindowThreadProcessId(IntPtr window, out uint process);
         [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)]
         private static extern bool GetGUIThreadInfo(uint thread, ref GuiThreadInfo info);
+        [DllImport("user32.dll", EntryPoint = "SetWindowTextW", CharSet = CharSet.Unicode)] [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool SetWindowText(IntPtr window, string text);
 #endif
     }
 }

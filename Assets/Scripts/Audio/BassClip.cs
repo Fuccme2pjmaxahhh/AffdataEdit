@@ -1,5 +1,6 @@
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading;
 using UnityEngine;
 
 namespace Arcade.Audio
@@ -143,34 +144,49 @@ namespace Arcade.Audio
             clip.externalData = Wav(new byte[checked(frames * channels * 2)], channels, frequency);
             return clip;
         }
-        // A separate decode stream keeps spectrum reads independent of playback and tempo.
-        internal int ReadSpectrumSamples(System.Action<int, int> begin, System.Action<float[], int, int> write)
+        // Stream the first channel in bounded blocks, independently of playback and tempo.
+        internal sealed class SpectrumReader : System.IDisposable
         {
-            using (var voice = new BassVoice(this, false))
+            private readonly BassVoice voice;
+            private readonly int channels;
+            private readonly float[] interleaved;
+            internal readonly int SampleRate, FrameCount;
+
+            internal SpectrumReader(BassClip source)
             {
-                BassNative.Check(BassNative.BASS_ChannelGetInfo(voice.Handle, out BassNative.ChannelInfo info), "spectrum info");
-                long bytes = BassNative.BASS_ChannelGetLength(voice.Handle, 0);
-                BassNative.Check(bytes >= 0, "spectrum length");
-                int expected = checked((int)(bytes / sizeof(float) / info.Channels));
-                begin(info.Frequency, expected);
-                var buffer = new float[4096 * info.Channels];
-                var mono = new float[4096];
-                int offset = 0;
-                while (offset < expected)
+                voice = new BassVoice(source, false);
+                try
                 {
-                    int count = System.Math.Min(buffer.Length, (expected - offset) * info.Channels);
-                    int read = BassNative.BASS_ChannelGetData(voice.Handle, buffer, count * sizeof(float));
+                    BassNative.Check(BassNative.BASS_ChannelGetInfo(voice.Handle, out var info), "spectrum info");
+                    long bytes = BassNative.BASS_ChannelGetLength(voice.Handle, 0);
+                    BassNative.Check(bytes >= 0, "spectrum length");
+                    channels = info.Channels;
+                    SampleRate = info.Frequency;
+                    FrameCount = checked((int)(bytes / sizeof(float) / channels));
+                    interleaved = new float[4096 * channels];
+                }
+                catch { voice.Dispose(); throw; }
+            }
+
+            internal int Read(float[] samples, int count, CancellationToken cancellation)
+            {
+                int written = 0;
+                while (written < count)
+                {
+                    cancellation.ThrowIfCancellationRequested();
+                    int frames = System.Math.Min(4096, count - written);
+                    int read = BassNative.BASS_ChannelGetData(voice.Handle, interleaved, frames * channels * sizeof(float));
                     if (read < 0 && BassNative.BASS_ErrorGetCode() == 45) break; // BASS_ERROR_ENDED
                     BassNative.Check(read > 0, "spectrum decode");
-                    int frames = read / sizeof(float) / info.Channels;
+                    frames = read / sizeof(float) / channels;
                     BassNative.Check(frames > 0, "spectrum frames");
-                    // Alpha analyzes the first channel without averaging stereo channels.
-                    for (int i = 0; i < frames; i++) mono[i] = buffer[i * info.Channels];
-                    write(mono, offset, frames);
-                    offset += frames;
+                    for (int i = 0; i < frames; i++) samples[written + i] = interleaved[i * channels];
+                    written += frames;
                 }
-                return offset;
+                return written;
             }
+
+            public void Dispose() => voice.Dispose();
         }
         private static byte[] Wav(byte[] pcm, int channels, int frequency)
         {

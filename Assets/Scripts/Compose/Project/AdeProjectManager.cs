@@ -81,7 +81,9 @@ namespace Arcade.Compose
 
 		private bool loading;
 		private FileSystemWatcher watcher = new FileSystemWatcher();
-		private bool shouldReload = false;
+        private readonly object chartFileLock = new object();
+        private string savedChartPath, pendingReloadPath;
+        private byte[] savedChartBytes;
 		private bool audioOverrided = false;
 
 		public string ProjectArcadeFolder
@@ -228,15 +230,92 @@ namespace Arcade.Compose
 		}
 		private void Update()
 		{
-			if (shouldReload)
-			{
-				ReloadChart();
-				shouldReload = false;
-			}
+            if (!loading)
+            {
+                string path = System.Threading.Interlocked.Exchange(ref pendingReloadPath, null);
+                if (path != null && watcher.EnableRaisingEvents && CurrentProjectFolder != null
+                    && string.Equals(path, Path.GetFullPath(Path.Combine(CurrentProjectFolder, $"{CurrentDifficulty}.aff")), StringComparison.OrdinalIgnoreCase))
+                {
+                    // Reloading would discard edits made here; ask first, like Arcade-Alpha.
+                    if (HasUnsavedChart) ShowUnsavedDialog("谱面文件已在外部被修改，但这里还有未保存的修改。\n重新加载会放弃这里的修改；保留则下次保存时覆盖外部修改。",
+                        "重新加载", ReloadChart, "保留我的修改", null);
+                    else ReloadChart();
+                }
+            }
 			if (AdeInputManager.Instance.CheckHotkeyActionPressed(AdeInputManager.Instance.Hotkeys.Save))
 			{
 				SaveProject();
 			}
+			RefreshSaveState();
+		}
+
+		// Unsaved state: "●" at the start of the window title (still visible when the taskbar
+		// truncates it, unlike Arcade-Alpha's trailing "*(Unsaved)") and a dot on the Save button.
+		private bool HasUnsavedChart => CurrentProjectMetadata != null && ArcGameplayManager.Instance.Chart != null
+			&& AdeCommandManager.Instance.HasUnsavedChanges;
+		private bool? shownUnsaved;
+		private bool titleUnsaved, titleSet;
+		private string titleSong;
+		private int titleDifficulty = int.MinValue;
+		private void RefreshSaveState()
+		{
+			bool unsaved = HasUnsavedChart;
+			if (shownUnsaved != unsaved && AdeToast.Instance && AdeToast.Instance.SetUnsaved(unsaved)) shownUnsaved = unsaved;
+			bool hasChart = CurrentProjectMetadata != null && ArcGameplayManager.Instance.Chart != null;
+			string song = hasChart ? CurrentProjectMetadata.Title : null;
+			int difficulty = hasChart ? CurrentDifficulty : -1;
+			if (titleSet && titleUnsaved == unsaved && titleSong == song && titleDifficulty == difficulty) return;
+			string title = Application.productName;
+			if (hasChart)
+			{
+				string name = string.IsNullOrWhiteSpace(song)
+					? Path.GetFileName((CurrentProjectFolder ?? "").TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)) : song;
+				string diff = difficulty >= 0 && difficulty < DifficultyNames.Length
+					? DifficultyNames[difficulty] : difficulty.ToString(CultureInfo.InvariantCulture);
+				title = (unsaved ? "● " : "") + name + " [" + diff + "] — " + title;
+			}
+			titleSet = AdeWindowState.SetTitle(title);
+			titleUnsaved = unsaved;
+			titleSong = song;
+			titleDifficulty = difficulty;
+		}
+
+		private AdeDualDialog unsavedDialog;
+		private Text unsavedHint;
+		private Action unsavedLeft, unsavedRight;
+		// Closing with the corner button cancels; the left button is the primary choice.
+		private void ShowUnsavedDialog(string hint, string left, Action onLeft, string right, Action onRight)
+		{
+			if (!unsavedDialog)
+			{
+				unsavedDialog = AdeUiKit.CloneDialog(AdeObsManager.Instance.OBSDialog, "UnsavedChartDialog");
+				unsavedDialog.Title.text = "谱面未保存";
+				unsavedHint = AdeUiKit.CreateLabelRow(AdeUiKit.Content(unsavedDialog),
+					AdeBasicSingleDialogContent.Instance.Content.transform, "");
+				AdeUiKit.SetOnClick(unsavedDialog.LeftButton, () => ChooseUnsaved(true));
+				AdeUiKit.SetOnClick(unsavedDialog.RightButton, () => ChooseUnsaved(false));
+				unsavedDialog.OnClose += () => unsavedLeft = unsavedRight = null;
+			}
+			unsavedDialog.LeftButtonText.text = left;
+			unsavedDialog.RightButtonText.text = right;
+			unsavedHint.text = hint;
+			unsavedHint.color = AdeUiTheme.Current.Text;
+			unsavedLeft = onLeft;
+			unsavedRight = onRight;
+			unsavedDialog.Open();
+		}
+		private void ChooseUnsaved(bool left)
+		{
+			Action action = left ? unsavedLeft : unsavedRight;
+			unsavedDialog.Close();
+			action?.Invoke();
+		}
+		// Arcade-Alpha asks before loading over unsaved edits; this offers save, discard or cancel in one dialog.
+		private void RunAfterUnsavedCheck(string what, Action proceed)
+		{
+			if (!HasUnsavedChart) { proceed(); return; }
+			ShowUnsavedDialog($"当前谱面有未保存的修改。\n{what}前要先保存吗？点右上角 × 取消。",
+				"保存并继续", () => { if (TrySaveProject()) proceed(); }, "不保存", proceed);
 		}
 
 		private void CreateArcadeDirectories(string folder)
@@ -311,7 +390,7 @@ namespace Arcade.Compose
 			{
 				string folder = Util.Shell.FileBrowser.OpenFolderDialog("选择您的 Arcaea 自制谱文件夹 (包含 0/1/2.aff, base.mp3/ogg/wav, base.jpg)");
 				if (folder == null) return;
-				RunLoadingAsync(() => LoadProject(folder), false).Forget();
+				RunAfterUnsavedCheck("打开其他谱面", () => { if (!loading) RunLoadingAsync(() => LoadProject(folder), false).Forget(); });
 			}
 			catch (Exception Ex)
 			{
@@ -327,13 +406,14 @@ namespace Arcade.Compose
 			{
 				return false;
 			}
-			RunLoadingAsync(() => LoadProject(folder), false).Forget();
+			RunAfterUnsavedCheck("打开其他谱面", () => { if (!loading) RunLoadingAsync(() => LoadProject(folder), false).Forget(); });
 			return true;
 		}
-		public void SaveProject()
+		public void SaveProject() => TrySaveProject();
+		private bool TrySaveProject()
 		{
-			if (CurrentProjectMetadata == null || CurrentProjectFolder == null) return;
-			if (ArcGameplayManager.Instance.Chart == null) return;
+			if (CurrentProjectMetadata == null || CurrentProjectFolder == null) return false;
+			if (ArcGameplayManager.Instance.Chart == null) return false;
 			try
 			{
 				// Finish serialization before touching the existing chart file.
@@ -345,13 +425,23 @@ namespace Arcade.Compose
 					CurrentProjectMetadata.LastWorkingDifficulty = CurrentDifficulty;
 					CurrentProjectMetadata.LastWorkingTiming = ArcGameplayManager.Instance.AudioTiming;
 					File.WriteAllText(ProjectMetadataFilePath, JsonConvert.SerializeObject(CurrentProjectMetadata));
-					File.WriteAllBytes(path, snapshot.ToArray());
+                    byte[] bytes = snapshot.ToArray();
+                    lock (chartFileLock)
+                    {
+                        File.WriteAllBytes(path, bytes);
+                        savedChartPath = Path.GetFullPath(path);
+                        savedChartBytes = bytes;
+                        System.Threading.Interlocked.Exchange(ref pendingReloadPath, null);
+                    }
 				}
-				AdeToast.Instance.Show("谱面已保存");
+				AdeCommandManager.Instance.MarkSaved();
+				AdeToast.Instance.ShowSaved("谱面已保存");
+				return true;
 			}
 			catch (Exception Ex)
 			{
 				AdeBasicSingleDialogContent.Instance.Show(Ex.Message + "\n" + Ex.ToString(), "保存错误");
+				return false;
 			}
 		}
 
@@ -431,7 +521,7 @@ namespace Arcade.Compose
 			{
 				return;
 			}
-			RunLoadingAsync(() => LoadDifficulty(difficulty), true).Forget();
+			RunAfterUnsavedCheck("切换难度", () => { if (!loading) RunLoadingAsync(() => LoadDifficulty(difficulty), true).Forget(); });
 		}
 
 		public void SetDefaultCover(Sprite cover)
@@ -600,6 +690,11 @@ namespace Arcade.Compose
 
 		private void LoadChart(int difficulty)
 		{
+            lock (chartFileLock)
+            {
+                savedChartPath = null;
+                savedChartBytes = null;
+            }
 			AdeOperationManager.Instance.CancelOngoingOperation();
 			AdeSelectionManager.Instance.DeselectAllNotes();
 			if (CurrentProjectMetadata == null || CurrentProjectFolder == null || chartAudio == null)
@@ -773,6 +868,8 @@ namespace Arcade.Compose
 			bool result = int.TryParse(AudioOffset.text, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
 			if (result)
 			{
+				// The offset is written into the .aff but is not an undoable command.
+				if (ArcGameplayManager.Instance.ChartAudioOffset != value) AdeCommandManager.Instance.MarkChanged();
 				ArcGameplayManager.Instance.ChartAudioOffset = value;
 				AudioOffset.text = value.ToString(CultureInfo.InvariantCulture);
 			}
@@ -788,25 +885,40 @@ namespace Arcade.Compose
 
 		private void OnWatcherChanged(object sender, FileSystemEventArgs e)
 		{
-			DateTime begin = DateTime.Now;
-			FileStream fs = null;
-
-		retry:
-			try
-			{
-				fs = File.Open(e.FullPath, FileMode.Open, FileAccess.Read, FileShare.None);
-			}
-			catch (IOException)
-			{
-				if (DateTime.Now - begin < TimeSpan.FromSeconds(3))
-					goto retry;
-				else return;
-			}
-
-			fs?.Close();
-
-			shouldReload = true;
+            var wait = System.Diagnostics.Stopwatch.StartNew();
+            while (true)
+            {
+                try
+                {
+                    lock (chartFileLock)
+                    using (var file = File.Open(e.FullPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                    {
+                        if (string.Equals(e.FullPath, savedChartPath, StringComparison.OrdinalIgnoreCase)
+                            && MatchesSavedChart(file)) return;
+                        System.Threading.Interlocked.Exchange(ref pendingReloadPath, e.FullPath);
+                    }
+                    return;
+                }
+                catch (IOException)
+                {
+                    if (wait.ElapsedMilliseconds >= 3000) return;
+                    System.Threading.Thread.Sleep(25);
+                }
+            }
 		}
+
+        private bool MatchesSavedChart(Stream file)
+        {
+            if (file.Length != savedChartBytes.Length) return false;
+            var buffer = new byte[8192];
+            int offset = 0, count;
+            while ((count = file.Read(buffer, 0, buffer.Length)) > 0)
+            {
+                if (!buffer.AsSpan(0, count).SequenceEqual(savedChartBytes.AsSpan(offset, count))) return false;
+                offset += count;
+            }
+            return offset == savedChartBytes.Length;
+        }
 
 		public void OnSaveModeClicked()
 		{

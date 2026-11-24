@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 using Arcade.Audio;
 using NUnit.Framework;
 using UnityEngine;
@@ -49,28 +51,33 @@ public class MemoryAudioLifecycleTests
     private static short Left(int frame) => (short)((frame % 101 - 50) * 200);
     private static object Field(BassClip clip, string name) => typeof(BassClip).GetField(name, PrivateInstance).GetValue(clip);
 
+    private static void AssertSpectrum(BassClip clip, int frames, Func<int, float> expectedSample)
+    {
+        var type = typeof(BassClip).GetNestedType("SpectrumReader", BindingFlags.NonPublic);
+        using (var reader = (IDisposable)Activator.CreateInstance(type, PrivateInstance, null, new object[] { clip }, null))
+        {
+            Assert.AreEqual(Frequency, type.GetField("SampleRate", PrivateInstance).GetValue(reader));
+            Assert.AreEqual(frames, type.GetField("FrameCount", PrivateInstance).GetValue(reader));
+            var read = type.GetMethod("Read", PrivateInstance);
+            // Split in the middle of a decoder block and exercise a short final upload.
+            var samples = new float[4500];
+            for (int offset = 0; offset < frames; offset += samples.Length)
+            {
+                int count = Math.Min(samples.Length, frames - offset);
+                Assert.AreEqual(count, read.Invoke(reader, new object[] { samples, count, CancellationToken.None }));
+                for (int i = 0; i < count; i++)
+                    Assert.That(samples[i], Is.EqualTo(expectedSample(offset + i)).Within(0.000001));
+            }
+        }
+    }
+
     [Test]
     public void MusicLengthAndChunkedSpectrumKeepFileBytesUnloaded()
     {
         var clip = Load();
         Assert.That(clip.length, Is.EqualTo(Frames / (double)Frequency).Within(0.0001));
         Assert.That(Field(clip, "externalData"), Is.Null);
-        int offset = 0, calls = 0;
-        float[] firstBuffer = null;
-        Action<int, int> begin = (rate, count) => { Assert.AreEqual(Frequency, rate); Assert.AreEqual(Frames, count); };
-        Action<float[], int, int> write = (buffer, destination, count) =>
-        {
-            Assert.AreEqual(offset, destination);
-            if (firstBuffer == null) firstBuffer = buffer;
-            else Assert.AreSame(firstBuffer, buffer, "Spectrum chunks must reuse the bounded buffer.");
-            for (int i = 0; i < count; i++) Assert.That(buffer[i], Is.EqualTo(Left(offset + i) / 32768f).Within(0.000001));
-            offset += count;
-            calls++;
-        };
-        int actual = (int)typeof(BassClip).GetMethod("ReadSpectrumSamples", PrivateInstance).Invoke(clip, new object[] { begin, write });
-        Assert.AreEqual(Frames, actual);
-        Assert.AreEqual(Frames, offset);
-        Assert.Greater(calls, 1);
+        AssertSpectrum(clip, Frames, i => Left(i) / 32768f);
         Assert.That(Field(clip, "externalData"), Is.Null);
     }
 
@@ -107,16 +114,7 @@ public class MemoryAudioLifecycleTests
     {
         var clip = BassClip.CreateSilence("embedded silence", 5000, 2, Frequency);
         clips.Add(clip);
-        int written = 0;
-        Action<int, int> begin = (rate, count) => { Assert.AreEqual(Frequency, rate); Assert.AreEqual(5000, count); };
-        Action<float[], int, int> write = (buffer, destination, count) =>
-        {
-            Assert.AreEqual(written, destination);
-            for (int i = 0; i < count; i++) Assert.AreEqual(0, buffer[i]);
-            written += count;
-        };
-        Assert.AreEqual(5000, typeof(BassClip).GetMethod("ReadSpectrumSamples", PrivateInstance).Invoke(clip, new object[] { begin, write }));
-        Assert.AreEqual(5000, written);
+        AssertSpectrum(clip, 5000, i => 0);
     }
 
     [Test]

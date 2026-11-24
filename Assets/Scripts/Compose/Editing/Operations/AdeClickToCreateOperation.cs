@@ -493,6 +493,7 @@ namespace Arcade.Compose.Operation
 			int timing = AdeCursorManager.Instance.AttachedTiming;
 			var timingGroup = AdeTimingEditor.Instance.currentTimingGroup;
 			ArcArc note = new ArcArc() { Timing = timing, EndTiming = timing, Color = currentArcColor, Effect = "none", LineType = currentArcLineType, CurveType = currentArcCurveType, TimingGroup = timingGroup };
+            note.CreationPreviewSoundTiming = ArcGameplayManager.Instance.SoundChartTiming;
 			AdeCommandManager.Instance.Prepare(new AddArcEventCommand(note));
 
             creatingArc = note;
@@ -546,7 +547,11 @@ namespace Arcade.Compose.Operation
 				AdeCommandManager.Instance.Cancel();
 				throw ex;
 			}
-            finally { creatingArc = null; }
+            finally
+            {
+                note.CreationPreviewSoundTiming = null;
+                creatingArc = null;
+            }
 			AdeCommandManager.Instance.Commit();
 			AdeSelectionManager.Instance.SelectNote(note);
 		}
