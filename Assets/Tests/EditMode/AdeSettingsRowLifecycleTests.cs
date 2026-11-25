@@ -59,6 +59,137 @@ public class AdeSettingsRowLifecycleTests
     }
 
     [Test]
+    public void InvalidIntegerSettingsRestoreTheEffectiveValues()
+    {
+        compose.UndoBufferSizeInput = delay;
+        compose.ArcadePreference.UndoBufferSize = 200;
+        compose.ArcadePreference.GlobalAudioOffset = -23;
+        foreach (string invalid in new[] { "", "-", "1234567890123" })
+        {
+            compose.SetUndoBufferSize(invalid);
+            compose.SetGlobalAudioOffset(invalid);
+            Assert.AreEqual("200", delay.text);
+            Assert.AreEqual("-23", compose.GlobalAudioOffsetInput.text);
+        }
+
+        var obs = root.AddComponent<Arcade.Compose.Feature.AdeObsManager>();
+        obs.ObsServerPortInput = delay;
+        var preference = new Arcade.Compose.Feature.OBSPreferences();
+        obs.GetType().GetField("preference", Members).SetValue(obs, preference);
+        obs.OnOBSServerPortChange("65535");
+        foreach (string invalid in new[] { "0", "-1", "65536", "" })
+        {
+            obs.OnOBSServerPortChange(invalid);
+            Assert.AreEqual(65535, preference.port);
+            Assert.AreEqual("65535", delay.text);
+        }
+
+        var gameplayInstance = typeof(Arcade.Gameplay.ArcGameplayManager).GetProperty("Instance");
+        var previousGame = gameplayInstance.GetValue(null);
+        try
+        {
+            var game = root.AddComponent<Arcade.Gameplay.ArcGameplayManager>();
+            gameplayInstance.SetValue(null, game);
+            game.ChartAudioOffset = -34;
+            var project = root.AddComponent<AdeProjectManager>();
+            project.AudioOffset = delay;
+            delay.SetTextWithoutNotify("-");
+            project.OnAudioOffsetEdited();
+            Assert.AreEqual(-34, game.ChartAudioOffset);
+            Assert.AreEqual("-34", delay.text);
+        }
+        finally { gameplayInstance.SetValue(null, previousGame); }
+    }
+
+    [Test]
+    public void GridRangeExpansionIncludesDecimalEndpointAndRejectsWholeInvalidAxis()
+    {
+        var parse = typeof(AdeGridManager).GetMethod("Parse", BindingFlags.Static | BindingFlags.NonPublic);
+        IList Parse(string value) => (IList)parse.Invoke(null, new object[] { value });
+        foreach (var value in new[] { "0>1/0", "0>1/-1", "0>1/1e-18", "0;bad;1", "NaN", "Infinity",
+            "1>0/1", "1>2/1e-20", "0>4096/1", "0>4095/1;2" })
+            Assert.IsNull(Parse(value), value);
+        Assert.AreEqual(4096, Parse("0>4095/1").Count);
+        Assert.IsEmpty(Parse(""));
+        var positions = Parse("0>1/0.1;2;");
+        Assert.AreEqual(12, positions.Count);
+        Assert.AreEqual(1f, positions[10]);
+        Assert.AreEqual(2f, positions[11]);
+    }
+
+    [Test]
+    public void PartialGridDraftAndInvalidStoredAxisPreserveOtherCoordinates()
+    {
+        const BindingFlags globals = BindingFlags.Static | BindingFlags.NonPublic;
+        var file = typeof(AdeSettings).GetField("file", globals);
+        var canSave = typeof(AdeSettings).GetField("canSave", globals);
+        var instance = typeof(AdeGridManager).GetProperty("Instance");
+        var oldFile = file.GetValue(null);
+        var oldCanSave = canSave.GetValue(null);
+        var oldGrid = instance.GetValue(null);
+        try
+        {
+            var isolated = new AdeSettingsFile(System.IO.Path.Combine(System.IO.Path.GetTempPath(), Guid.NewGuid() + ".json"));
+            isolated.Load();
+            file.SetValue(null, isolated);
+            canSave.SetValue(null, false);
+            AdeSettings.SetString("AdeOBSDialog", "{\"ip\":\"example.invalid\",\"port\":70000}");
+            var obs = root.AddComponent<Arcade.Compose.Feature.AdeObsManager>();
+            obs.GetType().GetMethod("LoadPreferences", Members).Invoke(obs, null);
+            var obsSettings = (Arcade.Compose.Feature.OBSPreferences)obs.GetType().GetField("preference", Members).GetValue(obs);
+            Assert.AreEqual(4455, obsSettings.port);
+            Assert.AreEqual("example.invalid", obsSettings.ip);
+            AdeSettings.SetString("AdeGridManager", "{\"X\":\"0>1/0\",\"Y\":\"0.7\"}");
+            var grid = root.AddComponent<AdeGridManager>();
+            instance.SetValue(null, grid);
+            grid.VerticalXInputField = delay;
+            grid.VerticalYInputField = compose.GlobalAudioOffsetInput;
+            grid.GetType().GetMethod("LoadCustomGrids", Members).Invoke(grid, null);
+            Assert.AreEqual(new CustomGrid().X, delay.text);
+            CollectionAssert.AreEqual(new[] { .7f }, grid.VerticalYPositions);
+            var original = grid.VerticalXPositions;
+            grid.DensityInputField = delay;
+            grid.BeatlineDensity = 4;
+            delay.SetTextWithoutNotify("NaN");
+            grid.OnDensityChange();
+            Assert.AreEqual("4", delay.text);
+            delay.SetTextWithoutNotify("0;bad");
+            grid.OnVerticalXChange();
+            Assert.AreSame(original, grid.VerticalXPositions);
+            Assert.AreEqual(new CustomGrid().X, delay.text);
+
+            var axisType = typeof(AdeSettingsDialog).GetNestedType("GridAxisEditor", BindingFlags.NonPublic);
+            object axis = Activator.CreateInstance(axisType, true);
+            axisType.GetField("IsX").SetValue(axis, true);
+            foreach (string name in new[] { "Start", "End", "Step", "Extra" })
+                axisType.GetField(name).SetValue(axis, Object.Instantiate(delay, source));
+            TMP_InputField Field(string name) => (TMP_InputField)axisType.GetField(name).GetValue(axis);
+            axisType.GetField("Summary").SetValue(axis, Label("Summary", source, ""));
+            Field("Start").SetTextWithoutNotify("0");
+            Field("End").SetTextWithoutNotify("");
+            Field("Step").SetTextWithoutNotify("1/4");
+            Field("Extra").SetTextWithoutNotify("");
+            Call("ApplyGridAxis", axis);
+            Assert.AreSame(original, grid.VerticalXPositions);
+            Assert.AreEqual("0", Field("Start").text);
+            Field("End").SetTextWithoutNotify("1");
+            Field("Extra").SetTextWithoutNotify("oops");
+            Call("ApplyGridAxis", axis);
+            Assert.AreSame(original, grid.VerticalXPositions);
+            Field("Extra").SetTextWithoutNotify("1.5");
+            Call("ApplyGridAxis", axis);
+            CollectionAssert.AreEqual(new[] { 0f, .25f, .5f, .75f, 1f, 1.5f }, grid.VerticalXPositions);
+            CollectionAssert.AreEqual(new[] { .7f }, grid.VerticalYPositions);
+        }
+        finally
+        {
+            file.SetValue(null, oldFile);
+            canSave.SetValue(null, oldCanSave);
+            instance.SetValue(null, oldGrid);
+        }
+    }
+
+    [Test]
     public void TemporaryDisplayDelayRowIsNeverRegisteredForMounting()
     {
         Assert.That(source.childCount, Is.EqualTo(3));

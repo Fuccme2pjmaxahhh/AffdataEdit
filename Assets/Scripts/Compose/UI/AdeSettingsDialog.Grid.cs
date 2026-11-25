@@ -36,7 +36,7 @@ namespace Arcade.Compose
             var advanced = Rect("GridAdvancedCaption", page, typeof(TextMeshProUGUI));
             var caption = advanced.GetComponent<TMP_Text>();
             AdeEditorText.Configure(caption, AdeEditorText.CaptionSize);
-            caption.text = "高级：直接编辑原始写法 “起点>终点/间隔;额外位置;…”，与上方同步";
+            caption.text = "高级写法 “起点>终点/间隔;额外位置;…”，与上方同步。每轴最多 " + AdeGridManager.MaxLinesPerAxis + " 条线。";
             caption.textWrappingMode = TextWrappingModes.Normal;
             gridCaptions.Add(caption);
             foreach (var axis in gridAxes) axis.Raw.onEndEdit.AddListener(_ => LoadGridAxis(axis));
@@ -148,21 +148,24 @@ namespace Arcade.Compose
         private void ApplyGridAxis(GridAxisEditor axis)
         {
             var parts = new List<string>();
-            bool hasRange = TryNumber(axis.Start.text, out float start) & TryNumber(axis.End.text, out float end)
-                & TryStep(axis.Step.text, out float step);
-            if (hasRange)
+            if (!string.IsNullOrWhiteSpace(axis.Start.text) || !string.IsNullOrWhiteSpace(axis.End.text) || !string.IsNullOrWhiteSpace(axis.Step.text))
             {
+                if (!TryNumber(axis.Start.text, out float start) || !TryNumber(axis.End.text, out float end) || !TryStep(axis.Step.text, out float step))
+                {
+                    axis.Summary.text = "尚未应用。请填齐起点、终点和正数间隔，或清空三项以移除范围。";
+                    return;
+                }
                 if (end < start) (start, end) = (end, start);
-                parts.Add(Format(start) + ">" + Format(end) + "/" + Format(step));
+                parts.Add(start.ToString("R", CultureInfo.InvariantCulture) + ">" + end.ToString("R", CultureInfo.InvariantCulture)
+                    + "/" + step.ToString("R", CultureInfo.InvariantCulture));
             }
-            foreach (string token in (axis.Extra.text ?? "").Split(new[] { ',', ';', '，', '；', ' ' }, StringSplitOptions.RemoveEmptyEntries))
+            string extras = System.Text.RegularExpressions.Regex.Replace(axis.Extra.text ?? "", @"\s*([>/])\s*", "$1");
+            parts.AddRange(extras.Split(new[] { ',', ';', '，', '；', ' ' }, StringSplitOptions.RemoveEmptyEntries));
+            if (!AdeGridManager.Instance.TrySetVerticalAxis(axis.IsX, string.Join(";", parts)))
             {
-                string value = token.Trim();
-                if (value.Contains('>') || TryNumber(value, out _)) parts.Add(value);
+                axis.Summary.text = "尚未应用。请检查网格范围和额外位置，每轴最多 " + AdeGridManager.MaxLinesPerAxis + " 条线。";
+                return;
             }
-            axis.Raw.SetTextWithoutNotify(string.Join(";", parts));
-            if (axis.IsX) AdeGridManager.Instance.OnVerticalXChange();
-            else AdeGridManager.Instance.OnVerticalYChange();
             LoadGridAxis(axis);
         }
 
@@ -189,7 +192,7 @@ namespace Arcade.Compose
             if (slash > 0 && TryNumber(text.Substring(0, slash), out float a) && TryNumber(text.Substring(slash + 1), out float b) && b != 0)
                 value = a / b;
             else if (!TryNumber(text, out value)) return false;
-            return value > 0.0001f;
+            return float.IsFinite(value) && value > 0;
         }
 
         private static string Format(float value) => Math.Round(value, 6).ToString("0.######", CultureInfo.InvariantCulture);

@@ -322,12 +322,20 @@ namespace Arcade.Compose
 			return 3;
 		}
 
-		private const int MaxLinesPerAxis = 4096;
+		internal const int MaxLinesPerAxis = 4096;
 
 		private static bool GridNumber(string text, out double value)
 		{
 			return double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out value)
 				&& float.IsFinite((float)value);
+		}
+
+		private static List<float> LoadAxis(ref string text, string fallback)
+		{
+			var positions = Parse(text);
+			if (positions != null) return positions;
+			text = fallback;
+			return Parse(fallback);
 		}
 
 		private static List<float> Parse(string str)
@@ -622,8 +630,8 @@ namespace Arcade.Compose
 			finally
 			{
 				var defaults = new CustomGrid();
-				verticalXPositions = Parse(customGrid.X) ?? Parse(customGrid.X = defaults.X);
-				verticalYPositions = Parse(customGrid.Y) ?? Parse(customGrid.Y = defaults.Y);
+				verticalXPositions = LoadAxis(ref customGrid.X, defaults.X);
+				verticalYPositions = LoadAxis(ref customGrid.Y, defaults.Y);
 				VerticalXInputField.SetTextWithoutNotify(customGrid.X);
 				VerticalYInputField.SetTextWithoutNotify(customGrid.Y);
 			}
@@ -649,29 +657,31 @@ namespace Arcade.Compose
 			BeatlineDensity = density;
 			CalculateBeatlineTimes();
 		}
+		internal bool TrySetVerticalAxis(bool isX, string text)
+		{
+			var positions = Parse(text);
+			if (positions == null) return false;
+			if (isX)
+			{
+				verticalXPositions = positions;
+				customGrid.X = text;
+			}
+			else
+			{
+				verticalYPositions = positions;
+				customGrid.Y = text;
+			}
+			(isX ? VerticalXInputField : VerticalYInputField).SetTextWithoutNotify(text);
+			SaveCustomGrids();
+			return true;
+		}
 		public void OnVerticalXChange()
 		{
-			List<float> ret = Parse(VerticalXInputField.text);
-			if (ret == null)
-			{
-				VerticalXInputField.SetTextWithoutNotify(customGrid.X);
-				return;
-			}
-			verticalXPositions = ret;
-			customGrid.X = VerticalXInputField.text;
-			SaveCustomGrids();
+			if (!TrySetVerticalAxis(true, VerticalXInputField.text)) VerticalXInputField.SetTextWithoutNotify(customGrid.X);
 		}
 		public void OnVerticalYChange()
 		{
-			List<float> ret = Parse(VerticalYInputField.text);
-			if (ret == null)
-			{
-				VerticalYInputField.SetTextWithoutNotify(customGrid.Y);
-				return;
-			}
-			verticalYPositions = ret;
-			customGrid.Y = VerticalYInputField.text;
-			SaveCustomGrids();
+			if (!TrySetVerticalAxis(false, VerticalYInputField.text)) VerticalYInputField.SetTextWithoutNotify(customGrid.Y);
 		}
 	}
 }
