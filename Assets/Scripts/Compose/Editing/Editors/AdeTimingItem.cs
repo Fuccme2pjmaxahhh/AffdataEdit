@@ -5,7 +5,6 @@ using Text = TMPro.TMP_Text;
 using InputField = TMPro.TMP_InputField;
 using Arcade.Gameplay.Chart;
 using Arcade.Compose.Command;
-using System.Globalization;
 
 namespace Arcade.Compose.Editing
 {
@@ -38,22 +37,22 @@ namespace Arcade.Compose.Editing
 		}
 		public void OnEndEdit()
 		{
-			try
+			if (TimingReference == null || Text == AdeTimingEditor.GetTimingString(TimingReference)) return;
+			string[] parts = Text.Split(',');
+			if (parts.Length != 3 || !ChartControlText.Integer(parts[0], out int time)
+				|| !ChartControlText.Float(parts[1], out float bpm) || !ChartControlText.Float(parts[2], out float beats)
+				|| beats < 0)
 			{
-				string[] splits = Text.Split(',');
-				int timing = int.Parse(splits[0], CultureInfo.InvariantCulture);
-				float bpm = float.Parse(splits[1], CultureInfo.InvariantCulture);
-				float beat = float.Parse(splits[2], CultureInfo.InvariantCulture);
-				ArcTiming n = TimingReference.Clone() as ArcTiming;
-				n.Timing = timing;
-				n.Bpm = bpm;
-				n.BeatsPerLine = beat;
-				AdeCommandManager.Instance.Add(new EditTimingEvent(AdeTimingEditor.Instance.currentTimingGroup, TimingReference, n));
+				ItemInputField.SetTextWithoutNotify(AdeTimingEditor.GetTimingString(TimingReference));
+				AdeToast.Instance?.Show("Timing 需要时间、BPM 和非负拍数，以逗号分隔");
+				return;
 			}
-			catch (Exception)
-			{
-
-			}
+			if (time == TimingReference.Timing && bpm == TimingReference.Bpm && beats == TimingReference.BeatsPerLine) return;
+			var next = (ArcTiming)TimingReference.Clone();
+			next.Timing = time;
+			next.Bpm = bpm;
+			next.BeatsPerLine = beats;
+			AdeCommandManager.Instance.Add(new EditTimingEvent(AdeTimingEditor.Instance.currentTimingGroup, TimingReference, next));
 		}
 	}
 }

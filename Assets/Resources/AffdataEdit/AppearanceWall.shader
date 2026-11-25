@@ -30,7 +30,7 @@ Shader "AffdataEdit/AppearanceWall"
             }
             half4 frag(Varyings i):SV_Target
             {
-                half4 c = tex2D(_MainTex,i.uv) * i.color;
+                half4 c = tex2D(_MainTex, float2(i.uv.x, fmod(i.uv.y, 1.0))) * i.color;
                 c.a *= _Alpha; c.rgb *= c.a; return c;
             }
             ENDHLSL

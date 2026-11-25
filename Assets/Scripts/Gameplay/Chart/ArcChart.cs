@@ -96,91 +96,77 @@ namespace Arcade.Gameplay.Chart
 		}
 
 		public void Serialize(Stream stream, ChartSortMode mode = ChartSortMode.Timing, bool lowPrecision = false)
+			=> CaptureSerializer(mode, lowPrecision)(stream);
+
+		private sealed class SaveGroup
 		{
-			List<ArcEvent> events = new List<ArcEvent>();
-			events.AddRange(Timings);
-			events.AddRange(Cameras);
-			events.AddRange(SceneControl);
-			events.AddRange(Taps);
-			events.AddRange(Holds);
-			events.AddRange(Arcs);
-			events.AddRange(Slides);
-
-			List<ArcEvent> mainEvents = new List<ArcEvent>();
-			Dictionary<ArcTimingGroup, List<ArcEvent>> timingGroupEvents = new Dictionary<ArcTimingGroup, List<ArcEvent>>();
-			foreach (var timingGroup in TimingGroups)
+			public readonly string Attributes;
+			private readonly List<(int Time, int Type, IRawAffNestableItem Item)> events = new List<(int, int, IRawAffNestableItem)>();
+			public SaveGroup(string attributes) => Attributes = attributes;
+			public void Add(int time, int type, IRawAffNestableItem item) => events.Add((time, type, item));
+			public IEnumerable<IRawAffNestableItem> Sorted(ChartSortMode mode)
 			{
-				timingGroupEvents.Add(timingGroup, new List<ArcEvent>());
-				timingGroupEvents[timingGroup].AddRange(timingGroup.Timings);
+				IEnumerable<(int Time, int Type, IRawAffNestableItem Item)> ordered = events;
+				if (mode == ChartSortMode.Type) ordered = events.OrderBy(e => e.Type).ThenBy(e => e.Time);
+				if (mode == ChartSortMode.Timing) ordered = events.OrderBy(e => e.Time).ThenBy(e => e.Type);
+				return ordered.Select(e => e.Item);
 			}
-
-			foreach (var arcEvent in events)
-			{
-				if (arcEvent is IHasTimingGroup hasTimingGroup)
-				{
-					ArcTimingGroup timingGroup = hasTimingGroup.TimingGroup;
-					if (timingGroup != null)
-					{
-						timingGroupEvents[timingGroup].Add(arcEvent);
-						continue;
-					}
-				}
-				mainEvents.Add(arcEvent);
-			}
-
-			mainEvents = SortedEvent(mainEvents, mode);
-			foreach (var timingGroup in TimingGroups)
-			{
-				timingGroupEvents[timingGroup] = SortedEvent(timingGroupEvents[timingGroup], mode);
-			}
-
-			RawAffChart raw = new RawAffChart();
-			raw.AudioOffset = ArcGameplayManager.Instance.ChartAudioOffset;
-			raw.TimingPointDensityFactor = TimingPointDensityFactor;
-			raw.additionalMetadata = AdditionalMetadata;
-			foreach (var e in mainEvents)
-			{
-				if (e is IIntoRawItem intoRawItem)
-				{
-					var rawItem = intoRawItem.IntoRawItem();
-					raw.items.Add(rawItem);
-				}
-			}
-			foreach (var timingGroup in TimingGroups)
-			{
-				var timingGroupItem = new RawAffTimingGroup()
-				{
-					Items = new List<IRawAffNestableItem>(),
-					Attributes = timingGroup.Attributes
-				};
-				foreach (var e in timingGroupEvents[timingGroup])
-				{
-					if (e is IIntoRawItem intoRawItem)
-					{
-						var rawItem = intoRawItem.IntoRawItem() as IRawAffNestableItem;
-						timingGroupItem.Items.Add(rawItem);
-					}
-
-				}
-				raw.items.Add(timingGroupItem);
-			}
-			ArcaeaFileFormat.DumpToStream(stream, raw, lowPrecision);
 		}
 
-		static List<ArcEvent> SortedEvent(List<ArcEvent> events, ChartSortMode mode)
+		// Capture on the editor thread. Each writer owns a single detached AFF snapshot.
+		internal Action<Stream> CaptureSerializer(ChartSortMode mode, bool lowPrecision)
 		{
-			switch (mode)
+			var raw = new RawAffChart
 			{
-				case ChartSortMode.Timing:
-					return events.OrderBy(arcEvent => arcEvent.Timing)
-						.ThenBy(arcEvent => (arcEvent is ArcTiming ? 1 : arcEvent is ArcTap ? 2 : arcEvent is ArcHold ? 3 : arcEvent is ArcArc ? 4 : arcEvent is ArcCamera ? 5 : arcEvent is ArcSceneControl ? 6 : 7))
-						.ToList();
-				case ChartSortMode.Type:
-					return events.OrderBy(arcEvent => (arcEvent is ArcTiming ? 1 : arcEvent is ArcTap ? 2 : arcEvent is ArcHold ? 3 : arcEvent is ArcArc ? 4 : arcEvent is ArcCamera ? 5 : arcEvent is ArcSceneControl ? 6 : 7))
-						.ThenBy(arcEvent => arcEvent.Timing)
-						.ToList();
+				AudioOffset = ArcGameplayManager.Instance.ChartAudioOffset,
+				TimingPointDensityFactor = TimingPointDensityFactor,
+				additionalMetadata = new Dictionary<string, string>(AdditionalMetadata),
+			};
+			var groups = new List<SaveGroup>(TimingGroups.Count + 1) { new SaveGroup(null) };
+			var groupIndices = new Dictionary<ArcTimingGroup, int>(TimingGroups.Count);
+			foreach (var group in TimingGroups)
+			{
+				var bucket = new SaveGroup(group.Attributes);
+				groupIndices.Add(group, groups.Count);
+				groups.Add(bucket);
+				foreach (var timing in group.Timings)
+					bucket.Add(timing.Timing, 1, (RawAffTiming)timing.IntoRawItem());
 			}
-			return events;
+			int GroupIndex(ArcTimingGroup group) => group == null ? 0 : groupIndices[group];
+			void Capture<T>(List<T> notes, int type) where T : ArcEvent, IIntoRawItem
+			{
+				foreach (var note in notes)
+					groups[GroupIndex((note as IHasTimingGroup)?.TimingGroup)].Add(note.Timing, type, (IRawAffNestableItem)note.IntoRawItem());
+			}
+			Capture(Timings, 1);
+			Capture(Cameras, 5);
+			Capture(SceneControl, 6);
+			Capture(Taps, 2);
+			Capture(Holds, 3);
+			Capture(Arcs, 4);
+
+			var slides = new (ArcSlide.SaveData Data, int Group)[Slides.Count];
+			ArcTimingGroup previous = null;
+			int groupIndex = 0;
+			for (int i = 0; i < slides.Length; i++)
+			{
+				var note = Slides[i];
+				if (previous != note.TimingGroup)
+				{
+					previous = note.TimingGroup;
+					groupIndex = GroupIndex(previous);
+				}
+				slides[i] = (new ArcSlide.SaveData(note), groupIndex);
+			}
+			return stream =>
+			{
+				foreach (var slide in slides)
+					groups[slide.Group].Add(slide.Data.Timing, 7, slide.Data.ToRaw());
+				raw.items.AddRange(groups[0].Sorted(mode));
+				for (int i = 1; i < groups.Count; i++)
+					raw.items.Add(new RawAffTimingGroup { Attributes = groups[i].Attributes, Items = groups[i].Sorted(mode).ToList() });
+				ArcaeaFileFormat.DumpToStream(stream, raw, lowPrecision);
+			};
 		}
 	}
 	public interface ISelectable
@@ -262,11 +248,12 @@ namespace Arcade.Gameplay.Chart
 	{
 		internal static long RenderIndexVersion { get; private set; }
         internal static void InvalidateRenderIndex() => RenderIndexVersion++;
+        protected virtual void OnTimingChanged() => InvalidateRenderIndex();
         private int timing;
         public int Timing
         {
             get => timing;
-            set { if (timing == value) return; timing = value; InvalidateRenderIndex(); }
+            set { if (timing == value) return; timing = value; OnTimingChanged(); }
         }
 		public virtual void Assign(ArcEvent newValues)
 		{
@@ -294,54 +281,32 @@ namespace Arcade.Gameplay.Chart
 			{
 				Type = SceneControlType.TrackShow;
 			}
-			else if (RawType == "trackdisplay" && RawParams.Count == 2)
+			else if (RawParams.Count == 2 && RawParams[1] is RawAffInt argument
+				&& (RawParams[0] is RawAffFloat || RawParams[0] is RawAffInt))
 			{
-				if ((RawParams[0] is RawAffFloat param0) && (RawParams[1] is RawAffInt param1))
+				float seconds = RawParams[0] is RawAffFloat number ? number.data : ((RawAffInt)RawParams[0]).data;
+				switch (RawType)
 				{
-					Type = SceneControlType.TrackDisplay;
-					Duration = param0.data;
-					TrackDisplayValue = param1.data;
+					case "trackdisplay":
+						Type = SceneControlType.TrackDisplay;
+						TrackDisplayValue = argument.data;
+						break;
+					case "hidegroup": Type = SceneControlType.HideGroup; break;
+					case "enwidencamera": Type = SceneControlType.EnwidenCamera; break;
+					case "enwidenlanes": Type = SceneControlType.EnwidenLanes; break;
+					case "arcahvdistort" when seconds >= 0: Type = SceneControlType.ArcahvDistort; break;
+					case "arcahvdebris" when seconds >= 0: Type = SceneControlType.ArcahvDebris; break;
+					case "redline" when seconds >= 0: Type = SceneControlType.Redline; break;
+				}
+				if (Type != SceneControlType.Unknown)
+				{
+					Duration = seconds;
+					if (Type == SceneControlType.HideGroup || Type == SceneControlType.EnwidenCamera || Type == SceneControlType.EnwidenLanes)
+						Enable = argument.data > 0;
+					if (Type == SceneControlType.ArcahvDistort || Type == SceneControlType.ArcahvDebris || Type == SceneControlType.Redline)
+						EffectValue = argument.data;
 				}
 			}
-			else if (RawType == "hidegroup" && RawParams.Count == 2)
-			{
-				if ((RawParams[0] is RawAffFloat) && (RawParams[1] is RawAffInt param1))
-				{
-					Type = SceneControlType.HideGroup;
-					Enable = param1.data > 0;
-				}
-			}
-			else if (RawType == "enwidencamera" && RawParams.Count == 2)
-			{
-				if ((RawParams[0] is RawAffFloat param0) && (RawParams[1] is RawAffInt param1))
-				{
-					Type = SceneControlType.EnwidenCamera;
-					Duration = param0.data;
-					Enable = param1.data > 0;
-				}
-			}
-			else if (RawType == "enwidenlanes" && RawParams.Count == 2)
-			{
-				if ((RawParams[0] is RawAffFloat param0) && (RawParams[1] is RawAffInt param1))
-				{
-					Type = SceneControlType.EnwidenLanes;
-					Duration = param0.data;
-					Enable = param1.data > 0;
-				}
-			}
-            if ((RawType == "arcahvdistort" || RawType == "arcahvdebris" || RawType == "redline")
-                && RawParams.Count == 2 && RawParams[1] is RawAffInt effectValue
-                && (RawParams[0] is RawAffFloat || RawParams[0] is RawAffInt))
-            {
-                float duration = RawParams[0] is RawAffFloat seconds ? seconds.data : ((RawAffInt)RawParams[0]).data;
-                if (duration >= 0)
-                {
-                    Type = RawType == "arcahvdistort" ? SceneControlType.ArcahvDistort
-                        : RawType == "arcahvdebris" ? SceneControlType.ArcahvDebris : SceneControlType.Redline;
-                    Duration = duration;
-                    EffectValue = effectValue.data;
-                }
-            }
 			TimingGroup = timingGroup;
 		}
 		public IRawAffItem IntoRawItem()
@@ -372,7 +337,7 @@ namespace Arcade.Gameplay.Chart
 			{
 				item.Type = "hidegroup";
 				item.Params = new List<IRawAffValue>{
-					new RawAffFloat{data=0},
+					new RawAffFloat{data=Duration},
 					new RawAffInt{data=Enable?1:0},
 				};
 			}
@@ -405,7 +370,7 @@ namespace Arcade.Gameplay.Chart
 			else
 			{
 				item.Type = RawType;
-				item.Params = RawParams;
+				item.Params = CopyParams(RawParams);
 			}
 			return item;
 		}
@@ -440,7 +405,11 @@ namespace Arcade.Gameplay.Chart
 			EffectValue = sc.EffectValue;
 			TimingGroup = sc.TimingGroup;
 			RawType = sc.RawType;
-			RawParams = sc.RawParams?.Select(value => value is RawAffInt i ? (IRawAffValue)new RawAffInt { data = i.data }
+			RawParams = CopyParams(sc.RawParams);
+		}
+		private static List<IRawAffValue> CopyParams(List<IRawAffValue> values)
+		{
+			return values?.Select(value => value is RawAffInt i ? (IRawAffValue)new RawAffInt { data = i.data }
 				: value is RawAffFloat f ? new RawAffFloat { data = f.data }
 				: (IRawAffValue)new RawAffWord { data = ((RawAffWord)value).data }).ToList();
 		}
@@ -484,7 +453,7 @@ namespace Arcade.Gameplay.Chart
         public int EndTiming
         {
             get => endTiming;
-            set { if (endTiming == value) return; endTiming = value; InvalidateRenderIndex(); }
+            set { if (endTiming == value) return; endTiming = value; OnTimingChanged(); }
         }
 		public override void Assign(ArcEvent newValues)
 		{
@@ -852,7 +821,9 @@ namespace Arcade.Gameplay.Chart
 				return Matrix4x4.TRS(position, Quaternion.identity, new Vector3(localScale * BaseModelScale.x, BaseModelScale.y, BaseModelScale.z));
 			}
 		}
-		internal Color ShadowColor => new Color(0.49f, 0.49f, 0.49f, 0.7843f * currentAlpha);
+		internal Color ShadowColor => ArcSkinManager.Instance.IsDarkSide
+			? new Color(1, 1, 1, currentAlpha * (70f / 255f))
+			: new Color(0, 0, 0, currentAlpha * (100f / 255f));
 
 		public override void Destroy()
 		{
@@ -1448,7 +1419,17 @@ namespace Arcade.Gameplay.Chart
 		public int Id;
 		public List<ArcTiming> Timings = new List<ArcTiming>();
 		public string Attributes = "";
-		public bool NoInput = false;
+		private bool noInput;
+		public bool NoInput
+		{
+			get => noInput;
+			set
+			{
+				if (noInput == value) return;
+				noInput = value;
+				ArcScoreManager.Invalidate();
+			}
+		}
 		public bool NoClip = false;
 		public bool FadingHolds = false;
         public Color32 TraceColor;

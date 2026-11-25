@@ -32,6 +32,13 @@ namespace Arcade.Audio
             var info = new FileInfo(path);
             return info.Exists && info.Length == fileSize && info.LastWriteTimeUtc.Ticks == modifiedTicks;
         }
+        // A validated cloud download is moved as a whole before playback opens a new voice.
+        internal void SetMovedSourceFolder(string folder)
+        {
+            filePath = Path.GetFullPath(Path.Combine(folder, Path.GetFileName(filePath)));
+            if (FilePath != null) FilePath = filePath;
+            name = filePath;
+        }
         public float length
         {
             get

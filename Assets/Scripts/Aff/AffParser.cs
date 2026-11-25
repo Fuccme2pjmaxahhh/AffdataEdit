@@ -544,7 +544,7 @@ namespace Arcade.Aff
 				lane = null;
 				var raw = Value(arg);
 				if (TryInt(raw, out track)) return true;
-				if (!TryFloat(raw, out float value) || float.IsNaN(value) || float.IsInfinity(value)) return false;
+				if (!TryFloat(raw, out float value)) return false;
 				lane = value;
 				track = Mathf.Clamp(Mathf.FloorToInt(value * 4) + 1, 0, 5);
 				return true;
@@ -618,7 +618,7 @@ namespace Arcade.Aff
 			int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
 
 		private static bool TryFloat(ReadOnlySpan<char> raw, out float value) =>
-			float.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out value);
+			float.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out value) && float.IsFinite(value);
 
 		private static bool Same(string left, string right) => string.Equals(left, right, StringComparison.OrdinalIgnoreCase);
 

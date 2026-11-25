@@ -33,6 +33,10 @@ namespace Arcade.Gameplay
         private ArcSlideJudgementGrid grid, floorGrid, highGrid;
         internal readonly List<ArcSlide> RenderingSlides = new List<ArcSlide>();
         private readonly List<ArcSlide> renderCandidates = new List<ArcSlide>();
+        private readonly List<ArcSlide> inputSlides = new List<ArcSlide>();
+        private readonly List<ArcSlide> defaultGroupSlides = new List<ArcSlide>();
+        private readonly Dictionary<ArcTimingGroup, List<ArcSlide>> groupedSlides = new Dictionary<ArcTimingGroup, List<ArcSlide>>();
+        private long inputVersion = -1;
         private readonly HashSet<ArcSlide> visualOwners = new HashSet<ArcSlide>();
         private readonly HashSet<ArcSlide> visualCandidates = new HashSet<ArcSlide>();
         private readonly List<ArcSlide> expiredVisuals = new List<ArcSlide>();
@@ -104,18 +108,32 @@ namespace Arcade.Gameplay
             Clean(); Slides = slides;
             RebuildGroups();
         }
-        public void Add(ArcSlide slide) { Slides.Add(slide); RebuildGroups(); }
+        public void Add(ArcSlide slide)
+        {
+            Slides.Add(slide);
+            slide.Owner = this;
+            GetGroupSlides(slide.TimingGroup).Add(slide);
+            RebuildSlideGroup(slide.TimingGroup);
+            ResetMembershipCaches();
+        }
         public void Remove(ArcSlide slide)
         {
-            Slides.Remove(slide); slide.Destroy(); RebuildGroups();
+            if (!Slides.Remove(slide)) return;
+            slide.Owner = null;
+            GetGroupSlides(slide.TimingGroup).Remove(slide);
+            RebuildSlideGroup(slide.TimingGroup);
+            slide.Destroy();
+            ResetMembershipCaches();
             visualOwners.Remove(slide);
-            if (feedback.TryGetValue(slide, out var hit)) { Destroy(hit.Object); feedback.Remove(slide); }
         }
         public void Clean()
         {
-            foreach (var slide in Slides) slide.Destroy();
+            foreach (var slide in Slides) { slide.Owner = null; slide.Destroy(); }
+            defaultGroupSlides.Clear();
+            groupedSlides.Clear();
             Slides = new List<ArcSlide>(); ResetFeedback();
             renderIndex.Clear(); renderCandidates.Clear(); RenderingSlides.Clear();
+            inputSlides.Clear(); inputVersion = -1;
             visualOwners.Clear(); visualCandidates.Clear(); expiredVisuals.Clear();
             while (idleVisuals.Count > 0) idleVisuals.Pop().Dispose();
             foreach (var hit in feedback.Values) if (hit.Object) Destroy(hit.Object);
@@ -167,16 +185,29 @@ namespace Arcade.Gameplay
             if (seeked) ResetFeedback();
             else if (discontinuity) ResetVisualFeedback();
             activeRanges.Clear(); floorRanges.Clear(); highRanges.Clear(); activeSegments.Clear();
-            foreach (var slide in Slides)
+            if (inputVersion != ArcEvent.RenderIndexVersion)
             {
-                bool hit = slide.IsValid && game.Auto && !slide.NoInput() && !slide.GroupHide()
-                    && now >= slide.Timing && now < slide.EndTiming;
+                inputSlides.Clear();
+                foreach (var slide in Slides)
+                {
+                    if (!slide.NoInput()) inputSlides.Add(slide);
+                    else slide.Judging = false;
+                }
+                inputVersion = ArcEvent.RenderIndexVersion;
+            }
+            foreach (var slide in inputSlides)
+            {
+                if (slide.GroupHide() || !slide.IsValid)
+                {
+                    slide.Judging = false;
+                    continue;
+                }
+                bool hit = game.Auto && now >= slide.Timing && now < slide.EndTiming;
                 slide.Judging = hit;
-                if (slide.IsValid && !slide.NoInput() && !slide.GroupHide())
-                    ArcEffectManager.Instance.ShowSlideHitType(slide);
+                ArcEffectManager.Instance.ShowSlideHitType(slide);
                 // Sound at the group's head, or when playback starts inside an active segment.
                 // Paused scrubbing and discontinuous seeks must never produce hit sounds.
-                if (game.Auto && slide.IsValid && !slide.NoInput() && !slide.GroupHide() && !seeked
+                if (game.Auto && !seeked
                     // Compare both frames in the music clock. Mixing an old visual time with
                     // a new speed-scaled delay can otherwise replay or skip the same head.
                     && (slide.IsGroupHead && CrossedSoundHead(slide.Timing, soundNow, game.IsPlaying)
@@ -195,24 +226,37 @@ namespace Arcade.Gameplay
                 }
             }
             RenderingSlides.Clear();
-            renderIndex.Query(Slides, renderCandidates);
+            renderIndex.Query(Slides, renderCandidates, skipHiddenGroups: true);
             visualCandidates.Clear();
             foreach (var slide in renderCandidates)
             {
-                if (!slide.IsValid || slide.GroupHide()) continue;
+                bool consume = (game.Auto || slide.NoInput()) && !(slide.TimingGroup?.NoClip ?? false);
+                if ((consume && now >= slide.EndTiming) || !slide.IsValid) continue;
                 // The interval index includes reversed/negative timing sections. Do not approximate
                 // visibility by endpoint time: a middle section can still be on screen.
                 visualCandidates.Add(slide);
-                if (slide.Visual == null) slide.Instantiate();
+            }
+            expiredVisuals.Clear();
+            foreach (var slide in visualOwners)
+                if (!visualCandidates.Contains(slide)) expiredVisuals.Add(slide);
+            // At a hidegroup transition, reuse outgoing ribbons for incoming notes this frame.
+            int expired = expiredVisuals.Count;
+            foreach (var slide in renderCandidates)
+            {
+                if (!visualCandidates.Contains(slide)) continue;
+                if (slide.Visual == null)
+                {
+                    if (idleVisuals.Count == 0 && expired > 0) ReleaseExpired(expiredVisuals[--expired]);
+                    slide.Instantiate();
+                }
                 visualOwners.Add(slide);
                 bool consume = (game.Auto || slide.NoInput()) && !(slide.TimingGroup?.NoClip ?? false);
                 slide.Visual.Present(now, consume);
                 if (slide.Visual.IsVisible) RenderingSlides.Add(slide);
             }
-            expiredVisuals.Clear();
-            foreach (var slide in visualOwners)
-                if (!visualCandidates.Contains(slide)) expiredVisuals.Add(slide);
-            foreach (var slide in expiredVisuals)
+            while (expired > 0) ReleaseExpired(expiredVisuals[--expired]);
+
+            void ReleaseExpired(ArcSlide slide)
             {
                 slide.Destroy();
                 visualOwners.Remove(slide);
@@ -274,11 +318,64 @@ namespace Arcade.Gameplay
         }
         private bool CrossedSoundHead(int start, int now, bool playing)
             => ShouldPlayHeadSound(start, previousSoundTime, now, previousSoundPlaying, playing);
+        private List<ArcSlide> GetGroupSlides(ArcTimingGroup group)
+        {
+            if (group == null) return defaultGroupSlides;
+            if (!groupedSlides.TryGetValue(group, out var notes))
+                groupedSlides.Add(group, notes = new List<ArcSlide>());
+            return notes;
+        }
+
+        internal void InvalidateSlideTiming(ArcTimingGroup group)
+        {
+            renderIndex.InvalidateTimings(group);
+            ArcScoreManager.InvalidateScore();
+        }
+
+        internal void RebuildSlideGroup(ArcTimingGroup group)
+        {
+            UpdateConnections(GetGroupSlides(group));
+            ArcScoreManager.InvalidateScore();
+        }
+
+        internal void ChangeTimingGroup(ArcSlide slide, ArcTimingGroup previous)
+        {
+            GetGroupSlides(previous).Remove(slide);
+            RebuildSlideGroup(previous);
+            // Recollect in chart order to preserve tie-breaking when an older note moves in.
+            var destination = GetGroupSlides(slide.TimingGroup);
+            destination.Clear();
+            foreach (var candidate in Slides)
+                if (candidate.TimingGroup == slide.TimingGroup) destination.Add(candidate);
+            RebuildSlideGroup(slide.TimingGroup);
+            inputVersion = -1;
+            renderIndex.Clear();
+        }
+
         public void RebuildGroups(bool resetFeedback = true)
         {
-            ArcScoreManager.Invalidate();
-            UpdateConnections(Slides);
-            if (!resetFeedback) return;
+            defaultGroupSlides.Clear(); groupedSlides.Clear();
+            foreach (var slide in Slides)
+            {
+                slide.Owner = this;
+                GetGroupSlides(slide.TimingGroup).Add(slide);
+            }
+            UpdateConnections(defaultGroupSlides);
+            foreach (var group in groupedSlides.Values) UpdateConnections(group);
+            ArcScoreManager.InvalidateScore();
+            renderIndex.Clear(); inputVersion = -1;
+            if (resetFeedback) ClearFeedback();
+        }
+
+        private void ResetMembershipCaches()
+        {
+            inputVersion = -1;
+            renderIndex.Clear();
+            ClearFeedback();
+        }
+
+        private void ClearFeedback()
+        {
             ResetFeedback();
             foreach (var hit in feedback.Values) if (hit.Object) Destroy(hit.Object);
             feedback.Clear();

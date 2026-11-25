@@ -26,6 +26,7 @@ namespace Arcade.Gameplay
 		private int combo;
 		private readonly List<int> judgeTimings = new List<int>();
         private readonly List<ArcLongNote> denseNotes = new List<ArcLongNote>();
+        private readonly List<ArcSlide> scoringSlides = new List<ArcSlide>();
 		private ArcChart cachedChart;
 		private bool scoreDirty = true;
 		private double singleScore;
@@ -34,6 +35,11 @@ namespace Arcade.Gameplay
 		internal static void Invalidate()
 		{
 			ArcEvent.InvalidateRenderIndex();
+			InvalidateScore();
+		}
+
+		internal static void InvalidateScore()
+		{
 			if (Instance) Instance.scoreDirty = true;
 		}
 
@@ -94,6 +100,7 @@ namespace Arcade.Gameplay
 			scoreDirty = false;
 			judgeTimings.Clear();
             denseNotes.Clear();
+            scoringSlides.Clear();
 			singleScore = 0;
 			if (chart == null) return;
 			foreach (var tap in chart.Taps)
@@ -115,7 +122,12 @@ namespace Arcade.Gameplay
 			judgeTimings.Sort();
 			double total = judgeTimings.Count;
             foreach (var note in denseNotes) total += note.JudgementCount;
-			foreach (var slide in chart.Slides) total += CountSlideJudgements(slide, slide.EndTiming);
+			foreach (var slide in chart.Slides)
+			{
+				if (slide.NoInput()) continue;
+				scoringSlides.Add(slide);
+				total += CountSlideJudgements(slide, slide.EndTiming);
+			}
 			if (total > 0) singleScore = 10000000d / total;
 		}
 
@@ -130,7 +142,7 @@ namespace Arcade.Gameplay
 			}
 			double count = low;
             foreach (var note in denseNotes) count += note.CountJudgementsAtOrBefore(timing);
-			foreach (var slide in cachedChart.Slides) count += CountSlideJudgements(slide, timing);
+			foreach (var slide in scoringSlides) count += CountSlideJudgements(slide, timing);
 			return count;
 		}
 		private static int CountSlideJudgements(ArcSlide slide, int timing)

@@ -691,13 +691,17 @@ namespace Arcade.Compose
 		}
 		public void OnShutdownClicked()
 		{
-			AdeProjectManager.Instance.SaveProject();
-			Application.Quit();
+			AdeProjectManager.Instance.SaveAndQuit();
 		}
 
 		public void SetUndoBufferSize(string x)
 		{
-			uint size = uint.Parse(x, CultureInfo.InvariantCulture);
+			if (!uint.TryParse(x, NumberStyles.Integer, CultureInfo.InvariantCulture, out uint size))
+			{
+				UndoBufferSizeInput.SetTextWithoutNotify(ArcadePreference.UndoBufferSize.ToString(CultureInfo.InvariantCulture));
+				return;
+			}
+			UndoBufferSizeInput.SetTextWithoutNotify(size.ToString(CultureInfo.InvariantCulture));
 			ArcadePreference.UndoBufferSize = size;
 			SavePreferences();
 			AdeCommandManager.Instance.SetBufferSize(size);
@@ -712,7 +716,12 @@ namespace Arcade.Compose
 
 		public void SetGlobalAudioOffset(string x)
 		{
-			int offset = int.Parse(x, CultureInfo.InvariantCulture);
+			if (!int.TryParse(x, NumberStyles.Integer, CultureInfo.InvariantCulture, out int offset))
+			{
+				GlobalAudioOffsetInput.SetTextWithoutNotify(ArcadePreference.GlobalAudioOffset.ToString(CultureInfo.InvariantCulture));
+				return;
+			}
+			GlobalAudioOffsetInput.SetTextWithoutNotify(offset.ToString(CultureInfo.InvariantCulture));
 			ArcadePreference.GlobalAudioOffset = offset;
 			SavePreferences();
 			ArcGameplayManager.Instance.GlobalAudioOffset = offset;

@@ -25,6 +25,7 @@ namespace Arcade.Gameplay
         internal sealed class ImageAsset
         {
             public string File;
+            public bool Repeat, Linear;
             public float PixelsPerUnit = 100;
             public Vector2 Pivot = new Vector2(.5f, .5f);
         }
@@ -42,6 +43,7 @@ namespace Arcade.Gameplay
         }
         internal sealed class NoteSet
         {
+            public string Name;
             public ImageAsset Tap, Hold, Highlight, ArcTap;
         }
         internal sealed class Particle

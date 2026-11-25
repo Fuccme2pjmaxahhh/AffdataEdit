@@ -64,9 +64,9 @@ namespace Arcade.Compose.Editing
 				timingInstances.Remove(timingInstances.Last());
 			}
 		}
-		private string GetTimingString(ArcTiming timing)
+		internal static string GetTimingString(ArcTiming timing)
 		{
-			return $"{timing.Timing.ToString(CultureInfo.InvariantCulture)},{timing.Bpm.ToString("f3", CultureInfo.InvariantCulture)},{timing.BeatsPerLine.ToString("f2", CultureInfo.InvariantCulture)}";
+			return $"{timing.Timing.ToString(CultureInfo.InvariantCulture)},{timing.Bpm.ToString("f3", CultureInfo.InvariantCulture)},{Arcade.Aff.ArcaeaFileFormat.FormatDecimal(timing.BeatsPerLine)}";
 		}
 
 		public void AddTiming(ArcTiming caller)
@@ -98,6 +98,7 @@ namespace Arcade.Compose.Editing
 
 		public void UpdateTiming()
 		{
+			if (!View.activeInHierarchy) return;
 			inUse = 0;
 
 			List<Dropdown.OptionData> options = new List<Dropdown.OptionData>();
@@ -245,6 +246,7 @@ namespace Arcade.Compose.Editing
 	{
 		private readonly ArcTimingGroup timingGroup;
 		private readonly ArcTiming timing;
+		private int originalIndex;
 		public RemoveTimingEvent(ArcTimingGroup timingGroup, ArcTiming timing)
 		{
 			this.timingGroup = timingGroup;
@@ -259,11 +261,12 @@ namespace Arcade.Compose.Editing
 		}
 		public void Do()
 		{
+			originalIndex = ArcTimingManager.Instance.GetTiming(timingGroup).IndexOf(timing);
 			ArcTimingManager.Instance.RemoveTiming(timing, timingGroup);
 		}
 		public void Undo()
 		{
-			ArcTimingManager.Instance.AddTiming(timing, timingGroup);
+			if (originalIndex >= 0) ArcTimingManager.Instance.InsertTiming(timing, timingGroup, originalIndex);
 		}
 	}
 	public class EditTimingEvent : ICommand
@@ -271,6 +274,7 @@ namespace Arcade.Compose.Editing
 		private readonly ArcTimingGroup timingGroup;
 		private readonly ArcTiming timing;
 		private readonly ArcTiming oldValues, newValues;
+		private int originalIndex;
 		public EditTimingEvent(ArcTimingGroup timingGroup, ArcTiming timing, ArcTiming newValues)
 		{
 			this.timingGroup = timingGroup;
@@ -287,13 +291,20 @@ namespace Arcade.Compose.Editing
 		}
 		public void Do()
 		{
+			originalIndex = ArcTimingManager.Instance.GetTiming(timingGroup).IndexOf(timing);
 			timing.Assign(newValues);
 			ArcTimingManager.Instance.UpdateTimingGroup(timingGroup);
 		}
 		public void Undo()
 		{
 			timing.Assign(oldValues);
-			ArcTimingManager.Instance.UpdateTimingGroup(timingGroup);
+			var manager = ArcTimingManager.Instance;
+			if (originalIndex >= 0 && oldValues.Timing != newValues.Timing)
+			{
+				manager.GetTiming(timingGroup).Remove(timing);
+				manager.InsertTiming(timing, timingGroup, originalIndex);
+			}
+			else manager.UpdateTimingGroup(timingGroup);
 		}
 	}
 
@@ -387,7 +398,7 @@ namespace Arcade.Compose.Editing
 		public void Undo()
 		{
 			ArcTimingManager.Instance.AddTimingGroup(timingGroup);
-			foreach (var control in controls) control.Undo();
+			for (int i = controls.Count - 1; i >= 0; i--) controls[i].Undo();
 			foreach (var slide in slides) ArcSlideManager.Instance.Add(slide);
 			foreach (var tap in taps)
 			{

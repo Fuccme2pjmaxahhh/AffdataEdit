@@ -338,6 +338,7 @@ namespace Arcade.Compose.Dialog
 			ApplyNoteSideSkin();
 			ApplyThemeSideSkin();
 			UpdateTabs();
+			foreach (var refresh in appearanceRefresh) refresh();
 		}
 
 		public void ShowPresets() => SetCustomize(false);

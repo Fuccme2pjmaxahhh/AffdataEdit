@@ -49,10 +49,12 @@ namespace Arcade.Gameplay
 			set
 			{
 				SeekVersion++;
+                float previousTiming = AudioTimingWithoutGlobalOffset;
 				audioTiming = value / 1000f;
                 var audio = ArcAudioManager.Instance;
                 float transportTiming = AudioTimingWithoutGlobalOffset;
-                if (IsPlaying && audio.Clip && (transportTiming < 0 || audio.StartScheduled))
+                if (IsPlaying && audio.Clip && (transportTiming < 0 || audio.StartScheduled ||
+                    transportTiming >= audio.Clip.length || previousTiming >= audio.Clip.length))
                     Play();
                 else
                     audio.Timing = Mathf.Max(0, transportTiming);
@@ -162,7 +164,8 @@ namespace Arcade.Gameplay
 				syncSeekVersion = SeekVersion;
 				syncVoiceVersion = voiceVersion;
 				syncSpeed = playBackSpeed;
-				if (EnablePlaybackSync && AudioTimingWithoutGlobalOffset <= Length) SyncToMusic();
+				var clip = ArcAudioManager.Instance.Clip;
+				if (EnablePlaybackSync && clip && AudioTimingWithoutGlobalOffset < clip.length) SyncToMusic();
 			}
 			syncWasPlaying = IsPlaying;
 			if (AudioTiming > Length)
@@ -303,19 +306,19 @@ namespace Arcade.Gameplay
 
 		public void Play()
 		{
-			if (AudioTimingWithoutGlobalOffset < 0)
+			var audio = ArcAudioManager.Instance;
+			float transportTiming = AudioTimingWithoutGlobalOffset;
+			if (transportTiming < 0)
 			{
-				ArcAudioManager.Instance.Stop();
-				ArcAudioManager.Instance.Timing = 0;
-				ArcAudioManager.Instance.PlayDelayed(-AudioTimingWithoutGlobalOffset / ArcAudioManager.Instance.PlayBackSpeed);
+				audio.Stop();
+				audio.Timing = 0;
+				audio.PlayDelayed(-transportTiming / audio.PlayBackSpeed);
 			}
 			else
 			{
-				ArcAudioManager.Instance.Timing = AudioTimingWithoutGlobalOffset;
-				if (AudioTimingWithoutGlobalOffset <= Length)
-				{
-					ArcAudioManager.Instance.Play();
-				}
+				audio.Timing = transportTiming;
+				if (audio.Clip && transportTiming < audio.Clip.length) audio.Play();
+				else audio.Pause();
 			}
 			// Seeking and starting the stream can prepare buffers synchronously.
 			lastDspTime = BassAudio.Clock;

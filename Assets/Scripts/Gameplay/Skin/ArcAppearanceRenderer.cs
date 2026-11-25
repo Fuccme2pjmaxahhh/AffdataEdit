@@ -77,18 +77,12 @@ namespace Arcade.Gameplay
                 ArcArcManager.Instance.SetArcTapSkin(Load(set.ArcTap).texture);
             }
             var hit = ArcAppearanceCatalog.Find(data.HitEffects, hitEffect);
-            if (hit != null)
-            {
-                ArcEffectManager.Instance.SetTapEffectTexture(Load(hit.Sprite).texture);
-                ArcEffectManager.Instance.SetTapEffectConflictBlend((int)valueSide == 1);
-            }
+            ArcEffectManager.Instance.SetTapEffectTexture(hit != null ? Load(hit.Sprite).texture : basis.ParticleNote.value);
+            ArcEffectManager.Instance.SetTapEffectConflictBlend(valueSide == Side.Conflict);
             var longEffect = data.Particles.Find(p => p.Name == particle);
-            if (longEffect != null)
-            {
-                ArcEffectManager.Instance.SetParticleArcColor(longEffect.Start, longEffect.End);
-                ArcLongNoteEffect.AppearanceScale = longEffect.Scale / 2.1f;
-            }
-            else ArcLongNoteEffect.AppearanceScale = 1;
+            ArcLongNoteEffect.AppearanceScale = longEffect != null ? longEffect.Scale / 2.1f : 1;
+            ArcEffectManager.Instance.SetParticleArcColor(longEffect?.Start ?? basis.ParticleArcStartColor,
+                longEffect?.End ?? basis.ParticleArcEndColor);
             Finish();
         }
         private static bool IsDark(int value) => value == 1 || value == 4;
@@ -125,7 +119,11 @@ namespace Arcade.Gameplay
             loadingGroup?.Add(key);
             if (!images.TryGetValue(key, out var entry))
             {
-                var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false) { name = Path.GetFileNameWithoutExtension(file), wrapMode = TextureWrapMode.Repeat };
+                var texture = new Texture2D(2, 2, TextureFormat.RGBA32, false, image.Linear)
+                {
+                    name = Path.GetFileNameWithoutExtension(file),
+                    wrapMode = image.Repeat ? TextureWrapMode.Repeat : TextureWrapMode.Clamp
+                };
                 if (!ImageConversion.LoadImage(texture, File.ReadAllBytes(file), true)) { Destroy(texture); throw new IOException("Cannot decode appearance image: " + file); }
                 var sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), pivot, pixelsPerUnit, 0, SpriteMeshType.FullRect);
                 images.Add(key, entry = new LoadedImage { Sprite = sprite, Texture = texture });
@@ -156,7 +154,7 @@ namespace Arcade.Gameplay
             renderer.sharedMaterial = wallMaterial;
             renderer.drawMode = SpriteDrawMode.Tiled;
             renderer.sortingLayerID = owner.TrackComponents[0].sortingLayerID;
-            renderer.sortingOrder = owner.TrackComponents[0].sortingOrder + 1;
+            renderer.sortingOrder = owner.CriticalLines[0].sortingOrder;
             return renderer;
         }
         private static void SetWall(SpriteRenderer renderer, Sprite sprite, Vector3 position, Vector3 angle, ArcAppearanceCatalog.Item item)

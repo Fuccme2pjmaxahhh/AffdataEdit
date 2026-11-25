@@ -145,8 +145,16 @@ namespace Arcade.Compose
                 var pointer = (PointerEventData)data;
                 if (pointer.button != PointerEventData.InputButton.Left) return;
                 ApplyCamera(page);
-                ChartControlText.Float(field.text, out float value);
-                start = value;
+                if (field == page.Time || field == page.Duration)
+                {
+                    ChartControlText.Integer(field.text, out int milliseconds);
+                    start = milliseconds;
+                }
+                else
+                {
+                    ChartControlText.Float(field.text, out float coordinate);
+                    start = coordinate;
+                }
                 startX = pointer.position.x;
             });
             On(EventTriggerType.Drag, data =>
@@ -174,8 +182,8 @@ namespace Arcade.Compose
             {
                 var field = page.Vectors[i];
                 float fallback = i < 3 ? camera.Move[i] : camera.Rotate[i - 3];
-                float value = ChartControlText.Float(field.text, out float parsed) ? parsed : fallback;
-                value = Mathf.Clamp(value, -1000000, 1000000);
+                if (!ChartControlText.Float(field.text, out float parsed) || parsed == fallback) continue;
+                float value = Mathf.Clamp(parsed, -1000000, 1000000);
                 if (i < 3) next.Move[i] = value;
                 else next.Rotate[i - 3] = value;
             }

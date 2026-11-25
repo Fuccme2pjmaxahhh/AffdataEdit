@@ -182,6 +182,30 @@ public class LiveSlowPlaybackTests
         return clip;
     }
 
+    [TestCase(0, 1f)]
+    [TestCase(120, 1f)]
+    [TestCase(120, .5f)]
+    public void SeekingToSliderEndAndBackPreservesChartTimeAndResumesAudio(int offsetMs, float speed)
+    {
+        var clip = InitializeSilentManager();
+        Rate(speed);
+        game.GlobalAudioOffset = offsetMs;
+        int end = Mathf.RoundToInt(clip.length * 1000);
+        game.AudioTiming = end;
+        Assert.AreEqual(end, game.AudioTiming);
+        Assert.That(audio.Timing, Is.InRange((float)(clip.length - 1d / Frequency), clip.length));
+
+        game.Play();
+        game.AudioTiming = end;
+        Assert.That(Native.IsActive(Handle(Active)), Is.Not.EqualTo(1));
+        game.AudioTiming = end / 2;
+        Assert.AreEqual(1, Native.IsActive(Handle(Active)));
+        Assert.That(audio.Timing, Is.EqualTo((end / 2 + offsetMs) / 1000f).Within(.05));
+        game.AudioTiming = end;
+        game.AudioTiming = end;
+        Assert.That(Native.IsActive(Handle(Active)), Is.Not.EqualTo(1));
+    }
+
     [Test]
     public void PendingLiveSeekRestartsOnceAndStopPlayReturnsToZero()
     {

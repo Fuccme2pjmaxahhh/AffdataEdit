@@ -346,7 +346,7 @@ namespace Arcade.Compose
             renderer.reflectionProbeUsage = ReflectionProbeUsage.Off;
         }
 
-        private void Release()
+        internal void Release()
         {
             // The decoder owns its BASS stream until the current read has stopped.
             if (decode != null)

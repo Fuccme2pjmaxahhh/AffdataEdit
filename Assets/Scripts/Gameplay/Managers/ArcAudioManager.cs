@@ -62,7 +62,7 @@ namespace Arcade.Gameplay
                 else if (voice != null)
                 {
                     voice.Position = value; // kept in place as the fallback
-                    if (live != null) { liveSeekTiming = Mathf.Max(0, value); liveSeekPending = true; liveSeekClock = BassAudio.Clock; }
+                    if (live != null) { liveSeekTiming = Mathf.Clamp(value, 0, Clip.length); liveSeekPending = true; liveSeekClock = BassAudio.Clock; }
                 }
             }
         }
@@ -240,7 +240,8 @@ namespace Arcade.Gameplay
             scheduledStart = -1;
             liveResume = false;
             SlowAudioCache.SetPlaybackState(false, playBackSpeed);
-            if (voice != null && BassNative.BASS_ChannelIsActive(ActiveVoice.Handle) != 0)
+            int state = voice == null ? 0 : BassNative.BASS_ChannelIsActive(ActiveVoice.Handle);
+            if (state == 1 || state == 2) // playing or stalled
                 BassNative.Check(BassNative.BASS_ChannelPause(ActiveVoice.Handle), "pause music");
         }
         public void Stop()

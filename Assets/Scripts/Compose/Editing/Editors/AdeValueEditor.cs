@@ -646,19 +646,9 @@ namespace Arcade.Compose.Editing
 		private ValueChangeErrorMessage? ParseCoord(string raw, ref Vector2 result)
 		{
 			string[] coords = raw.Split(',');
-			float x, y;
-			if (coords.Length != 2)
-			{
-				return new ValueChangeErrorMessage { message = "坐标位置格式错误" };
-			}
-			if (!float.TryParse(coords[0], NumberStyles.Float, CultureInfo.InvariantCulture, out x))
-			{
-				return new ValueChangeErrorMessage { message = "坐标位置格式错误" };
-			}
-			if (!float.TryParse(coords[1], NumberStyles.Float, CultureInfo.InvariantCulture, out y))
-			{
-				return new ValueChangeErrorMessage { message = "坐标位置格式错误" };
-			}
+			if (coords.Length != 2 || !ChartControlText.Float(coords[0], out float x)
+				|| !ChartControlText.Float(coords[1], out float y))
+				return new ValueChangeErrorMessage { message = "坐标需要两个有限数值，以逗号分隔" };
 			result = new Vector2(AffCoordinate.Round(x, LowPrecision), AffCoordinate.Round(y, LowPrecision));
 			return null;
 		}

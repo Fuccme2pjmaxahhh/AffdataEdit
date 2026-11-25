@@ -167,6 +167,90 @@ public class MemoryChartLifecycleTests
         => ((ICollection)Get(manager, list)).Count;
 
     [Test]
+    public void DraggingCameraTimeKeepsIntegerMillisecondsAndUntouchedVectors()
+    {
+        var game = Inactive<ArcGameplayManager>(); Singleton(game);
+        game.Chart = new ArcChart(new Arcade.Aff.RawAffChart());
+        var cameras = Inactive<ArcCameraManager>(); Singleton(cameras);
+        var history = History(); Singleton(history);
+        var camera = new ArcCamera { Timing = 16777217, Move = new Vector3(2000000, 0, 0) };
+        cameras.Load(new List<ArcCamera> { camera });
+        var panel = Inactive<AdeChartToolsPanel>();
+        var label = Inactive<TMPro.TextMeshProUGUI>();
+        Set(panel, "status", Inactive<TMPro.TextMeshProUGUI>());
+        var pageType = typeof(AdeChartToolsPanel).GetNestedType("ControlPage", BindingFlags.NonPublic);
+        var page = Activator.CreateInstance(pageType, true);
+        TMPro.TMP_InputField Field(string value)
+        {
+            var field = Inactive<TMPro.TMP_InputField>();
+            field.SetTextWithoutNotify(value);
+            return field;
+        }
+        var time = Field("16777217");
+        Set(page, "Selected", camera); Set(page, "Time", time);
+        Set(page, "Duration", Field("0")); Set(page, "GroupInput", Field("0"));
+        Set(page, "Type", Inactive<TMPro.TMP_Dropdown>()); Set(page, "Statement", Field(""));
+        Set(page, "Vectors", new[] { Field("2000000"), Field("0"), Field("0"), Field("0"), Field("0"), Field("0") });
+        Call(panel, "BindCameraNumber", page, time, label);
+        var trigger = label.GetComponent<UnityEngine.EventSystems.EventTrigger>();
+        var pointer = new UnityEngine.EventSystems.PointerEventData(null);
+        trigger.triggers.Find(e => e.eventID == UnityEngine.EventSystems.EventTriggerType.BeginDrag).callback.Invoke(pointer);
+        pointer.position = Vector2.right;
+        trigger.triggers.Find(e => e.eventID == UnityEngine.EventSystems.EventTriggerType.Drag).callback.Invoke(pointer);
+        Assert.AreEqual(16777227, camera.Timing);
+        Assert.AreEqual(2000000f, camera.Move.x);
+    }
+
+    [Test]
+    public void UndoingBatchRemovalPreservesCameraOrderAtTheSameTime()
+    {
+        var game = Inactive<ArcGameplayManager>(); Singleton(game);
+        game.Chart = new ArcChart(new Arcade.Aff.RawAffChart());
+        var manager = Inactive<ArcCameraManager>(); Singleton(manager);
+        var first = new ArcCamera { Timing = 100 };
+        var second = new ArcCamera { Timing = 100 };
+        var last = new ArcCamera { Timing = 100 };
+        manager.Load(new List<ArcCamera> { first, second, last });
+        var batch = new BatchCommand(new ICommand[] {
+            new ChartControlCommand(first, first, null), new ChartControlCommand(second, second, null)
+        }, "Camera order");
+        for (int i = 0; i < 2; i++)
+        {
+            batch.Do();
+            CollectionAssert.AreEqual(new[] { last }, manager.Cameras);
+            batch.Undo();
+            CollectionAssert.AreEqual(new[] { first, second, last }, manager.Cameras);
+        }
+    }
+
+    [Test]
+    public void CommandNotificationsDescribeTheCompletedHistoryChange()
+    {
+        var manager = History();
+        var command = new CountCommand();
+        int notifications = 0;
+        manager.onCommandExecuted = (reported, undo) =>
+        {
+            notifications++;
+            Assert.AreSame(command, reported);
+            Assert.AreEqual(undo ? 0 : 1, HistoryCount(manager, "undo"));
+            Assert.AreEqual(undo ? 1 : 0, HistoryCount(manager, "redo"));
+            Assert.AreEqual(!undo, manager.HasUnsavedChanges);
+        };
+        manager.Add(command);
+        manager.Undo();
+        manager.Redo();
+        manager.Clear();
+        manager.Prepare(command);
+        Assert.IsTrue(manager.HasUnsavedChanges);
+        manager.Cancel();
+        Assert.IsFalse(manager.HasUnsavedChanges);
+        manager.Prepare(command);
+        manager.Commit();
+        Assert.AreEqual(4, notifications);
+    }
+
+    [Test]
     public void UndoMemoryAccountingSurvivesUndoRedoAndBranchingAndExplicitZeroDepth()
     {
         var manager = History();

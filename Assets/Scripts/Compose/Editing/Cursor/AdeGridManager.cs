@@ -322,42 +322,43 @@ namespace Arcade.Compose
 			return 3;
 		}
 
-		private void ParseVerticals()
+		private const int MaxLinesPerAxis = 4096;
+
+		private static bool GridNumber(string text, out double value)
 		{
-			verticalXPositions = Parse(customGrid.X);
-			verticalYPositions = Parse(customGrid.Y);
+			return double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out value)
+				&& float.IsFinite((float)value);
 		}
-		private List<float> Parse(string str)
+
+		private static List<float> Parse(string str)
 		{
-			List<float> ret = new List<float>();
-			try
+			if (str == null) return null;
+			var positions = new List<float>();
+			foreach (string entry in str.Split(';'))
 			{
-				string[] ss = str.Split(';');
-				foreach (var s in ss)
+				if (string.IsNullOrWhiteSpace(entry)) continue;
+				int separator = entry.IndexOf('>');
+				if (separator < 0)
 				{
-					if (s.Contains('>') && s.Contains('/'))
-					{
-						int v1 = s.IndexOf('>');
-						int v2 = s.IndexOf('/');
-						float start = float.Parse(s.Substring(0, v1), CultureInfo.InvariantCulture);
-						float end = float.Parse(s.Substring(v1 + 1, v2 - v1 - 1), CultureInfo.InvariantCulture);
-						float interval = float.Parse(s.Substring(v2 + 1, s.Length - v2 - 1), CultureInfo.InvariantCulture);
-						for (float i = start; i <= end; i += interval)
-						{
-							ret.Add(i);
-						}
-					}
-					else
-					{
-						ret.Add(float.Parse(s, CultureInfo.InvariantCulture));
-					}
+					if (!GridNumber(entry, out double point) || positions.Count == MaxLinesPerAxis) return null;
+					positions.Add((float)point);
+					continue;
+				}
+				int slash = entry.IndexOf('/', separator + 1);
+				if (slash < 0 || !GridNumber(entry.Substring(0, separator), out double start)
+					|| !GridNumber(entry.Substring(separator + 1, slash - separator - 1), out double end)
+					|| !GridNumber(entry.Substring(slash + 1), out double step) || step <= 0 || start > end) return null;
+				// Compute from the origin so decimal steps still reach an inclusive endpoint.
+				for (int i = 0; ; i++)
+				{
+					float point = (float)(start + i * step);
+					if (point > (float)end) break;
+					if (positions.Count == MaxLinesPerAxis || (i > 0 && point <= positions[positions.Count - 1])) return null;
+					positions.Add(point);
+					if (point == (float)end) break;
 				}
 			}
-			catch (Exception)
-			{
-
-			}
-			return ret;
+			return positions;
 		}
 
 		private void UpdateBeatline()
@@ -620,9 +621,11 @@ namespace Arcade.Compose
 			}
 			finally
 			{
-				VerticalXInputField.text = customGrid.X;
-				VerticalYInputField.text = customGrid.Y;
-				ParseVerticals();
+				var defaults = new CustomGrid();
+				verticalXPositions = Parse(customGrid.X) ?? Parse(customGrid.X = defaults.X);
+				verticalYPositions = Parse(customGrid.Y) ?? Parse(customGrid.Y = defaults.Y);
+				VerticalXInputField.SetTextWithoutNotify(customGrid.X);
+				VerticalYInputField.SetTextWithoutNotify(customGrid.Y);
 			}
 		}
 		private void SaveCustomGrids()
@@ -637,8 +640,12 @@ namespace Arcade.Compose
 		public void OnDensityChange()
 		{
 			float density;
-			if (!float.TryParse(DensityInputField.text, NumberStyles.Float, CultureInfo.InvariantCulture, out density)) return;
-			if (density <= 0 || density > 64) return;
+			if (!float.TryParse(DensityInputField.text, NumberStyles.Float, CultureInfo.InvariantCulture, out density)
+				|| !(density > 0 && density <= 64))
+			{
+				DensityInputField.SetTextWithoutNotify(BeatlineDensity.ToString(CultureInfo.InvariantCulture));
+				return;
+			}
 			BeatlineDensity = density;
 			CalculateBeatlineTimes();
 		}
@@ -647,7 +654,7 @@ namespace Arcade.Compose
 			List<float> ret = Parse(VerticalXInputField.text);
 			if (ret == null)
 			{
-				VerticalXInputField.text = customGrid.X;
+				VerticalXInputField.SetTextWithoutNotify(customGrid.X);
 				return;
 			}
 			verticalXPositions = ret;
@@ -659,7 +666,7 @@ namespace Arcade.Compose
 			List<float> ret = Parse(VerticalYInputField.text);
 			if (ret == null)
 			{
-				VerticalYInputField.text = customGrid.Y;
+				VerticalYInputField.SetTextWithoutNotify(customGrid.Y);
 				return;
 			}
 			verticalYPositions = ret;

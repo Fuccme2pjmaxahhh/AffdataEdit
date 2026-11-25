@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Arcade.Gameplay;
 using TMPro;
 using UnityEngine;
@@ -73,8 +74,7 @@ namespace Arcade.Compose.Dialog
         private void ApplyAppearance(Side side)
         {
             ArcSkinManager.Instance.ApplyAppearance(preference.Appearance, side);
-            if (preference.PresetNote >= 0)
-                ArcSkinManager.Instance.ApplyPresetExtras(preference.PresetNote, preference.HitEffect, preference.Particle, side);
+            ArcSkinManager.Instance.ApplyPresetExtras(preference.PresetNote, preference.HitEffect, preference.Particle, side);
             if (!string.IsNullOrEmpty(preference.Appearance.Track))
                 ArcTapNoteManager.Instance.SetConnectionLineColor(side == Side.Conflict || side == Side.DarkLephon
                     ? Affdata.Core.Chart.ConnectionLineStyle.Conflict : Affdata.Core.Chart.ConnectionLineStyle.Light);
@@ -111,7 +111,7 @@ namespace Arcade.Compose.Dialog
             var text = hint.GetComponent<TMP_Text>();
             appearanceHint = text;
             AdeEditorText.Configure(text, AdeEditorText.CaptionSize);
-            text.text = "独立搭配轨道与装饰；选择完整预设可一次应用整套外观。";
+            text.text = "选择完整预设可一次应用整套外观，也可以单独调整每一项。";
             text.color = AdeUiTheme.Current.Muted;
             text.textWrappingMode = TextWrappingModes.Normal;
             text.raycastTarget = false;
@@ -121,6 +121,16 @@ namespace Arcade.Compose.Dialog
             AddAppearanceRow(content, "两侧装饰／墙", ArcAppearanceCatalog.SingleLines, () => preference.Appearance.SingleLine, v => preference.Appearance.SingleLine = v);
             AddAppearanceRow(content, "菱形装饰", ArcAppearanceCatalog.Diamonds, () => preference.Appearance.Diamond, v => preference.Appearance.Diamond = v);
             AddAppearanceRow(content, "Combo 颜色", ArcAppearanceCatalog.ComboColors, () => preference.Appearance.Combo, v => preference.Appearance.Combo = v);
+            var data = ArcAppearanceCatalog.Loaded;
+            AddAppearanceRow(content, "音符", data.Notes.Select(note => note.Name).ToList(), () => preference.PresetNote, index =>
+            {
+                preference.PresetNote = index;
+                if (index < 0) ApplyNoteSideSkin();
+            });
+            AddAppearanceRow(content, "点击特效", data.HitEffects, () => preference.HitEffect, v => preference.HitEffect = v);
+            var particles = data.Particles.Select(particle => particle.Name).ToList();
+            AddAppearanceRow(content, "持续特效", particles, () => particles.IndexOf(preference.Particle),
+                index => preference.Particle = index < 0 ? null : particles[index]);
             // The source dialog supplies the standard frame, Close/Escape handling and animation.
             AdeUiTheme.Refresh();
         }
@@ -141,6 +151,13 @@ namespace Arcade.Compose.Dialog
         }
 
         private void AddAppearanceRow(Transform content, string title, IReadOnlyList<AppearanceOption> options, Func<string> get, Action<string> set)
+        {
+            var ids = options.Select(option => option.Id).ToList();
+            AddAppearanceRow(content, title, options.Select(option => option.Name).ToList(), () => ids.IndexOf(get()),
+                index => set(index < 0 ? null : ids[index]));
+        }
+
+        private void AddAppearanceRow(Transform content, string title, List<string> options, Func<int> get, Action<int> set)
         {
             var row = NewRect(title, content, typeof(HorizontalLayoutGroup), typeof(LayoutElement));
             row.GetComponent<LayoutElement>().preferredHeight = 48;
@@ -163,7 +180,7 @@ namespace Arcade.Compose.Dialog
             dropdown.interactable = true;
             dropdown.ClearOptions();
             var names = new List<string> { "跟随主题" };
-            foreach (var option in options) names.Add(option.Name);
+            names.AddRange(options);
             dropdown.AddOptions(names);
             var size = dropdown.GetComponent<LayoutElement>() ?? dropdown.gameObject.AddComponent<LayoutElement>();
             size.minHeight = size.preferredHeight = 44;
@@ -171,14 +188,13 @@ namespace Arcade.Compose.Dialog
             size.flexibleWidth = 1;
             appearanceRefresh.Add(() =>
             {
-                int index = 0;
-                for (int i = 0; i < options.Count; i++) if (options[i].Id == get()) { index = i + 1; break; }
-                dropdown.SetValueWithoutNotify(index);
+                int index = get();
+                dropdown.SetValueWithoutNotify(index >= 0 && index < options.Count ? index + 1 : 0);
             });
             dropdown.onValueChanged.AddListener(index =>
             {
                 CurrentBackgroundOption?.SetSelected(false);
-                set(index == 0 ? null : options[index - 1].Id);
+                set(index - 1);
                 preference.Customize = true;
                 CurrentBackgroundOption?.SetSelected(true);
                 UpdateTabs();

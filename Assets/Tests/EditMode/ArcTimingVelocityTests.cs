@@ -17,6 +17,8 @@ public class ArcTimingVelocityTests
         try
         {
             var manager = go.AddComponent<ArcTimingManager>();
+            typeof(ArcTimingManager).GetField("settingVelocity", BindingFlags.NonPublic | BindingFlags.Instance)
+                .SetValue(manager, 30); // Test automatic BPM at a fixed 1.0 scroll speed.
             manager.Timings.Add(new ArcTiming { Timing = 0, Bpm = bpm });
             manager.BaseBpm = AdeProjectManager.ResolveBaseBpm(0, manager.Timings);
             Assert.That(manager.CalculatePositionByTimingAndStart(0, 1000, null), Is.EqualTo(30000).Within(0.01f));

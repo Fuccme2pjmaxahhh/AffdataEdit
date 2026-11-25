@@ -13,8 +13,16 @@ namespace Arcade.Audio
         internal double Position
         {
             get => BassNative.BASS_ChannelBytes2Seconds(Handle, BassNative.BASS_ChannelGetPosition(Handle, 0));
-            set => BassNative.Check(BassNative.BASS_ChannelSetPosition(Handle,
-                BassNative.BASS_ChannelSeconds2Bytes(Handle, Math.Max(0, Math.Min(value, Length))), 0), "seek");
+            set
+            {
+                long length = BassNative.BASS_ChannelGetLength(Handle, 0);
+                BassNative.Check(length >= 0, "seek length");
+                if (length == 0) return;
+                long bytes = BassNative.BASS_ChannelSeconds2Bytes(Handle, Math.Max(0, value));
+                BassNative.Check(bytes >= 0, "seek position");
+                // File length is exclusive. BASS aligns byte offsets down to a complete sample frame.
+                BassNative.Check(BassNative.BASS_ChannelSetPosition(Handle, Math.Min(bytes, length - 1), 0), "seek");
+            }
         }
         // playback: a playable music stream; otherwise a decode stream for length and spectrum reads.
         internal BassVoice(BassClip clip, bool playback)

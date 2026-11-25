@@ -109,13 +109,13 @@ namespace Arcade.Gameplay
                 t = next;
             }
             mesh.Clear(); mesh.SetVertices(vertices); mesh.SetUVs(0, uv0); mesh.SetUVs(1, uv1); mesh.SetUVs(2, uv2);
-            mesh.SetTriangles(indices, 0); mesh.RecalculateBounds();
+            mesh.SetTriangles(indices, 0);
             void AddRow(int time)
             {
                 float progress = (time - note.Timing) / (float)duration;
                 Vector2 range = note.Range(progress);
                 float z = -ArcTimingManager.Instance.CalculatePositionByTimingAndStart(note.Timing, time, note.TimingGroup) / 1000f;
-                float distance = ArcTimingManager.Instance.CalculatePositionByTimingAndStart(note.Timing, time, note.TimingGroup) / 1000f * NoteMeshDefinitions.SlideVisualUnitsPerWorldUnit;
+                float distance = -z * NoteMeshDefinitions.SlideVisualUnitsPerWorldUnit;
                 NoteMeshDefinitions.AppendSlideSurfaceRow(vertices, uv0, uv1, uv2,
                     new Vector3(note.WorldX(range.x), 0, z), new Vector3(note.WorldX(range.y), 0, z),
                     range, progress, distance, length);

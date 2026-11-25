@@ -610,8 +610,11 @@ namespace Arcade.Gameplay
 		}
 		public void AddTiming(ArcTiming newTiming, ArcTimingGroup timingGroup)
 		{
-			var Timings = GetTiming(timingGroup);
-			Timings.Add(newTiming);
+			InsertTiming(newTiming, timingGroup, GetTiming(timingGroup).Count);
+		}
+		internal void InsertTiming(ArcTiming timing, ArcTimingGroup timingGroup, int index)
+		{
+			GetTiming(timingGroup).Insert(index, timing);
 			ReOrderTimingGroup(timingGroup);
 			OnTimingChange(timingGroup);
 		}

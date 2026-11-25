@@ -17,6 +17,7 @@ namespace Arcade.Gameplay.Chart
             public ArcTimingGroup TimingGroup;
             public Entry[] Entries;
             public int[] MaxEnd;
+            public bool TimingsDirty;
         }
         private readonly Func<T, int> endTiming;
         private readonly List<Group> groups = new List<Group>();
@@ -32,14 +33,31 @@ namespace Arcade.Gameplay.Chart
             groups.Clear(); matches.Clear(); version = -1; count = -1; source = null;
         }
 
-        public void Query(IReadOnlyList<T> notes, List<T> result)
+        public void InvalidateTimings(ArcTimingGroup timingGroup)
+        {
+            foreach (var group in groups)
+                if (group.TimingGroup == timingGroup) { group.TimingsDirty = true; return; }
+        }
+
+        public void Query(IReadOnlyList<T> notes, List<T> result, bool skipHiddenGroups = false)
         {
             if (!ReferenceEquals(source, notes) || version != ArcEvent.RenderIndexVersion || count != notes.Count) Rebuild(notes);
             matches.Clear(); result.Clear();
             foreach (var group in groups)
             {
+                if (skipHiddenGroups && group.TimingGroup?.GroupHide == true) continue;
                 ArcTimingManager.Instance.GetRenderRange(group.TimingGroup, out float earliest, out float latest);
                 if (earliest > latest || float.IsNaN(earliest) || float.IsNaN(latest)) continue;
+                if (group.TimingsDirty)
+                {
+                    var entries = group.Entries;
+                    for (int i = 0; i < entries.Length; i++)
+                        entries[i].End = Math.Max(entries[i].Note.Timing, endTiming(entries[i].Note));
+                    Array.Sort(entries, (a, b) => a.Note.Timing != b.Note.Timing
+                        ? a.Note.Timing.CompareTo(b.Note.Timing) : a.Order.CompareTo(b.Order));
+                    Build(group, 1, 0, entries.Length);
+                    group.TimingsDirty = false;
+                }
                 Find(group, 1, 0, group.Entries.Length, earliest, latest);
             }
             // Keep chart order for transparent rendering and equal-depth picking.

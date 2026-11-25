@@ -21,10 +21,19 @@ namespace Arcade.Gameplay.Chart
         public float WorldWidth => 8.5f;
         public float WorldX(float normalizedX) => WorldWidth * (0.5f - normalizedX);
         private ArcTimingGroup timingGroup;
+        // Preview copies have no owner and cannot change the live chart's caches.
+        internal ArcSlideManager Owner;
+        protected override void OnTimingChanged() => Owner?.InvalidateSlideTiming(timingGroup);
         public ArcTimingGroup TimingGroup
         {
             get => timingGroup;
-            set { if (timingGroup == value) return; timingGroup = value; InvalidateRenderIndex(); }
+            set
+            {
+                if (timingGroup == value) return;
+                var previous = timingGroup;
+                timingGroup = value;
+                Owner?.ChangeTimingGroup(this, previous);
+            }
         }
         // Derived runtime identity; never copied or serialized as chart data.
         public ArcSlide GroupRoot { get; internal set; }
@@ -134,15 +143,36 @@ namespace Arcade.Gameplay.Chart
         public override ArcEvent Clone() => new ArcSlide((RawAffSlide)IntoRawItem(), TimingGroup);
         public override void Assign(ArcEvent values)
         {
-            base.Assign(values);
             var n = (ArcSlide)values;
+            Timing = n.Timing; EndTiming = n.EndTiming;
             StartCenter = n.StartCenter; StartWidth = n.StartWidth; EndCenter = n.EndCenter; EndWidth = n.EndWidth;
             LeftCurve = n.LeftCurve; RightCurve = n.RightCurve; Height = n.Height; TimingGroup = n.TimingGroup;
             Rebuild();
         }
-        public IRawAffItem IntoRawItem() => new RawAffSlide { Timing = Timing, EndTiming = EndTiming,
-            StartCenter = StartCenter, StartWidth = StartWidth, EndCenter = EndCenter, EndWidth = EndWidth,
-            LeftCurve = LeftCurve, RightCurve = RightCurve, Height = Height };
+        // Large charts can capture every Slide in one value array before the worker starts.
+        internal readonly struct SaveData
+        {
+            public readonly int Timing;
+            private readonly int endTiming, leftCurve, rightCurve;
+            private readonly float startCenter, startWidth, endCenter, endWidth;
+            private readonly SlideHeight height;
+
+            public SaveData(ArcSlide note)
+            {
+                Timing = note.Timing; endTiming = note.EndTiming;
+                startCenter = note.StartCenter; startWidth = note.StartWidth;
+                endCenter = note.EndCenter; endWidth = note.EndWidth;
+                leftCurve = note.LeftCurve; rightCurve = note.RightCurve; height = note.Height;
+            }
+            public RawAffSlide ToRaw() => new RawAffSlide
+            {
+                Timing = Timing, EndTiming = endTiming,
+                StartCenter = startCenter, StartWidth = startWidth, EndCenter = endCenter, EndWidth = endWidth,
+                LeftCurve = leftCurve, RightCurve = rightCurve, Height = height
+            };
+        }
+
+        public IRawAffItem IntoRawItem() => new SaveData(this).ToRaw();
         internal ArcSlideVisual Visual;
         public override void Instantiate()
         {
@@ -161,9 +191,8 @@ namespace Arcade.Gameplay.Chart
         }
         public void Rebuild()
         {
-            ArcScoreManager.Invalidate();
             Visual?.Invalidate();
-            if (ArcSlideManager.Instance) ArcSlideManager.Instance.RebuildGroups(false);
+            Owner?.RebuildSlideGroup(TimingGroup);
         }
     }
 }

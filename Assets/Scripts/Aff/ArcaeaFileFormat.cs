@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -10,6 +11,8 @@ namespace Arcade.Aff
 {
 	public static class ArcaeaFileFormat
 	{
+		private const int SlideBufferLength = 256;
+
 		public static RawAffChart ParseFromPath(string path)
 		{
 			RawAffChart chart = AffParser.Parse(File.ReadAllText(path));
@@ -37,26 +40,48 @@ namespace Arcade.Aff
 				writer.WriteLine($"{entry.Key}:{entry.Value}");
 			}
 			writer.WriteLine($"-");
+			var slideBuffer = new char[SlideBufferLength];
 			foreach (var item in chart.items)
 			{
-				writeItem(writer, item, lowPrecision);
+				writeItem(writer, item, lowPrecision, slideBuffer);
 			}
 			writer.Close();
 		}
+        internal static string FormatDecimal(float value, int minimumDecimals = 2)
+        {
+            // AFF has no exponent syntax. Expand round-trip notation without losing small values.
+            string number = value.ToString("R", CultureInfo.InvariantCulture);
+            int exponentAt = number.IndexOf('E');
+            if (exponentAt >= 0)
+            {
+                int exponent = int.Parse(number.Substring(exponentAt + 1), CultureInfo.InvariantCulture);
+                string mantissa = number.Substring(0, exponentAt);
+                string sign = mantissa.StartsWith("-", StringComparison.Ordinal) ? "-" : "";
+                mantissa = mantissa.TrimStart('-');
+                int point = (mantissa.Contains(".") ? mantissa.IndexOf('.') : mantissa.Length) + exponent;
+                string digits = mantissa.Replace(".", "");
+                number = sign + (point <= 0 ? "0." + new string('0', -point) + digits
+                    : point >= digits.Length ? digits + new string('0', point - digits.Length) : digits.Insert(point, "."));
+            }
+            int dot = number.IndexOf('.');
+            if (dot < 0) return number + "." + new string('0', minimumDecimals);
+            return number.PadRight(dot + 1 + minimumDecimals, '0');
+        }
 		// One item as written in an aff file, e.g. for quoting it in reports.
 		public static string FormatItem(IRawAffItem item, bool lowPrecision = false)
 		{
 			using (var writer = new StringWriter(CultureInfo.InvariantCulture))
 			{
-				writeItem(writer, item, lowPrecision);
+				var slideBuffer = item is RawAffSlide || item is RawAffTimingGroup ? new char[SlideBufferLength] : null;
+				writeItem(writer, item, lowPrecision, slideBuffer);
 				return writer.ToString().TrimEnd();
 			}
 		}
-		static void writeItem(TextWriter writer, IRawAffItem item, bool lowPrecision, string intent = "")
+		static void writeItem(TextWriter writer, IRawAffItem item, bool lowPrecision, char[] slideBuffer, string intent = "")
 		{
 			if (item is RawAffTiming timing)
 			{
-				writer.WriteLine($"{intent}timing({timing.Timing.ToString(CultureInfo.InvariantCulture)},{timing.Bpm.ToString("f3", CultureInfo.InvariantCulture)},{timing.BeatsPerLine.ToString("f2", CultureInfo.InvariantCulture)});");
+				writer.WriteLine($"{intent}timing({timing.Timing.ToString(CultureInfo.InvariantCulture)},{timing.Bpm.ToString("f3", CultureInfo.InvariantCulture)},{FormatDecimal(timing.BeatsPerLine)});");
 			}
 			else if (item is RawAffTap tap)
 			{
@@ -72,10 +97,7 @@ namespace Arcade.Aff
                     AffCoordinate.Round(slide.StartCenter, true), AffCoordinate.Round(slide.StartWidth, true),
                     AffCoordinate.Round(slide.EndCenter, true), AffCoordinate.Round(slide.EndWidth, true), slide.LeftCurve, slide.RightCurve))
                     throw new InvalidDataException($"Slide（{slide.Timing}）在两位小数下宽度归零或边界交叉，请关闭低精度或调整范围。");
-				writer.WriteLine(intent + string.Format(CultureInfo.InvariantCulture,
-					"slide({0},{1},{2},{3},{4},{5},{6},{7},{8});", slide.Timing, slide.EndTiming,
-					AffCoordinate.Format(slide.StartCenter, lowPrecision), AffCoordinate.Format(slide.StartWidth, lowPrecision),
-					AffCoordinate.Format(slide.EndCenter, lowPrecision), AffCoordinate.Format(slide.EndWidth, lowPrecision), slide.LeftCurve, slide.RightCurve, (int)slide.Height));
+				WriteSlide(writer, slide, lowPrecision, intent, slideBuffer);
 			}
 			else if (item is RawAffArc arc)
 			{
@@ -91,8 +113,8 @@ namespace Arcade.Aff
 			}
 			else if (item is RawAffCamera cam)
 			{
-				writer.WriteLine($"{intent}camera({cam.Timing.ToString(CultureInfo.InvariantCulture)},{cam.MoveX.ToString("f2", CultureInfo.InvariantCulture)},{cam.MoveY.ToString("f2", CultureInfo.InvariantCulture)},{cam.MoveZ.ToString("f2", CultureInfo.InvariantCulture)}," +
-					$"{cam.RotateX.ToString("f2", CultureInfo.InvariantCulture)},{cam.RotateY.ToString("f2", CultureInfo.InvariantCulture)},{cam.RotateZ.ToString("f2", CultureInfo.InvariantCulture)},{CameraEaseTypeStrings[cam.CameraType]},{cam.Duration.ToString(CultureInfo.InvariantCulture)});");
+				writer.WriteLine($"{intent}camera({cam.Timing.ToString(CultureInfo.InvariantCulture)},{FormatDecimal(cam.MoveX)},{FormatDecimal(cam.MoveY)},{FormatDecimal(cam.MoveZ)}," +
+					$"{FormatDecimal(cam.RotateX)},{FormatDecimal(cam.RotateY)},{FormatDecimal(cam.RotateZ)},{CameraEaseTypeStrings[cam.CameraType]},{cam.Duration.ToString(CultureInfo.InvariantCulture)});");
 			}
 			else if (item is RawAffSceneControl scenecontrol)
 			{
@@ -107,7 +129,7 @@ namespace Arcade.Aff
 					}
 					else if (@param is RawAffFloat @float)
 					{
-						values.Add(@float.data.ToString("f2", CultureInfo.InvariantCulture));
+						values.Add(FormatDecimal(@float.data));
 					}
 					else if (@param is RawAffWord word)
 					{
@@ -119,13 +141,45 @@ namespace Arcade.Aff
 			else if (item is RawAffTimingGroup timinggroup)
 			{
 				writer.WriteLine($"{intent}timinggroup({timinggroup.Attributes}){{");
+				string nestedIndent = intent + "  ";
 				foreach (var nestedItem in timinggroup.Items)
 				{
-					writeItem(writer, nestedItem, lowPrecision, intent + "  ");
+					writeItem(writer, nestedItem, lowPrecision, slideBuffer, nestedIndent);
 				}
 				writer.WriteLine($"{intent}}};");
 			}
 		}
+		// A fixed-point float needs at most 44 characters (including sign and decimals).
+		// The shared buffer fits four coordinates, five signed integers and separators.
+		private static void WriteSlide(TextWriter writer, RawAffSlide slide, bool lowPrecision, string indent, char[] buffer)
+		{
+			int offset = 0;
+			void Integer(int value)
+			{
+				if (!value.TryFormat(buffer.AsSpan(offset), out int length, default, CultureInfo.InvariantCulture))
+					throw new InvalidDataException("Slide integer exceeds the AFF line buffer.");
+				offset += length;
+				buffer[offset++] = ',';
+			}
+			void Coordinate(float value)
+			{
+				if (!value.TryFormat(buffer.AsSpan(offset), out int length, lowPrecision ? "f2" : "f3", CultureInfo.InvariantCulture))
+					throw new InvalidDataException("Slide coordinate exceeds the AFF line buffer.");
+				offset += length;
+				buffer[offset++] = ',';
+			}
+			Integer(slide.Timing); Integer(slide.EndTiming);
+			Coordinate(slide.StartCenter); Coordinate(slide.StartWidth);
+			Coordinate(slide.EndCenter); Coordinate(slide.EndWidth);
+			Integer(slide.LeftCurve); Integer(slide.RightCurve); Integer((int)slide.Height);
+			buffer[offset - 1] = ')';
+			buffer[offset++] = ';';
+			writer.Write(indent);
+			writer.Write("slide(");
+			writer.Write(buffer, 0, offset);
+			writer.WriteLine();
+		}
+
 		// Optional width and mine arguments. A width always has a decimal point, so it cannot be
 		// read back as the mine marker 4.
 		private static string FormatWidthAndMine(float width, bool mine)

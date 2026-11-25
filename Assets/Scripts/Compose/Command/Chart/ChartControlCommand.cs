@@ -15,7 +15,7 @@ namespace Arcade.Compose.Command
     {
         private readonly ArcEvent target, before, after;
         long ICommandMemoryCost.EstimatedBytes => 128 + CommandMemory.Estimate(before) + CommandMemory.Estimate(after);
-        private readonly int originalIndex;
+        private int originalIndex;
         public string Name { get; }
 
         public ChartControlCommand(ArcEvent target, ArcEvent before, ArcEvent after)
@@ -23,13 +23,17 @@ namespace Arcade.Compose.Command
             this.target = target;
             this.before = before?.Clone();
             this.after = after?.Clone();
-            originalIndex = target is ArcCamera camera ? ArcCameraManager.Instance.Cameras.IndexOf(camera)
-                : ArcSceneControlManager.Instance.SceneControls.IndexOf((ArcSceneControl)target);
             Name = (before == null ? "添加 " : after == null ? "删除 " : "修改 ")
                 + (target is ArcCamera ? "Camera" : "SceneControl");
         }
 
-        public void Do() => Apply(after);
+        public void Do()
+        {
+            // Earlier commands in a batch can shift the target before this step runs.
+            originalIndex = target is ArcCamera camera ? ArcCameraManager.Instance.Cameras.IndexOf(camera)
+                : ArcSceneControlManager.Instance.SceneControls.IndexOf((ArcSceneControl)target);
+            Apply(after);
+        }
         public void Undo() => Apply(before);
 
         private void Apply(ArcEvent value)
@@ -82,24 +86,7 @@ namespace Arcade.Compose.Command
             "enwidencamera", "enwidenlanes", "arcahvdistort", "arcahvdebris", "redline" };
         public static readonly string[] CameraTypes = { "l", "qi", "qo", "reset", "s" };
         private static readonly CultureInfo Culture = CultureInfo.InvariantCulture;
-        public static string Number(float value)
-        {
-            // AFF has no exponent syntax. Expand round-trip notation without losing small values.
-            string number = value.ToString("R", Culture);
-            int exponentAt = number.IndexOf('E');
-            if (exponentAt >= 0)
-            {
-                int exponent = int.Parse(number.Substring(exponentAt + 1), Culture);
-                string mantissa = number.Substring(0, exponentAt);
-                string sign = mantissa.StartsWith("-", StringComparison.Ordinal) ? "-" : "";
-                mantissa = mantissa.TrimStart('-');
-                int point = (mantissa.Contains(".") ? mantissa.IndexOf('.') : mantissa.Length) + exponent;
-                string digits = mantissa.Replace(".", "");
-                number = sign + (point <= 0 ? "0." + new string('0', -point) + digits
-                    : point >= digits.Length ? digits + new string('0', point - digits.Length) : digits.Insert(point, "."));
-            }
-            return number.Contains(".") ? number : number + ".0";
-        }
+        public static string Number(float value) => ArcaeaFileFormat.FormatDecimal(value, 1);
         public static bool Float(string text, out float value) => float.TryParse(text, NumberStyles.Float, Culture, out value)
             && !float.IsNaN(value) && !float.IsInfinity(value);
         public static bool Integer(string text, out int value) => int.TryParse(text, NumberStyles.Integer, Culture, out value);

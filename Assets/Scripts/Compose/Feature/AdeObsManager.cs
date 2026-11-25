@@ -24,7 +24,8 @@ namespace Arcade.Compose.Feature
 	public class OBSPreferences
 	{
 		public string ip = "127.0.0.1";
-		public int port = 4455;
+		internal const int DefaultPort = 4455;
+		public int port = DefaultPort;
 		public bool usePassword = false;
 		public string password = "";
 	}
@@ -82,6 +83,7 @@ namespace Arcade.Compose.Feature
 			{
 				preference = JsonConvert.DeserializeObject<OBSPreferences>(AdeSettings.GetString("AdeOBSDialog", ""));
 				if (preference == null) preference = new OBSPreferences();
+				if (preference.port < 1 || preference.port > ushort.MaxValue) preference.port = OBSPreferences.DefaultPort;
 			}
 			catch (Exception Ex)
 			{
@@ -128,14 +130,9 @@ namespace Arcade.Compose.Feature
 
 		public void OnOBSServerPortChange(string text)
 		{
-			try
-			{
-				preference.port = int.Parse(ObsServerPortInput.text, CultureInfo.InvariantCulture);
-			}
-			catch (Exception)
-			{
-				ObsServerPortInput.SetTextWithoutNotify(preference.port.ToString(CultureInfo.InvariantCulture));
-			}
+			if (ushort.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out ushort port) && port != 0)
+				preference.port = port;
+			ObsServerPortInput.SetTextWithoutNotify(preference.port.ToString(CultureInfo.InvariantCulture));
 		}
 
 		public void OnOBSServerPasswordChange(string text)
